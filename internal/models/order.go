@@ -1,6 +1,7 @@
 package models
 
 import basemodel "main/internal/models/base_model"
+import "time"
 
 type OrderStatus string
 
