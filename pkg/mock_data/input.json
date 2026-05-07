@@ -1,62 +1,26 @@
 [
-    {
-    "id": 1,
-    "customer_id": 101,
-    "customer_email": "customer1@example.com",
-    "total_amount": 10000,
-    "shipping_addr": "123 Nguyen Trai, HCM City",
-    "status": "shipped",
-    "paid_at": null,
-    "shipped_at": null,
-    "delivered_at": null,
-    "cancelled_at": null,
-    "refunded_at": null,
-    "created_at": "2026-01-01T08:00:00Z",
-    "updated_at": "2026-01-01T08:00:00Z"
+  {
+    "event_id": "evt-1",
+    "order_id": 1,
+    "event_type": "status_change",
+    "new_status": "refunded"
   },
   {
-    "id": 2,
-    "customer_id": 102,
-    "customer_email": "customer2@example.com",
-    "total_amount": 12000,
-    "shipping_addr": "45 Le Loi, Da Nang",
-    "status": "packed",
-    "paid_at": "2026-01-02T09:00:00Z",
-    "shipped_at": null,
-    "delivered_at": null,
-    "cancelled_at": null,
-    "refunded_at": null,
-    "created_at": "2026-01-02T08:00:00Z",
-    "updated_at": "2026-01-02T09:00:00Z"
+    "event_id": "evt-2",
+    "order_id": 1,
+    "event_type": "status_change",
+    "new_status": "packed"
   },
   {
-    "id": 3,
-    "customer_id": 103,
-    "customer_email": "customer3@example.com",
-    "total_amount": 13000,
-    "shipping_addr": "99 Tran Hung Dao, Ha Noi",
-    "status": "shipped",
-    "paid_at": "2026-01-03T08:30:00Z",
-    "shipped_at": null,
-    "delivered_at": null,
-    "cancelled_at": null,
-    "refunded_at": null,
-    "created_at": "2026-01-03T08:00:00Z",
-    "updated_at": "2026-01-03T10:00:00Z"
+    "event_id": "evt-1",
+    "order_id": 1,
+    "event_type": "status_change",
+    "new_status": "created"
   },
   {
-    "id": 4,
-    "customer_id": 103,
-    "customer_email": "customer3@example.com",
-    "total_amount": 13000,
-    "shipping_addr": "99 Tran Hung Dao, Ha Noi",
-    "status": "created",
-    "paid_at": "2026-01-03T08:30:00Z",
-    "shipped_at": null,
-    "delivered_at": null,
-    "cancelled_at": null,
-    "refunded_at": null,
-    "created_at": "2026-01-03T08:00:00Z",
-    "updated_at": "2026-01-03T10:00:00Z"
+    "event_id": "evt-3",
+    "order_id": 2,
+    "event_type": "status_change",
+    "new_status": "packed"
   }
 ]
