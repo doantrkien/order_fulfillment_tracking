@@ -73,6 +73,7 @@ func Worker(jobs <-chan models.OrderEvent, results chan<- string, wg *sync.WaitG
 		}
 
 		dbOrders[event.OrderID] = event.NewStatus
+		fmt.Printf("dbOrders after update (event_id=%s): %+v\n", event.EventID, dbOrders)
 		dbMutex.Unlock()
 
 		results <- "accepted"

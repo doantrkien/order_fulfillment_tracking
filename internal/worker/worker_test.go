@@ -32,6 +32,8 @@ func TestWorkerWithMockData(t *testing.T) {
 		}
 	}
 
+	fmt.Printf("dbOrders before RunBatch: %+v\n", dbOrders)
+
 	fmt.Println("Running worker with events from mock data...")
 	RunBatch(events)
 }
