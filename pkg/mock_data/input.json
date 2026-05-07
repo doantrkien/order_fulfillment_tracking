@@ -1,0 +1,26 @@
+[
+  {
+    "event_id": "evt-1",
+    "order_id": 1,
+    "event_type": "status_change",
+    "new_status": "refunded"
+  },
+  {
+    "event_id": "evt-2",
+    "order_id": 1,
+    "event_type": "status_change",
+    "new_status": "packed"
+  },
+  {
+    "event_id": "evt-1",
+    "order_id": 1,
+    "event_type": "status_change",
+    "new_status": "created"
+  },
+  {
+    "event_id": "evt-3",
+    "order_id": 2,
+    "event_type": "status_change",
+    "new_status": "packed"
+  }
+]
