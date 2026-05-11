@@ -1,0 +1,26 @@
+openapi: 3.0.3
+info:
+  title: Order Fulfillment Tracking API
+  description: HTTP API for order fulfillment tracking.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /auth/login:
+    get:
+      summary: Login
+      description: Placeholder login endpoint.
+      tags:
+        - Auth
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Login successful
