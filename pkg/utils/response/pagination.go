@@ -1,4 +1,4 @@
-package responses
+package response
 
 type Pagination struct {
 	Page  int `json:"page"`

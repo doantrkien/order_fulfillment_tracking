@@ -1,7 +1,6 @@
 package postgresql
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 	"time"
@@ -20,23 +19,20 @@ func ConnectDB() (*gorm.DB, error) {
 		os.Getenv("DB_PORT"),
 	)
 
-	sqlDB, err := sql.Open("postgres", dsn)
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
 
-	// config pool
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+
+	// connection pool
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetConnMaxLifetime(time.Hour)
-
-	db, err := gorm.Open(postgres.New(postgres.Config{
-		Conn: sqlDB,
-	}), &gorm.Config{})
-
-	if err != nil {
-		return nil, err
-	}
 
 	return db, nil
 }

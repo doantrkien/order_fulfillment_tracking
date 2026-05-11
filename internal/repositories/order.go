@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"main/internal/dto"
 	"main/internal/models"
 
 	"gorm.io/gorm"
@@ -37,28 +36,10 @@ func (r *OrderRepository) GetOrderDetail(id int) (*models.Order, error) {
 	return &order, nil
 }
 
-func (r *OrderRepository) CreateOrder(req dto.OrderRequest) (*models.Order, error) {
-	order := models.Order{}
+// func CreateOrder(order models.Order) (*models.Order, error) {
+// 	return nil, nil
+// }
 
-	if err := r.db.Create(&order).Error; err != nil {
-		return nil, err
-	}
-
-	return &order, nil
-}
-
-func (r *OrderRepository) UpdateOrderStatus(id uint, status string) (*models.Order, error) {
-	var order models.Order
-
-	if err := r.db.First(&order, id).Error; err != nil {
-		return nil, err
-	}
-
-	// order.Status = status
-
-	if err := r.db.Save(&order).Error; err != nil {
-		return nil, err
-	}
-
-	return &order, nil
-}
+// func UpdateOrderStatus(id uint, status string) (*models.Order, error) {
+// 	return nil, nil
+// }

@@ -9,6 +9,6 @@ import (
 func SetupOrderRouter(app *fiber.App, orderHandler *handlers.OrderHandler) {
 
 	order := app.Group("/orders")
-
-	order.Post("", orderHandler.CreateOrder)
+	order.Get("/", orderHandler.GetAllOrder)
+	order.Get("/:id", orderHandler.GetOrderDetail)
 }
