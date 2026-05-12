@@ -5,7 +5,7 @@ import (
 	"main/configs"
 	"main/internal/handlers"
 	"main/internal/repositories"
-	"main/internal/routers"
+	"main/internal/routers/v1"
 	"main/internal/services"
 	"main/pkg/postgresql"
 
@@ -30,8 +30,17 @@ func main() {
 	orderService := services.NewOrderService(orderRepo)
 	orderHandler := handlers.NewOrderHandler(orderService)
 
-	routers.SetupRouter(app)
+	orderEventRepo := repositories.NewOrderEventRepository(db)
+	orderEventService := services.NewOrderEventService(orderEventRepo)
+	orderEventHandler := handlers.NewOrderEventHandler(orderEventService)
+
+	reportRepo := repositories.NewReportRepository(db)
+	reportService := services.NewReportService(reportRepo)
+	reportHandler := handlers.NewReportHandler(reportService)
+
 	routers.SetupOrderRouter(app, orderHandler)
+	routers.SetupOrderEventRouter(app, orderEventHandler)
+	routers.SetupReportRouter(app, reportHandler)
 
 	app.Listen(":3000")
 }

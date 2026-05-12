@@ -3,18 +3,21 @@ package services
 import (
 	"main/internal/dto"
 	"main/internal/models"
+	"main/internal/repositories"
 )
 
 type OrderService interface {
 	GetAllOrder() ([]dto.OrderReponse, error)
 	GetOrder(id int) (*dto.OrderReponse, error)
+	CreateOrder(dto.OrderRequest) (*models.Order, error)
+	UpdateOrderStatus(id int64, status string) (*models.Order, error)
 }
 
 type orderService struct {
-	orderRepo models.OrderRepository
+	orderRepo repositories.OrderRepository
 }
 
-func NewOrderService(orderRepo models.OrderRepository) OrderService {
+func NewOrderService(orderRepo repositories.OrderRepository) OrderService {
 	return &orderService{
 		orderRepo: orderRepo,
 	}
@@ -52,4 +55,23 @@ func (s *orderService) GetOrder(id int) (*dto.OrderReponse, error) {
 	}
 
 	return &response, nil
+}
+
+func (s *orderService) CreateOrder(req dto.OrderRequest) (*models.Order, error) {
+	order := models.Order{
+		CustomerID:   req.CustomerID,
+		TotalAmount:  req.TotalAmount,
+		ShippingAddr: req.ShippingAddr,
+		Status:       models.OrderStatus("created"),
+	}
+
+	return s.orderRepo.CreateOrder(order)
+}
+
+func (s *orderService) UpdateOrderStatus(id int64, status string) (*models.Order, error) {
+	order, err := s.orderRepo.UpdateOrderStatus(id, status)
+	if err != nil {
+		return nil, err
+	}
+	return order, nil
 }

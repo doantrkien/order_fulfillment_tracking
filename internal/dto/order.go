@@ -6,6 +6,9 @@ import (
 )
 
 type OrderRequest struct {
+	CustomerID   int64   `json:"customer_id"`
+	TotalAmount  float64 `json:"total_amount"`
+	ShippingAddr string  `json:"shipping_addr"`
 }
 
 type OrderReponse struct {
