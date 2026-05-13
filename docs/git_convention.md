@@ -10,7 +10,7 @@ main / master: No direct commits allowed.
 
 dev: Integration branch where all features are merged for testing.
 
-member_name/feature_name: Feature branches created for individual tasks or bug fixes.
+member_name/feature/feature_name: Feature branches created for individual tasks or bug fixes.
 
 # 2. Workflow
 
@@ -28,7 +28,9 @@ Create a descriptive feature branch from the dev branch.
 
 ### Example: git checkout -b trkien/feature/login-api
 git checkout -b member_name/feature/feature-name
-
+- feat: New features or significant additions.
+- fix: Bug fixes.
+- refactor: Code changes that neither fix a bug nor add a feature (e.g., cleaning up code).
 
 ## Step 3: Develop and Commit
 
