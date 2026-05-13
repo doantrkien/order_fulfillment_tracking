@@ -7,6 +7,6 @@ import (
 )
 
 func SetupOrderEventRouter(app *fiber.App, orderEventHandler *handlers.OrderEventHandler) {
-	orderEvent := app.Group("api/v1/order-events")
-	orderEvent.Post("", orderEventHandler.ImportOrderEvents)
+	orderEvent := app.Group("/api/v1/order-events")
+	orderEvent.Post("/", orderEventHandler.ImportOrderEvents)
 }
