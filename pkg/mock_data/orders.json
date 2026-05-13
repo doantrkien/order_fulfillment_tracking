@@ -5,7 +5,7 @@
     "customer_email": "customer1@example.com",
     "total_amount": 10000,
     "shipping_addr": "123 Nguyen Trai, HCM City",
-    "status": "paid",
+    "status": "created",
     "paid_at": null,
     "shipped_at": null,
     "delivered_at": null,

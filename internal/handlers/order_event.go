@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"main/internal/models"
 	"main/internal/services"
 
 	"github.com/gofiber/fiber/v3"
@@ -17,10 +18,28 @@ func NewOrderEventHandler(orderEventService services.OrderEventService) *OrderEv
 }
 
 func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
-	// TODO
-	return c.Status(200).JSON(fiber.Map{
-		"status":  200,
-		"message": "success",
-		"data":    nil,
+	var req []models.OrderEvent
+
+	if err := c.Bind().Body(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "invalid payload",
+		})
+	}
+
+	result, err := h.orderEventService.ImportOrderEvents(req)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error":     err.Error(),
+			"accepted":  result.Accepted,
+			"rejected":  result.Rejected,
+			"duplicate": result.Duplicate,
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message":   "batch processed",
+		"accepted":  result.Accepted,
+		"rejected":  result.Rejected,
+		"duplicate": result.Duplicate,
 	})
 }
