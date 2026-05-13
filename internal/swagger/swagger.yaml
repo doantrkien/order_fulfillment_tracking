@@ -7,20 +7,727 @@ servers:
   - url: http://localhost:3000
     description: Local development
 paths:
-  /auth/login:
+  /api/v1/orders:
     get:
-      summary: Login
-      description: Placeholder login endpoint.
+      summary: Get all orders
       tags:
-        - Auth
+        - Order
+
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          example: paid
+
+        - name: customer_name
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Supper Man
+
+        - name: ordered_at
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          example: 2026-05-01
+
       responses:
         "200":
-          description: Successful response
+          description: Success
           content:
             application/json:
               schema:
                 type: object
+
                 properties:
+                  status:
+                    type: integer
+                    example: 200
+
                   message:
                     type: string
-                    example: Login successful
+                    example: Thanh cong.!
+
+                  data:
+                    type: array
+
+                    items:
+                      type: object
+
+                      properties:
+                        customer_name:
+                          type: string
+                          example: Supper Man
+
+                        customer_phone:
+                          type: string
+                          example: 19008199
+
+                        shipping_addr:
+                          type: string
+                          example: "Viet Nam"
+
+                        status:
+                          type: string
+                          example: Paid
+          
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 400
+       
+                  message:
+                    type: string
+                    example: "Dữ liệu đầu vào không hợp lệ.!"
+
+                  data:
+                    type: object
+                    nullable: true
+
+        "401":
+          description: UnAuthentication
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 401
+
+                  message:
+                    type: string
+                    example: "Vui lòng đăng nhập để thực hiện thao tác.!"
+
+                  data:
+                    type: object
+                    nullable: true
+
+        "403":
+          description: UnAuthorization
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 403
+       
+                  message:
+                    type: string
+                    example: "Bạn không có quyền thao tác.!"
+
+                  data:
+                    type: object
+                    nullable: true
+
+        "404":
+          description: Data not found
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 404
+       
+                  message:
+                    type: string
+                    example: "Không tìm thấy dữ liệu theo yêu cầu của bạn.!"
+
+                  data:
+                    type: object
+                    nullable: true
+
+    post:
+      summary: Create order
+      description: Create a new order
+      tags:
+        - Order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+
+              properties:
+                customer_name:
+                  type: string
+                  example: Supper Man
+
+                customer_phone:
+                  type: string
+                  example: 19008199
+
+                shipping_addr:
+                  type: string
+                  example: "Viet Nam"
+
+                ordered_at:
+                  type: date
+                  example: 2026-01-01
+
+      responses:
+        "201":
+          description: Order created successfully
+
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 201
+
+                  message:
+                    type: string
+                    example: Order created successfully
+
+                  data:
+                    type: object
+                    nullable: true
+
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 400
+       
+                  message:
+                    type: string
+                    example: "Dữ liệu đầu vào không hợp lệ.!"
+
+                  data:
+                    type: object
+                    nullable: true 
+
+        "401":
+          description: UnAuthentication
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 401
+
+                  message:
+                    type: string
+                    example: "Vui lòng đăng nhập để thực hiện thao tác.!"
+
+                  data:
+                    type: object
+                    nullable: true
+
+        "403":
+          description: UnAuthorization
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 403
+       
+                  message:
+                    type: string
+                    example: "Bạn không có quyền thao tác.!"
+
+                  data:
+                    type: object
+                    nullable: true
+
+  /api/v1/orders/{id}:
+    get:
+      summary: Get order detail
+      description: Retrieve detail of an order
+      tags:
+        - Order
+
+      parameters:
+        - name: id
+          in: path
+          required: true
+
+          schema:
+            type: integer
+
+          example: 1
+
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 200
+
+                  message:
+                    type: string
+                    example: Success
+
+                  data:
+                    type: object
+
+                    properties:
+                      customer_name:
+                        type: string
+                        example: Supper Man
+
+                      customer_phone:
+                        type: string
+                        example: 19008199
+
+                      shipping_addr:
+                        type: string
+                        example: "Viet Nam"
+
+                      status:
+                        type: string
+                        example: Paid
+        
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 400
+       
+                  message:
+                    type: string
+                    example: "Dữ liệu đầu vào không hợp lệ.!"
+
+                  data:
+                    type: object
+                    nullable: true 
+
+        "401":
+          description: UnAuthentication
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 401
+
+                  message:
+                    type: string
+                    example: "Vui lòng đăng nhập để thực hiện thao tác.!"
+
+                  data:
+                    type: object
+                    nullable: true
+
+        "403":
+          description: UnAuthorization
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 403
+       
+                  message:
+                    type: string
+                    example: "Bạn không có quyền thao tác.!"
+
+                  data:
+                    type: object
+                    nullable: true
+
+        "404":
+          description: Data not found
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 404
+       
+                  message:
+                    type: string
+                    example: "Không tìm thấy dữ liệu theo yêu cầu của bạn.!"
+
+                  data:
+                    type: object
+                    nullable: true                  
+
+  /api/v1/orders/{id}/status:
+    patch:
+      summary: Update order status
+      tags:
+        - Order
+
+      parameters:
+        - name: id
+          in: path
+          required: true
+
+          schema:
+            type: integer
+
+        - name: status
+          in: query
+          required: true
+
+          schema:
+            type: string
+            example: DELIVERED
+
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 200
+
+                  message:
+                    type: string
+                    example: Success
+
+                  data:
+                    type: object
+                    nullable: true
+
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 400
+       
+                  message:
+                    type: string
+                    example: "Dữ liệu đầu vào không hợp lệ.!"
+
+                  data:
+                    type: object
+                    nullable: true 
+
+        "401":
+          description: UnAuthentication
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 401
+
+                  message:
+                    type: string
+                    example: "Vui lòng đăng nhập để thực hiện thao tác.!"
+
+                  data:
+                    type: object
+                    nullable: true
+
+        "403":
+          description: UnAuthorization
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 403
+       
+                  message:
+                    type: string
+                    example: "Bạn không có quyền thao tác.!"
+
+                  data:
+                    type: object
+                    nullable: true
+
+  /api/v1/order-events:
+    post:
+      summary: Create order event
+      description: Record an order tracking event
+      tags:
+        - Order Event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+
+              properties:
+                events:
+                  type: array
+
+                  items:
+                    type: object
+                    properties:
+                      event_id:
+                        type: integer
+                        example: 1
+
+                      previous_status:
+                        type: string
+                        example: paid
+                      
+                      new_status:
+                        type: string
+                        example: paid
+                      
+                      evented_at:
+                        type: date
+                        example: 2026-01-01
+
+
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 200
+
+                  message:
+                    type: string
+                    example: Success
+
+                  data:
+                    type: object
+                    properties:
+                      accept:
+                        type: integer
+                        example: 10
+
+                      reject:
+                        type: integer
+                        example: 10
+                      
+                      duplicate:
+                        type: integer
+                        example: 20
+                      
+                    
+        
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 400
+       
+                  message:
+                    type: string
+                    example: "Dữ liệu đầu vào không hợp lệ.!"
+
+                  data:
+                    type: object
+                    nullable: true 
+
+        "401":
+          description: UnAuthentication
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 401
+
+                  message:
+                    type: string
+                    example: "Vui lòng đăng nhập để thực hiện thao tác.!"
+
+                  data:
+                    type: object
+                    nullable: true
+
+        "403":
+          description: UnAuthorization
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 403
+       
+                  message:
+                    type: string
+                    example: "Bạn không có quyền thao tác.!"
+
+                  data:
+                    type: object
+                    nullable: true
+
+  /api/v1/reports/daily:
+    get:
+      summary: Daily order report
+      tags:
+        - Report
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 200
+
+                  message:
+                    type: string
+                    example: Success
+
+                  data:
+                    type: array
+
+                    items:
+                      type: object
+
+                      properties:
+                        date:
+                          type: string
+                          example: 2026-05-13
+
+                        total_orders:
+                          type: integer
+                          example: 120
+
+                        total_created:
+                          type: integer
+                          example: 100
+
+                        total_delivered:
+                          type: integer
+                          example: 100
+
+                        total_canceled:
+                          type: integer
+                          example: 20
+                        
+                        total_refunded:
+                          type: integer
+                          example: 10
+                        
+                        total_income:
+                          type: float
+                          example: 199.99
+
+        "401":
+          description: UnAuthentication
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 401
+
+                  message:
+                    type: string
+                    example: "Vui lòng đăng nhập để thực hiện thao tác.!"
+
+                  data:
+                    type: object
+                    nullable: true
+
+        "403":
+          description: UnAuthorization
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  status:
+                    type: integer
+                    example: 403
+       
+                  message:
+                    type: string
+                    example: "Bạn không có quyền thao tác.!"
+
+                  data:
+                    type: object
+                    nullable: true
