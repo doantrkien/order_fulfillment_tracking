@@ -11,6 +11,7 @@ type OrderEvent struct {
 	OrderID     int64       `gorm:"column:order_id;not null;index" json:"order_id"`
 	Order       Order       `gorm:"foreignKey:OrderID" json:"-"`
 	EventType   string      `gorm:"column:event_type;not null" json:"event_type"`
+	PreviousStatus   OrderStatus `gorm:"column:previous_status;not null" json:"previous_status"`
 	NewStatus   OrderStatus `gorm:"column:new_status;not null" json:"new_status"`
 	OccurredAt  time.Time   `gorm:"column:occurred_at" json:"occurred_at"`
 	ProcessedAt time.Time   `gorm:"column:processed_at" json:"processed_at"`

@@ -12,10 +12,15 @@ const (
 	OrderStatusPacked    OrderStatus = "packed"
 	OrderStatusShipped   OrderStatus = "shipped"
 	OrderStatusDelivered OrderStatus = "delivered"
-	OrderStatusCanceled  OrderStatus = "canceled"
+	OrderStatusCancelled  OrderStatus = "canceled"
 	OrderStatusRefunded  OrderStatus = "refunded"
 )
-
+var validTransitions = map[OrderStatus][]OrderStatus{
+	OrderStatusCreated:   {OrderStatusPaid, OrderStatusCancelled},
+	OrderStatusPaid:      {OrderStatusPacked, OrderStatusRefunded},
+	OrderStatusPacked:    {OrderStatusShipped},
+	OrderStatusShipped:   {OrderStatusDelivered},
+}
 type Order struct {
 	basemodel.BaseModel
 	CustomerID   int64       `gorm:"column:customer_id;not null" json:"customer_id"`
