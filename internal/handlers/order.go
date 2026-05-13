@@ -22,12 +22,32 @@ func NewOrderHandler(orderService services.OrderService) *OrderHandler {
 }
 
 func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
-	orders, err := h.orderService.GetAllOrder()
+	var query dto.OrderQuery
+
+	if err := c.Bind().Query(&query); err != nil {
+		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
+	}
+
+	if query.Page <= 0 {
+		query.Page = 1
+	}
+	if query.Limit <= 0 {
+		query.Limit = 10
+	}
+
+	result, total, err := h.orderService.GetAllOrder(query)
 	if err != nil {
 		return response.Reponse(c, 500, constant.ERROR, nil)
 	}
 
-	return response.Reponse(c, 200, constant.SUCCESS, orders)
+	return response.PaginatedSuccess(
+		c,
+		constant.SUCCESS,
+		result,
+		query.Page,
+		query.Limit,
+		total,
+	)
 }
 
 func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {

@@ -7,7 +7,7 @@ import (
 )
 
 type OrderService interface {
-	GetAllOrder() ([]dto.OrderReponse, error)
+	GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, int64, error)
 	GetOrder(id int) (*dto.OrderReponse, error)
 	CreateOrder(dto.OrderRequest) (*models.Order, error)
 	UpdateOrderStatus(id int64, status string) (*models.Order, error)
@@ -23,10 +23,11 @@ func NewOrderService(orderRepo repositories.OrderRepository) OrderService {
 	}
 }
 
-func (s *orderService) GetAllOrder() ([]dto.OrderReponse, error) {
-	orders, err := s.orderRepo.GetAllOrder()
+func (s *orderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, int64, error) {
+
+	orders, total, err := s.orderRepo.GetAllOrder(query)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var response []dto.OrderReponse
@@ -39,7 +40,7 @@ func (s *orderService) GetAllOrder() ([]dto.OrderReponse, error) {
 		})
 	}
 
-	return response, nil
+	return response, total, nil
 }
 
 func (s *orderService) GetOrder(id int) (*dto.OrderReponse, error) {
