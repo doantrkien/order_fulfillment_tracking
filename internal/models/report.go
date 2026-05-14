@@ -6,7 +6,7 @@ type Report struct {
 	ID             int64     `gorm:"primaryKey;column:id" json:"id"`
 	Date           time.Time `gorm:"column:date;type:date;uniqueIndex" json:"date"`
 	TotalOrders    int64     `gorm:"column:total_orders;default:0" json:"total_orders"`
-	TotalCreated   int64     `gorm:"column:total_created;default:0" json:"total_created"`
+	TotalNew       int64     `gorm:"column:total_new;default:0" json:"total_new"`
 	TotalDelivered int64     `gorm:"column:total_delivered;default:0" json:"total_delivered"`
 	TotalCancelled int64     `gorm:"column:total_cancelled;default:0" json:"total_cancelled"`
 	TotalRefunded  int64     `gorm:"column:total_refunded;default:0" json:"total_refunded"`
