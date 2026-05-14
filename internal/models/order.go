@@ -1,30 +1,35 @@
 package models
 
 import (
-	basemodel "main/internal/models/base_model"
+	"time"
+
+	"gorm.io/datatypes"
 )
 
 type OrderStatus string
 
 const (
-	OrderStatusCreated   OrderStatus = "created"
-	OrderStatusPaid      OrderStatus = "paid"
-	OrderStatusPacked    OrderStatus = "packed"
-	OrderStatusShipped   OrderStatus = "shipped"
-	OrderStatusDelivered OrderStatus = "delivered"
-	OrderStatusCancelled  OrderStatus = "canceled"
-	OrderStatusRefunded  OrderStatus = "refunded"
+	ORDER_STATUS_CREATED   OrderStatus = "created"
+	ORDER_STATUS_PAID      OrderStatus = "paid"
+	ORDER_STATUS_PACKED    OrderStatus = "packed"
+	ORDER_STATUS_SHIPPED   OrderStatus = "shipped"
+	ORDER_STATUS_DELIVERED OrderStatus = "delivered"
+	ORDER_STATUS_CANCELLED OrderStatus = "cancelled"
+	ORDER_STATUS_REFUNDED  OrderStatus = "refunded"
 )
+
 var validTransitions = map[OrderStatus][]OrderStatus{
-	OrderStatusCreated:   {OrderStatusPaid, OrderStatusCancelled},
-	OrderStatusPaid:      {OrderStatusPacked, OrderStatusRefunded},
-	OrderStatusPacked:    {OrderStatusShipped},
-	OrderStatusShipped:   {OrderStatusDelivered},
+	ORDER_STATUS_CREATED:   {ORDER_STATUS_PAID, ORDER_STATUS_CANCELLED},
+	ORDER_STATUS_PAID:      {ORDER_STATUS_PACKED, ORDER_STATUS_REFUNDED},
+	ORDER_STATUS_PACKED:    {ORDER_STATUS_SHIPPED},
+	ORDER_STATUS_SHIPPED:   {ORDER_STATUS_DELIVERED},
 }
+
 type Order struct {
-	basemodel.BaseModel
-	CustomerID   int64       `gorm:"column:customer_id;not null" json:"customer_id"`
-	TotalAmount  float64     `gorm:"column:total_amount;type:decimal(12,2);not null" json:"total_amount"`
-	ShippingAddr string      `gorm:"column:shipping_addr;not null" json:"shipping_addr"`
-	Status       OrderStatus `gorm:"column:status;type:varchar(20);not null;default:'created'" json:"status"`
+	ID            int64          `gorm:"primaryKey;column:id" json:"id"`
+	UserInfo      datatypes.JSON `gorm:"column:user_info;type:jsonb" json:"user_info"`
+	TotalAmount   float64        `gorm:"column:total_amount;type:decimal(12,2);not null" json:"total_amount"`
+	CurrentStatus OrderStatus    `gorm:"column:current_status;type:varchar(20);not null;default:'created';comment:Concurrency Lock" json:"current_status"`
+	CreatedAt     time.Time      `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt     time.Time      `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP" json:"updated_at"`
 }

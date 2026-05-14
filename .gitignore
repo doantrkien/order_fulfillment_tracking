@@ -1,1 +1,7 @@
 .env.local
+
+.agent
+.ai-devkit.json
+docs/ai/*
+
+
