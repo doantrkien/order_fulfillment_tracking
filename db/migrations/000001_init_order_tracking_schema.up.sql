@@ -1,0 +1,30 @@
+CREATE TABLE orders (
+    id BIGSERIAL PRIMARY KEY,
+    user_info JSONB,
+    total_amount DECIMAL(12,2) NOT NULL,
+    current_status VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE order_events (
+    id BIGSERIAL PRIMARY KEY,
+    order_id BIGINT NOT NULL,
+    previous_status VARCHAR(20),
+    new_status VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_order_events_orders FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+);
+
+CREATE TABLE reports (
+    id BIGSERIAL PRIMARY KEY,
+    date DATE UNIQUE NOT NULL,
+    total_orders BIGINT NOT NULL DEFAULT 0,
+    total_new BIGINT NOT NULL DEFAULT 0,
+    total_delivered BIGINT NOT NULL DEFAULT 0,
+    total_cancelled BIGINT NOT NULL DEFAULT 0,
+    total_refunded BIGINT NOT NULL DEFAULT 0,
+    total_income DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    avg_deliver_time DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
