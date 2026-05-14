@@ -60,10 +60,10 @@ func (s *orderService) GetOrder(id int) (*dto.OrderReponse, error) {
 
 func (s *orderService) CreateOrder(req dto.OrderRequest) (*models.Order, error) {
 	order := models.Order{
-		CustomerID:   req.CustomerID,
-		TotalAmount:  req.TotalAmount,
-		ShippingAddr: req.ShippingAddr,
-		Status:       models.OrderStatus("created"),
+		CustomerID:    req.CustomerID,
+		TotalAmount:   req.TotalAmount,
+		ShippingAddr:  req.ShippingAddr,
+		CurrentStatus: models.ORDER_STATUS_CREATED,
 	}
 
 	return s.orderRepo.CreateOrder(order)
