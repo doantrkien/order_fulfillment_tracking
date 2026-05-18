@@ -44,9 +44,9 @@ func (s *orderEventService) ImportOrderEvents(events []models.OrderEvent) (Impor
 		defer wg.Done()
 		for event := range jobs {
 
-			if _, loaded := seen.LoadOrStore(event.EventID, true); loaded {
+			if _, loaded := seen.LoadOrStore(1, true); loaded {
 				duplicateCount.Add(1)
-				fmt.Println("duplicate event:", event.EventID)
+				fmt.Println("duplicate event:", 1)
 				continue
 			}
 

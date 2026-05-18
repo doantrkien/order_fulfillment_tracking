@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"main/internal/dto"
+	"main/internal/models"
 	"main/internal/services"
 	"main/pkg/utils/constant"
 	"main/pkg/utils/response"
@@ -71,10 +72,6 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
 	}
 
-	if req.CustomerID <= 0 || req.TotalAmount <= 0 {
-		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
-	}
-
 	_, err := h.orderService.CreateOrder(req)
 	if err != nil {
 		return response.Reponse(c, 500, constant.ERROR, nil)
@@ -95,12 +92,16 @@ func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
 		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
 	}
 
-	_, err = h.orderService.UpdateOrderStatus(id, status)
+	order, err := h.orderService.UpdateOrderStatus(id, status)
 	if err != nil {
 		if errors.Is(err, constant.ERR_NOT_FOUND) {
 			return response.Reponse(c, 404, constant.NOT_FOUND, nil)
 		}
 		return response.Reponse(c, 500, constant.ERROR, nil)
+	}
+
+	if models.IsValidTransition(order.CurrentStatus, models.OrderStatus(status)) {
+		return response.Reponse(c, 400, constant.INVALID_STATUS, nil)
 	}
 
 	return response.Reponse(c, 200, constant.SUCCESS, nil)
