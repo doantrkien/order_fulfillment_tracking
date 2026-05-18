@@ -38,6 +38,8 @@ func main() {
 	reportService := services.NewReportService(reportRepo)
 	reportHandler := handlers.NewReportHandler(reportService)
 
+	services.StartDailyReportScheduler(reportService)
+
 	routers.SetupOrderRouter(app, orderHandler)
 	//routers.SetupOrderEventRouter(app, orderEventHandler)
 	routers.SetupReportRouter(app, reportHandler)
