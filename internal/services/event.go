@@ -1,99 +1,154 @@
 package services
 
 import (
-	"fmt"
+	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/repositories"
 	"sync"
-	"sync/atomic"
 )
 
-type OrderEventService interface {
-	ImportOrderEvents(events []models.OrderEvent) (ImportOrderEventsResult, error)
-}
+const maxWorkers = 7
 
-type ImportOrderEventsResult struct {
-	Total     int `json:"total"`
-	Accepted  int `json:"accepted"`
-	Rejected  int `json:"rejected"`
-	Duplicate int `json:"duplicate"`
+type OrderEventService interface {
+	ImportOrderEvents(reqs []dto.ImportOrderEventRequest) (dto.ImportOrderEventsResponse, error)
 }
 
 type orderEventService struct {
-	eventRepo repositories.OrderEventRepository
+	orderEventRepo repositories.OrderEventRepository
 }
 
-func NewOrderEventService(eventRepo repositories.OrderEventRepository) OrderEventService {
+func NewOrderEventService(orderEventRepo repositories.OrderEventRepository) OrderEventService {
 	return &orderEventService{
-		eventRepo: eventRepo,
+		orderEventRepo: orderEventRepo,
 	}
 }
 
-func (s *orderEventService) ImportOrderEvents(events []models.OrderEvent) (ImportOrderEventsResult, error) {
-	const workerCount = 5
+// workerResult pairs the original request with the repo outcome.
+type workerResult struct {
+	req    dto.ImportOrderEventRequest
+	detail repositories.ProcessResultDetail
+	err    error
+}
 
-	jobs := make(chan models.OrderEvent)
+func (s *orderEventService) ImportOrderEvents(reqs []dto.ImportOrderEventRequest) (dto.ImportOrderEventsResponse, error) {
+	resp := dto.ImportOrderEventsResponse{
+		Errors: []dto.EventError{},
+	}
+
+	// Separate valid and invalid events via basic validation
+	var validReqs []dto.ImportOrderEventRequest
+
+	for _, req := range reqs {
+		if reason := validateBasic(req); reason != "" {
+			resp.Rejected++
+			resp.Errors = append(resp.Errors, dto.EventError{
+				OrderID: req.OrderID,
+				Status:  req.Status,
+				Reason:  reason,
+			})
+			continue
+		}
+		validReqs = append(validReqs, req)
+	}
+
+	if len(validReqs) == 0 {
+		return resp, nil
+	}
+
+	// Worker pool
+	jobs := make(chan workerResult, len(validReqs))
+	results := make(chan workerResult, len(validReqs))
+
+	// Start workers
 	var wg sync.WaitGroup
-	var duplicateCount atomic.Int64
-	var rejectedCount atomic.Int64
-
-	seen := sync.Map{}
-	validEvents := make(chan models.OrderEvent)
-
-	worker := func() {
-		defer wg.Done()
-		for event := range jobs {
-
-			if _, loaded := seen.LoadOrStore(1, true); loaded {
-				duplicateCount.Add(1)
-				fmt.Println("duplicate event:", 1)
-				continue
-			}
-
-			if err := models.ValidateEvent(&event); err != nil {
-				rejectedCount.Add(1)
-				fmt.Println("invalid event:", err)
-				continue
-			}
-
-			validEvents <- event
-		}
+	numWorkers := maxWorkers
+	if len(validReqs) < numWorkers {
+		numWorkers = len(validReqs)
 	}
 
-	for i := 0; i < workerCount; i++ {
+	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
-		go worker()
+		go func() {
+			defer wg.Done()
+			for job := range jobs {
+				// Map DTO → model
+				event := models.OrderEvent{
+					OrderID:   job.req.OrderID,
+					NewStatus: models.OrderStatus(job.req.Status),
+					UpdatedBy: job.req.UpdatedBy,
+					EventAt:   job.req.EventAt,
+					// PreviousStatus is left zero — repo fetches from DB
+				}
+
+				detail, err := s.orderEventRepo.ProcessSingleEventTx(event)
+				results <- workerResult{
+					req:    job.req,
+					detail: detail,
+					err:    err,
+				}
+			}
+		}()
 	}
 
-	go func() {
-		for _, e := range events {
-			jobs <- e
-		}
-		close(jobs)
-	}()
+	// Send jobs
+	for _, req := range validReqs {
+		jobs <- workerResult{req: req}
+	}
+	close(jobs)
 
+	// Wait for workers to finish, then close results
 	go func() {
 		wg.Wait()
-		close(validEvents)
+		close(results)
 	}()
 
-	var toInsert []models.OrderEvent
-	for e := range validEvents {
-		toInsert = append(toInsert, e)
+	// Aggregate results
+	var processingErr error
+	for wr := range results {
+		if wr.err != nil {
+			processingErr = wr.err
+			resp.Rejected++
+			resp.Errors = append(resp.Errors, dto.EventError{
+				OrderID: wr.req.OrderID,
+				Status:  wr.req.Status,
+				Reason:  wr.err.Error(),
+			})
+			continue
+		}
+
+		switch wr.detail.Result {
+		case repositories.Accepted:
+			resp.Accepted++
+		case repositories.Rejected:
+			resp.Rejected++
+			resp.Errors = append(resp.Errors, dto.EventError{
+				OrderID: wr.req.OrderID,
+				Status:  wr.req.Status,
+				Reason:  wr.detail.Reason,
+			})
+		case repositories.Duplicate:
+			resp.Duplicate++
+			resp.Errors = append(resp.Errors, dto.EventError{
+				OrderID: wr.req.OrderID,
+				Status:  wr.req.Status,
+				Reason:  wr.detail.Reason,
+			})
+		}
 	}
 
-	result := ImportOrderEventsResult{
-		Total:     len(events),
-		Accepted:  len(toInsert),
-		Rejected:  int(rejectedCount.Load()),
-		Duplicate: int(duplicateCount.Load()),
-	}
+	return resp, processingErr
+}
 
-	if len(toInsert) == 0 {
-		return result, nil
+// validateBasic performs service-layer input validation.
+func validateBasic(req dto.ImportOrderEventRequest) string {
+	if req.OrderID <= 0 {
+		return "order_id must be greater than 0"
 	}
-	if err := s.eventRepo.ImportOrderEvents(toInsert); err != nil {
-		return result, err
+	if !models.IsValidStatus(models.OrderStatus(req.Status)) {
+		return "unknown status value"
 	}
-	return result, nil
+	if req.EventAt.IsZero() {
+		return "event_at is required"
+	}
+	return ""
 }

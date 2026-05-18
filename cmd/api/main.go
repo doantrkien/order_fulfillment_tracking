@@ -7,6 +7,7 @@ import (
 	"main/internal/repositories"
 	"main/internal/routers/v1"
 	"main/internal/services"
+	"main/internal/swagger"
 	"main/pkg/postgresql"
 
 	"github.com/gofiber/fiber/v3"
@@ -41,6 +42,7 @@ func main() {
 	routers.SetupOrderRouter(app, orderHandler)
 	routers.SetupOrderEventRouter(app, orderEventHandler)
 	routers.SetupReportRouter(app, reportHandler)
+	swagger.SetupSwaggerRoutes(app)
 
 	app.Listen(":3000")
 }

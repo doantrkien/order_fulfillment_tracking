@@ -6,4 +6,7 @@
 .ai-devkit.json
 docs/ai/*
 
-
+# Benchmark & plan (local only)
+benchmark
+cmd/benchmark/
+docs/api_import_batch_order.md

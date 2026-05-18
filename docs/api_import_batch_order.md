@@ -13,7 +13,7 @@
 Implement the `POST /api/v1/order-events/import` API to process a batch of order status update events.
 
 - Follow Clean Architecture
-- Only modify/create files containing `event`
+- Only modify/create files containing `event` (exception: `cmd/api/main.go` for DI wiring)
 - Do NOT touch `order.go` or `report.go`
 
 
@@ -143,6 +143,7 @@ The **previous status is fetched from the DB** (not from the client), using `FOR
 
 | Condition                                    | Result      |
 |----------------------------------------------|-------------|
+| `order_id` not found in `orders` table       | Rejected    |
 | `new_status == orders.current_status`        | Duplicate   |
 | Transition not in valid flow                 | Rejected    |
 | Transition valid                             | Accepted    |
@@ -155,8 +156,8 @@ The **previous status is fetched from the DB** (not from the client), using `FOR
 
 | Layer       | Responsibility                                                                 |
 |-------------|--------------------------------------------------------------------------------|
-| **Service** | Basic validation (e.g. required fields, non-empty status string)               |
-| **Repo**    | Business validation: fetch current status with `FOR UPDATE`, compare, decide   |
+| **Service** | Basic validation: required fields, `IsValidStatus()` checks known status value |
+| **Repo**    | Business validation: fetch current status with `FOR UPDATE`, `IsValidTransition()` to validate flow, decide |
 
 
 ---
@@ -164,7 +165,7 @@ The **previous status is fetched from the DB** (not from the client), using `FOR
 
 ### 4. Concurrency Control
 
-- Use **Worker Pool** (goroutines + channels) in the service layer
+- Use **Worker Pool** with **7 goroutines** + channels in the service layer
 - Each event runs in its **own isolated DB transaction** — partial failures do NOT affect others
 - Row-level locking prevents race conditions on the same `order_id`:
 
@@ -219,7 +220,7 @@ type ImportOrderEventsResponse struct {
 
 ### 2. `internal/models/order_event.go`
 
-Already defined. Do not modify.
+Add `UpdatedBy` field to track who triggered the event.
 
 ```go
 type OrderEvent struct {
@@ -228,6 +229,7 @@ type OrderEvent struct {
     Order          Order       `gorm:"foreignKey:OrderID" json:"-"`
     PreviousStatus OrderStatus `gorm:"column:previous_status;not null" json:"previous_status"`
     NewStatus      OrderStatus `gorm:"column:new_status;not null" json:"new_status"`
+    UpdatedBy      string      `gorm:"column:updated_by;not null" json:"updated_by"`
     EventAt        time.Time   `gorm:"column:event_at;not null;default:CURRENT_TIMESTAMP;index" json:"event_at"`
     CreatedAt      time.Time   `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
     UpdatedAt      time.Time   `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP" json:"updated_at"`
@@ -240,10 +242,23 @@ type OrderEvent struct {
 
 ### 3. `internal/models/order_event_validator.go`
 
-Already defined. Do not modify.
+Add `IsValidStatus` for service-layer validation. Keep existing `IsValidTransition` for repo-layer validation.
 
 ```go
-// Used by the service for basic structural validation (e.g. is NewStatus a known value?)
+// IsValidStatus checks if a status string is a known OrderStatus value.
+// Used by the service layer for basic input validation.
+func IsValidStatus(s OrderStatus) bool {
+    switch s {
+    case ORDER_STATUS_CREATED, ORDER_STATUS_PAID, ORDER_STATUS_PACKED,
+        ORDER_STATUS_SHIPPED, ORDER_STATUS_DELIVERED, ORDER_STATUS_CANCELLED,
+        ORDER_STATUS_REFUNDED:
+        return true
+    }
+    return false
+}
+
+// IsValidTransition checks if a state transition is allowed.
+// Used by the repo layer after fetching current status from DB.
 func IsValidTransition(prev, next OrderStatus) bool
 ```
 
@@ -278,10 +293,11 @@ type OrderEventRepository interface {
 
 **Reason strings to use:**
 
-| Case      | Reason format |
-|-----------|---------------|
-| Duplicate | `"Order is already in status '<current_status>'"` |
-| Rejected  | `"Invalid transition from '<current>' to '<new>'"` |
+| Case           | Reason format |
+|----------------|---------------|
+| Not Found      | `"Order not found"` |
+| Duplicate      | `"Order is already in status '<current_status>'"` |
+| Rejected       | `"Invalid transition from '<current>' to '<new>'"` |
 
 **Transaction flow inside `ProcessSingleEventTx`:**
 
@@ -290,18 +306,19 @@ BEGIN;
 
 -- 1. Lock the order row
 SELECT current_status FROM orders WHERE id = $1 FOR UPDATE;
+--    order not found               → return Rejected("Order not found"), ROLLBACK
 
--- 2. Compare
+-- 2. Compare using IsValidTransition(prevStatus, nextStatus)
 --    current_status == new_status  → return Duplicate, ROLLBACK
---    invalid transition            → return Rejected,  ROLLBACK
+--    !IsValidTransition(prev, new) → return Rejected,  ROLLBACK
 --    valid transition              → continue
 
 -- 3. Update order status
 UPDATE orders SET current_status = $2 WHERE id = $1;
 
 -- 4. Insert the event record (with previous_status = fetched current_status)
-INSERT INTO order_events (order_id, previous_status, new_status, event_at, ...)
-VALUES ($1, $current, $new, $event_at, ...);
+INSERT INTO order_events (order_id, previous_status, new_status, updated_by, event_at, ...)
+VALUES ($1, $current, $new, $updated_by, $event_at, ...);
 
 COMMIT;
 ```
@@ -324,14 +341,16 @@ type OrderEventService interface {
 
 1. **Basic validation** per event (before sending to worker):
    - `order_id > 0`
-   - `status` is a known `OrderStatus` value (use `IsValidTransition` or a lookup)
+   - `status` is a known `OrderStatus` value → use `models.IsValidStatus(OrderStatus(req.Status))`
    - `event_at` is not zero
    - Count invalid ones as `rejected` immediately
 
-2. **Worker Pool** — dispatch valid events concurrently:
-   ```
-   jobs    chan models.OrderEvent     (input)
-   results chan workerResult          (output)
+2. **Worker Pool (7 goroutines)** — dispatch valid events concurrently:
+   ```go
+   const maxWorkers = 7
+
+   jobs    chan models.OrderEvent     // input channel
+   results chan workerResult          // output channel
    ```
    Where `workerResult` is a local struct pairing the original request with the repo outcome:
    ```go
@@ -345,6 +364,7 @@ type OrderEventService interface {
 3. Map `dto.ImportOrderEventRequest` → `models.OrderEvent` before sending to the repo:
    - `OrderID`   ← req.OrderID
    - `NewStatus`  ← OrderStatus(req.Status)
+   - `UpdatedBy`  ← req.UpdatedBy
    - `EventAt`   ← req.EventAt
    - `PreviousStatus` is left zero — the repo fetches it from DB
 
@@ -407,3 +427,22 @@ func SetupOrderEventRouter(app *fiber.App, orderEventHandler *handlers.OrderEven
     orderEvent.Post("/import", orderEventHandler.ImportOrderEvents)
 }
 ```
+
+
+---
+
+
+### 8. `cmd/api/main.go` — Uncomment DI Wiring
+
+Uncomment the existing lines to wire up the order event layer:
+
+```go
+orderEventRepo := repositories.NewOrderEventRepository(db)
+orderEventService := services.NewOrderEventService(orderEventRepo)
+orderEventHandler := handlers.NewOrderEventHandler(orderEventService)
+
+// ... and the router:
+routers.SetupOrderEventRouter(app, orderEventHandler)
+```
+
+> These lines already exist in `main.go` but are commented out. Just uncomment them.
