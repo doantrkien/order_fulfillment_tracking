@@ -23,7 +23,6 @@ func NewOrderEventService(orderEventRepo repositories.OrderEventRepository) Orde
 	}
 }
 
-// workerResult pairs the original request with the repo outcome.
 type workerResult struct {
 	req    dto.ImportOrderEventRequest
 	detail repositories.ProcessResultDetail
@@ -35,7 +34,6 @@ func (s *orderEventService) ImportOrderEvents(reqs []dto.ImportOrderEventRequest
 		Errors: []dto.EventError{},
 	}
 
-	// Separate valid and invalid events via basic validation
 	var validReqs []dto.ImportOrderEventRequest
 
 	for _, req := range reqs {
@@ -71,13 +69,11 @@ func (s *orderEventService) ImportOrderEvents(reqs []dto.ImportOrderEventRequest
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
-				// Map DTO → model
 				event := models.OrderEvent{
 					OrderID:   job.req.OrderID,
 					NewStatus: models.OrderStatus(job.req.Status),
 					UpdatedBy: job.req.UpdatedBy,
 					EventAt:   job.req.EventAt,
-					// PreviousStatus is left zero — repo fetches from DB
 				}
 
 				detail, err := s.orderEventRepo.ProcessSingleEventTx(event)
@@ -90,19 +86,16 @@ func (s *orderEventService) ImportOrderEvents(reqs []dto.ImportOrderEventRequest
 		}()
 	}
 
-	// Send jobs
 	for _, req := range validReqs {
 		jobs <- workerResult{req: req}
 	}
 	close(jobs)
 
-	// Wait for workers to finish, then close results
 	go func() {
 		wg.Wait()
 		close(results)
 	}()
 
-	// Aggregate results
 	var processingErr error
 	for wr := range results {
 		if wr.err != nil {
@@ -139,7 +132,6 @@ func (s *orderEventService) ImportOrderEvents(reqs []dto.ImportOrderEventRequest
 	return resp, processingErr
 }
 
-// validateBasic performs service-layer input validation.
 func validateBasic(req dto.ImportOrderEventRequest) string {
 	if req.OrderID <= 0 {
 		return "order_id must be greater than 0"

@@ -35,13 +35,8 @@ func main() {
 	orderEventService := services.NewOrderEventService(orderEventRepo)
 	orderEventHandler := handlers.NewOrderEventHandler(orderEventService)
 
-	reportRepo := repositories.NewReportRepository(db)
-	reportService := services.NewReportService(reportRepo)
-	reportHandler := handlers.NewReportHandler(reportService)
-
 	routers.SetupOrderRouter(app, orderHandler)
 	routers.SetupOrderEventRouter(app, orderEventHandler)
-	routers.SetupReportRouter(app, reportHandler)
 	swagger.SetupSwaggerRoutes(app)
 
 	app.Listen(":3000")
