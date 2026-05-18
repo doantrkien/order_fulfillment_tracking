@@ -30,16 +30,16 @@ func main() {
 	orderService := services.NewOrderService(orderRepo)
 	orderHandler := handlers.NewOrderHandler(orderService)
 
-	orderEventRepo := repositories.NewOrderEventRepository(db)
-	orderEventService := services.NewOrderEventService(orderEventRepo)
-	orderEventHandler := handlers.NewOrderEventHandler(orderEventService)
+	//orderEventRepo := repositories.NewOrderEventRepository(db)
+	//orderEventService := services.NewOrderEventService(orderEventRepo)
+	//orderEventHandler := handlers.NewOrderEventHandler(orderEventService)
 
 	reportRepo := repositories.NewReportRepository(db)
 	reportService := services.NewReportService(reportRepo)
 	reportHandler := handlers.NewReportHandler(reportService)
 
 	routers.SetupOrderRouter(app, orderHandler)
-	routers.SetupOrderEventRouter(app, orderEventHandler)
+	//routers.SetupOrderEventRouter(app, orderEventHandler)
 	routers.SetupReportRouter(app, reportHandler)
 
 	app.Listen(":3000")
