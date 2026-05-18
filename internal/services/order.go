@@ -34,23 +34,6 @@ func (s *orderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, in
 	var response []dto.OrderReponse
 
 	for _, order := range orders {
-<<<<<<< Updated upstream
-
-		userInfo := make(map[string]interface{})
-
-		err := json.Unmarshal(order.UserInfo, &userInfo)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		response = append(response, dto.OrderReponse{
-			CustomerName:  userInfo["customer_name"].(string),
-			CustomerPhone: userInfo["customer_phone"].(string),
-			TotalAmount:   order.TotalAmount,
-			ShippingAddr:  userInfo["shipping_addr"].(string),
-			Status:        order.CurrentStatus,
-			Ordered_at:    order.CreatedAt,
-=======
 		userInfo := &models.UserInfo{}
 		if len(order.UserInfo) > 0 {
 			json.Unmarshal(order.UserInfo, userInfo)
@@ -63,9 +46,8 @@ func (s *orderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, in
 			UserPhone:       userInfo.UserPhone,
 			ShippingAddress: userInfo.ShippingAddress,
 			UserInfo:        userInfo,
-			Status:          order.Status,
+			Status:          order.CurrentStatus,
 			Ordered_at:      order.CreatedAt,
->>>>>>> Stashed changes
 		})
 	}
 	return response, total, nil
@@ -89,7 +71,7 @@ func (s *orderService) GetOrder(id int) (*dto.OrderReponse, error) {
 		UserPhone:       userInfo.UserPhone,
 		ShippingAddress: userInfo.ShippingAddress,
 		UserInfo:        userInfo,
-		Status:          order.Status,
+		Status:          order.CurrentStatus,
 		Ordered_at:      order.CreatedAt,
 	}
 
@@ -106,9 +88,9 @@ func (s *orderService) CreateOrder(req dto.OrderRequest) (*models.Order, error) 
 	userInfoJSON, _ := json.Marshal(userInfo)
 
 	order := models.Order{
-		UserInfo:    userInfoJSON,
-		TotalAmount: req.TotalAmount,
-		Status:      models.ORDER_STATUS_CREATED,
+		UserInfo:      userInfoJSON,
+		TotalAmount:   req.TotalAmount,
+		CurrentStatus: models.ORDER_STATUS_CREATED,
 	}
 
 	return s.orderRepo.CreateOrder(order)
