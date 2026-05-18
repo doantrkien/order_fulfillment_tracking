@@ -25,6 +25,12 @@ var validTransitions = map[OrderStatus][]OrderStatus{
 	ORDER_STATUS_SHIPPED: {ORDER_STATUS_DELIVERED},
 }
 
+type UserInfo struct {
+	Username        string `json:"username"`
+	UserPhone       string `json:"user_phone"`
+	ShippingAddress string `json:"shipping_address"`
+}
+
 type Order struct {
 	ID            int64          `gorm:"primaryKey;column:id" json:"id"`
 	UserInfo      datatypes.JSON `gorm:"column:user_info;type:jsonb" json:"user_info"`

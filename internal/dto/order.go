@@ -6,19 +6,22 @@ import (
 )
 
 type OrderRequest struct {
-	CustomerName  string `json:"customer_name"`
-	CustomerPhone string `json:"customer_phone"`
-	TotalAmount   int64  `json:"total_amount"`
-	ShippingAddr  string `json:"shipping_addr"`
+	TotalAmount     int64            `json:"total_amount"`
+	Username        string           `json:"username"`
+	UserPhone       string           `json:"user_phone"`
+	ShippingAddress string           `json:"shipping_address"`
+	UserInfo        *models.UserInfo `json:"user_info,omitempty"`
 }
 
 type OrderReponse struct {
-	CustomerName  string             `json:"customer_name"`
-	CustomerPhone string             `json:"customer_phone"`
-	TotalAmount   int64              `json:"total_amount"`
-	ShippingAddr  string             `json:"shipping_addr"`
-	Status        models.OrderStatus `json:"status"`
-	Ordered_at    time.Time          `json:"ordered_at"`
+	ID              int64              `json:"id"`
+	TotalAmount     int64              `json:"total_amount"`
+	Username        string             `json:"username"`
+	UserPhone       string             `json:"user_phone"`
+	ShippingAddress string             `json:"shipping_address"`
+	UserInfo        *models.UserInfo   `json:"user_info,omitempty"`
+	Status          models.OrderStatus `json:"status"`
+	Ordered_at      time.Time          `json:"ordered_at"`
 }
 
 type OrderQuery struct {

@@ -6,4 +6,3 @@ package worker
 func RunWithMockData() {
 	// no-op
 }
-

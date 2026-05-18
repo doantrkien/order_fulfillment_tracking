@@ -1,0 +1,13 @@
+BEGIN;
+
+DROP TABLE IF EXISTS reports;
+
+ALTER TABLE IF EXISTS orders
+  DROP COLUMN IF EXISTS total_amount,
+  DROP COLUMN IF EXISTS current_status,
+  DROP COLUMN IF EXISTS created_at;
+
+ALTER TABLE IF EXISTS order_events DROP CONSTRAINT IF EXISTS fk_order_events_orders;
+DROP TABLE IF EXISTS order_events;
+
+COMMIT;
