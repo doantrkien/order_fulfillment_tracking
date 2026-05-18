@@ -34,6 +34,7 @@ func (s *orderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, in
 	var response []dto.OrderReponse
 
 	for _, order := range orders {
+<<<<<<< Updated upstream
 
 		userInfo := make(map[string]interface{})
 
@@ -49,6 +50,22 @@ func (s *orderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, in
 			ShippingAddr:  userInfo["shipping_addr"].(string),
 			Status:        order.CurrentStatus,
 			Ordered_at:    order.CreatedAt,
+=======
+		userInfo := &models.UserInfo{}
+		if len(order.UserInfo) > 0 {
+			json.Unmarshal(order.UserInfo, userInfo)
+		}
+
+		response = append(response, dto.OrderReponse{
+			ID:              order.ID,
+			TotalAmount:     order.TotalAmount,
+			Username:        userInfo.Username,
+			UserPhone:       userInfo.UserPhone,
+			ShippingAddress: userInfo.ShippingAddress,
+			UserInfo:        userInfo,
+			Status:          order.Status,
+			Ordered_at:      order.CreatedAt,
+>>>>>>> Stashed changes
 		})
 	}
 	return response, total, nil
@@ -60,41 +77,38 @@ func (s *orderService) GetOrder(id int) (*dto.OrderReponse, error) {
 		return nil, err
 	}
 
-	userInfo := make(map[string]interface{})
-
-	err = json.Unmarshal(order.UserInfo, &userInfo)
-	if err != nil {
-		return nil, err
+	userInfo := &models.UserInfo{}
+	if len(order.UserInfo) > 0 {
+		json.Unmarshal(order.UserInfo, userInfo)
 	}
 
 	response := dto.OrderReponse{
-		CustomerName:  userInfo["customer_name"].(string),
-		CustomerPhone: userInfo["customer_phone"].(string),
-		TotalAmount:   order.TotalAmount,
-		ShippingAddr:  userInfo["shipping_addr"].(string),
-		Status:        order.CurrentStatus,
-		Ordered_at:    order.CreatedAt,
+		ID:              order.ID,
+		TotalAmount:     order.TotalAmount,
+		Username:        userInfo.Username,
+		UserPhone:       userInfo.UserPhone,
+		ShippingAddress: userInfo.ShippingAddress,
+		UserInfo:        userInfo,
+		Status:          order.Status,
+		Ordered_at:      order.CreatedAt,
 	}
 
 	return &response, nil
 }
 
 func (s *orderService) CreateOrder(req dto.OrderRequest) (*models.Order, error) {
-	userInfo := map[string]interface{}{
-		"customer_name":  req.CustomerName,
-		"customer_phone": req.CustomerPhone,
-		"shipping_addr":  req.ShippingAddr,
+	userInfo := models.UserInfo{
+		Username:        req.Username,
+		UserPhone:       req.UserPhone,
+		ShippingAddress: req.ShippingAddress,
 	}
 
-	userInfoJSON, err := json.Marshal(userInfo)
-	if err != nil {
-		return nil, err
-	}
+	userInfoJSON, _ := json.Marshal(userInfo)
 
 	order := models.Order{
-		UserInfo:      userInfoJSON,
-		TotalAmount:   req.TotalAmount,
-		CurrentStatus: models.ORDER_STATUS_CREATED,
+		UserInfo:    userInfoJSON,
+		TotalAmount: req.TotalAmount,
+		Status:      models.ORDER_STATUS_CREATED,
 	}
 
 	return s.orderRepo.CreateOrder(order)
