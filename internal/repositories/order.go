@@ -45,7 +45,7 @@ func (r *orderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int
 	db := r.db.Model(&models.Order{})
 
 	if query.Status != "" {
-		db = db.Where("status = ?", query.Status)
+		db = db.Where("current_status = ?", query.Status)
 	}
 
 	if query.Date != "" {
