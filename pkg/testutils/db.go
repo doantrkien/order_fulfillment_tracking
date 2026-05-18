@@ -11,10 +11,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// SetupTestDB initializes a test database connection.
-// It loads the .env file from the root directory.
 func SetupTestDB() *gorm.DB {
-	// Find the project root relative to this file
+
 	_, b, _, _ := runtime.Caller(0)
 	rootPath := filepath.Join(filepath.Dir(b), "../../")
 	envPath := filepath.Join(rootPath, ".env")
@@ -28,7 +26,6 @@ func SetupTestDB() *gorm.DB {
 		log.Fatalf("Failed to connect to test database: %v", err)
 	}
 
-	// Auto migrate schema
 	if err := db.AutoMigrate(&models.Order{}); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
@@ -36,7 +33,6 @@ func SetupTestDB() *gorm.DB {
 	return db
 }
 
-// CleanDatabase truncates the orders table.
 func CleanDatabase(db *gorm.DB) {
 	db.Exec("TRUNCATE TABLE orders RESTART IDENTITY CASCADE;")
 }
