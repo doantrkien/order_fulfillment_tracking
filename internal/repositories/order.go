@@ -62,7 +62,7 @@ func (r *orderRepository) UpdateOrderStatus(id int64, status string) (*models.Or
 		return nil, err
 	}
 
-	order.Status = models.OrderStatus(status)
+	order.CurrentStatus = models.OrderStatus(status)
 
 	if err := r.db.Save(&order).Error; err != nil {
 		return nil, err

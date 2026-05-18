@@ -28,7 +28,7 @@ var validTransitions = map[OrderStatus][]OrderStatus{
 type Order struct {
 	ID            int64          `gorm:"primaryKey;column:id" json:"id"`
 	UserInfo      datatypes.JSON `gorm:"column:user_info;type:jsonb" json:"user_info"`
-	TotalAmount   int64          `gorm:"column:total_amount;type:bigint;not null" json:"total_amount"`
+	TotalAmount   float64        `gorm:"column:total_amount;type:decimal(12,2);not null" json:"total_amount"`
 	CurrentStatus OrderStatus    `gorm:"column:current_status;type:varchar(20);not null;default:'created';comment:Concurrency Lock" json:"current_status"`
 	CreatedAt     time.Time      `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt     time.Time      `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP" json:"updated_at"`
