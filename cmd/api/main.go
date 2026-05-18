@@ -7,6 +7,7 @@ import (
 	"main/internal/repositories"
 	"main/internal/routers/v1"
 	"main/internal/services"
+	"main/internal/swagger"
 	"main/pkg/postgresql"
 
 	"github.com/gofiber/fiber/v3"
@@ -30,6 +31,13 @@ func main() {
 	orderService := services.NewOrderService(orderRepo)
 	orderHandler := handlers.NewOrderHandler(orderService)
 
+	orderEventRepo := repositories.NewOrderEventRepository(db)
+	orderEventService := services.NewOrderEventService(orderEventRepo)
+	orderEventHandler := handlers.NewOrderEventHandler(orderEventService)
+
+	routers.SetupOrderRouter(app, orderHandler)
+	routers.SetupOrderEventRouter(app, orderEventHandler)
+	swagger.SetupSwaggerRoutes(app)
 	reportRepo := repositories.NewReportRepository(db)
 	reportService := services.NewReportService(reportRepo)
 	reportHandler := handlers.NewReportHandler(reportService)
