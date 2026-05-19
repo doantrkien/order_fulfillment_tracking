@@ -504,10 +504,13 @@ paths:
                     type: object
                     nullable: true
 
-  /api/v1/order-events:
+  /api/v1/order-events/import:
     post:
-      summary: Create order event
-      description: Record an order tracking event
+      summary: Import batch order events
+      description: >
+        Process a batch of order status update events concurrently.
+        Each event is validated and processed in its own DB transaction.
+        The response always returns aggregated counts, even on partial failure.
       tags:
         - Order Event
       requestBody:
@@ -515,125 +518,138 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-
-              properties:
-                events:
-                  type: array
-
-                  items:
-                    type: object
-                    properties:
-                      event_id:
-                        type: integer
-                        example: 1
-
-                      previous_status:
-                        type: string
-                        example: paid
-                      
-                      new_status:
-                        type: string
-                        example: paid
-                      
-                      evented_at:
-                        type: date
-                        example: 2026-01-01
-
+              type: array
+              items:
+                type: object
+                required:
+                  - order_id
+                  - status
+                  - event_at
+                  - updated_by
+                properties:
+                  order_id:
+                    type: integer
+                    format: int64
+                    example: 100156
+                  status:
+                    type: string
+                    enum: [created, paid, packed, shipped, delivered, cancelled, refunded]
+                    example: packed
+                  event_at:
+                    type: string
+                    format: date-time
+                    example: "2026-05-17T09:00:00Z"
+                  updated_by:
+                    type: string
+                    example: warehouse_staff_01
+            example:
+              - order_id: 100156
+                status: packed
+                event_at: "2026-05-17T09:00:00Z"
+                updated_by: warehouse_staff_01
+              - order_id: 100157
+                status: shipped
+                event_at: "2026-05-17T09:15:00Z"
+                updated_by: driver_nguyen_van_a
 
       responses:
         "200":
-          description: Success
+          description: Batch processed successfully (may include rejected/duplicate events)
           content:
             application/json:
               schema:
                 type: object
-
                 properties:
                   status:
                     type: integer
                     example: 200
-
                   message:
                     type: string
-                    example: Success
-
+                    example: batch processed
                   data:
                     type: object
                     properties:
-                      accept:
+                      accepted_count:
                         type: integer
-                        example: 10
+                        example: 8
+                      rejected_count:
+                        type: integer
+                        example: 1
+                      duplicate_count:
+                        type: integer
+                        example: 1
+                      errors:
+                        type: array
+                        description: Details for rejected and duplicate events
+                        items:
+                          type: object
+                          properties:
+                            order_id:
+                              type: integer
+                              format: int64
+                              example: 100157
+                            status:
+                              type: string
+                              example: delivered
+                            reason:
+                              type: string
+                              example: "Invalid transition from 'created' to 'delivered'"
 
-                      reject:
-                        type: integer
-                        example: 10
-                      
-                      duplicate:
-                        type: integer
-                        example: 20
-                      
-                    
-        
         "400":
-          description: Invalid input
+          description: Invalid payload (malformed JSON or wrong type)
           content:
             application/json:
               schema:
                 type: object
-
                 properties:
                   status:
                     type: integer
                     example: 400
-       
                   message:
                     type: string
-                    example: "Dữ liệu đầu vào không hợp lệ.!"
-
-                  data:
-                    type: object
-                    nullable: true 
-
-        "401":
-          description: UnAuthentication
-          content:
-            application/json:
-              schema:
-                type: object
-
-                properties:
-                  status:
-                    type: integer
-                    example: 401
-
-                  message:
-                    type: string
-                    example: "Vui lòng đăng nhập để thực hiện thao tác.!"
-
+                    example: invalid payload
                   data:
                     type: object
                     nullable: true
 
-        "403":
-          description: UnAuthorization
+        "500":
+          description: Internal error (partial results may be returned)
           content:
             application/json:
               schema:
                 type: object
-
                 properties:
                   status:
                     type: integer
-                    example: 403
-       
+                    example: 500
                   message:
                     type: string
-                    example: "Bạn không có quyền thao tác.!"
-
+                    example: "db connection error"
                   data:
                     type: object
                     nullable: true
+                    properties:
+                      accepted_count:
+                        type: integer
+                        example: 2
+                      rejected_count:
+                        type: integer
+                        example: 1
+                      duplicate_count:
+                        type: integer
+                        example: 1
+                      errors:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            order_id:
+                              type: integer
+                              format: int64
+                            status:
+                              type: string
+                            reason:
+                              type: string
 
   /api/v1/reports/daily:
     get:
