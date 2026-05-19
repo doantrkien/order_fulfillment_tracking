@@ -2,25 +2,26 @@ package services_test
 
 import (
 	"encoding/json"
-	"main/internal/dto"
-	"main/internal/mocks"
-	"main/internal/models"
-	"main/internal/services"
 	"testing"
 	"time"
+
+	"main/internal/dto"
+	"main/internal/models"
+	"main/internal/services"
+	"main/internal/services/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-func setupServiceTest(t *testing.T) (*mocks.OrderRepository, services.OrderService) {
+func setupOrderServiceTest(t *testing.T) (*mocks.OrderRepository, services.OrderService) {
 	mockRepo := mocks.NewOrderRepository(t)
 	service := services.NewOrderService(mockRepo)
 	return mockRepo, service
 }
 
 func TestOrderService_CreateOrder(t *testing.T) {
-	mockRepo, service := setupServiceTest(t)
+	mockRepo, service := setupOrderServiceTest(t)
 
 	t.Run("Success", func(t *testing.T) {
 		req := dto.OrderRequest{
@@ -72,7 +73,7 @@ func TestOrderService_CreateOrder(t *testing.T) {
 }
 
 func TestOrderService_GetAllOrder(t *testing.T) {
-	mockRepo, service := setupServiceTest(t)
+	mockRepo, service := setupOrderServiceTest(t)
 
 	t.Run("Success", func(t *testing.T) {
 		query := dto.OrderQuery{Page: 1, Limit: 10}
@@ -96,6 +97,18 @@ func TestOrderService_GetAllOrder(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), total)
 		assert.Len(t, orders, 1)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Repository Error", func(t *testing.T) {
+		query := dto.OrderQuery{Page: 1, Limit: 10}
+		mockRepo.On("GetAllOrder", query).Return(nil, int64(0), assert.AnError).Once()
+
+		orders, total, err := service.GetAllOrder(query)
+
+		assert.Error(t, err)
+		assert.Nil(t, orders)
+		assert.Equal(t, int64(0), total)
 		mockRepo.AssertExpectations(t)
 	})
 }

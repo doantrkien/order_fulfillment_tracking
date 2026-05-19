@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"
 )
@@ -41,7 +42,8 @@ func TestMain(m *testing.M) {
 	}
 
 	app = fiber.New()
-	//app.Use(logger.New())
+	//log response request
+	app.Use(logger.New())
 	orderRepo := repositories.NewOrderRepository(db)
 	orderService := services.NewOrderService(orderRepo)
 	orderHandler := handlers.NewOrderHandler(orderService)

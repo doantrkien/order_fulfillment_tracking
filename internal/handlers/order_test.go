@@ -3,19 +3,21 @@ package handlers_test
 import (
 	"bytes"
 	"encoding/json"
-	"main/internal/dto"
-	"main/internal/handlers"
-	"main/internal/mocks"
-	"main/internal/models"
-	"net/http/httptest"
 	"testing"
 	"time"
+
+	"net/http/httptest"
+
+	"main/internal/dto"
+	"main/internal/handlers"
+	"main/internal/models"
+	"main/internal/services/mocks"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 )
 
-func setupTestApp(t *testing.T) (*fiber.App, *mocks.OrderService, *handlers.OrderHandler) {
+func setupOrderHandlerTest(t *testing.T) (*fiber.App, *mocks.OrderService, *handlers.OrderHandler) {
 	app := fiber.New()
 	mockService := mocks.NewOrderService(t)
 	handler := handlers.NewOrderHandler(mockService)
@@ -24,7 +26,7 @@ func setupTestApp(t *testing.T) (*fiber.App, *mocks.OrderService, *handlers.Orde
 }
 
 func TestOrderHandler_CreateOrder(t *testing.T) {
-	app, mockService, handler := setupTestApp(t)
+	app, mockService, handler := setupOrderHandlerTest(t)
 	app.Post("/orders", handler.CreateOrder)
 
 	t.Run("Success", func(t *testing.T) {
@@ -60,7 +62,7 @@ func TestOrderHandler_CreateOrder(t *testing.T) {
 }
 
 func TestOrderHandler_GetAllOrder(t *testing.T) {
-	app, mockService, handler := setupTestApp(t)
+	app, mockService, handler := setupOrderHandlerTest(t)
 	app.Get("/orders", handler.GetAllOrder)
 
 	t.Run("Success with default pagination", func(t *testing.T) {
