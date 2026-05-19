@@ -28,6 +28,11 @@ func TestMain(m *testing.M) {
 		log.Println("No .env file found, using process environment")
 	}
 
+	if os.Getenv("DB_HOST") == "" {
+		log.Println("DB_HOST not set, skipping integration tests")
+		os.Exit(0)
+	}
+
 	os.Setenv("CUSTOMER_API_KEY", "test-customer-key")
 	os.Setenv("ADMIN_API_KEY", "test-admin-key")
 

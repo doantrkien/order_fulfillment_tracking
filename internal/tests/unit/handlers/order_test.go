@@ -11,10 +11,11 @@ import (
 	"main/internal/dto"
 	"main/internal/handlers"
 	"main/internal/models"
-	"main/internal/services/mocks"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
+
+	"main/internal/tests/unit/mocks"
 )
 
 func setupOrderHandlerTest(t *testing.T) (*fiber.App, *mocks.OrderService, *handlers.OrderHandler) {

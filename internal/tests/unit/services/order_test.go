@@ -8,10 +8,11 @@ import (
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/services"
-	"main/internal/services/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"main/internal/tests/unit/mocks"
 )
 
 func setupOrderServiceTest(t *testing.T) (*mocks.OrderRepository, services.OrderService) {
