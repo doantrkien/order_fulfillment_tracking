@@ -26,7 +26,7 @@ func setupEventHandlerTest(t *testing.T) (*fiber.App, *mocks.OrderEventService, 
 	return app, mockService, handler
 }
 
-func TestOrderEventHandler_ImportOrderEvents(t *testing.T) {
+func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 	now := time.Now()
 
 	t.Run("Success - all accepted", func(t *testing.T) {
