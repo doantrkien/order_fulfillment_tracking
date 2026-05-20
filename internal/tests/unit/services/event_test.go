@@ -160,9 +160,9 @@ func TestOrderEventService_ImportOrderEvents(t *testing.T) {
 		mockRepo, service := setupEventServiceTest(t, 2)
 
 		reqs := []dto.ImportOrderEventRequest{
-			{OrderID: 0, Status: "paid", EventAt: now, UpdatedBy: "admin"},    // validation fail
-			{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"},    // will be accepted
-			{OrderID: 2, Status: "paid", EventAt: now, UpdatedBy: "admin"},    // will be duplicate
+			{OrderID: 0, Status: "paid", EventAt: now, UpdatedBy: "admin"}, // validation fail
+			{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"}, // will be accepted
+			{OrderID: 2, Status: "paid", EventAt: now, UpdatedBy: "admin"}, // will be duplicate
 		}
 
 		// Use a function matcher to return different results based on OrderID
@@ -185,7 +185,7 @@ func TestOrderEventService_ImportOrderEvents(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, 1, resp.Accepted)
-		assert.Equal(t, 1, resp.Rejected)  // validation fail
+		assert.Equal(t, 1, resp.Rejected) // validation fail
 		assert.Equal(t, 1, resp.Duplicate)
 	})
 

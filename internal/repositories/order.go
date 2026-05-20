@@ -4,7 +4,7 @@ import (
 	"errors"
 	"main/internal/dto"
 	"main/internal/models"
-	"main/pkg/utils/constant"
+	"main/pkg/utils/errs"
 
 	"gorm.io/gorm"
 )
@@ -89,7 +89,7 @@ func (r *orderRepository) UpdateOrderStatus(id int64, status string) (*models.Or
 
 	if err := r.db.First(&order, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, constant.ERR_NOT_FOUND
+			return nil, errs.ERR_NOT_FOUND
 		}
 		return nil, err
 	}

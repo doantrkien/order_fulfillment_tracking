@@ -6,7 +6,7 @@ import (
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/repositories"
-	"main/pkg/utils/constant"
+	"main/pkg/utils/errs"
 
 	"gorm.io/gorm"
 )
@@ -60,14 +60,14 @@ func (s *orderService) GetOrder(id int64) (*dto.OrderReponse, error) {
 	order, err := s.orderRepo.GetOrderDetail(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, constant.ERR_NOT_FOUND
+			return nil, errs.ERR_NOT_FOUND
 		}
 
 		return nil, err
 	}
 
 	if order == nil {
-		return nil, constant.ERR_NOT_FOUND
+		return nil, errs.ERR_NOT_FOUND
 	}
 
 	userInfo := &models.UserInfo{}
@@ -111,17 +111,17 @@ func (s *orderService) UpdateOrderStatus(id int64, status string) (*models.Order
 	order, err := s.GetOrder(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, constant.ERR_NOT_FOUND
+			return nil, errs.ERR_NOT_FOUND
 		}
 		return nil, err
 	}
 
 	if order == nil {
-		return nil, constant.ERR_NOT_FOUND
+		return nil, errs.ERR_NOT_FOUND
 	}
 
 	if !models.IsValidTransition(order.Status, models.OrderStatus(status)) {
-		return nil, constant.ORDER_STATUS_TRANSITION_INVALID
+		return nil, errs.ORDER_STATUS_TRANSITION_INVALID
 	}
 
 	newOrder, err := s.orderRepo.UpdateOrderStatus(id, status)

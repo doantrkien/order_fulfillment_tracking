@@ -5,6 +5,7 @@ import (
 	"main/internal/dto"
 	"main/internal/services"
 	"main/pkg/utils/constant"
+	"main/pkg/utils/errs"
 	"main/pkg/utils/response"
 	"strconv"
 
@@ -58,7 +59,7 @@ func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
 
 	order, err := h.orderService.GetOrder(id)
 	if err != nil {
-		if errors.Is(err, constant.ERR_NOT_FOUND) {
+		if errors.Is(err, errs.ERR_NOT_FOUND) {
 			return response.Reponse(c, 404, constant.NOT_FOUND, nil)
 		}
 		return response.Reponse(c, 500, constant.ERROR, nil)
@@ -100,11 +101,11 @@ func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
 
 	_, err = h.orderService.UpdateOrderStatus(id, string(req.Status))
 	if err != nil {
-		if errors.Is(err, constant.ERR_NOT_FOUND) {
+		if errors.Is(err, errs.ERR_NOT_FOUND) {
 			return response.Reponse(c, 404, constant.NOT_FOUND, nil)
 		}
 
-		if errors.Is(err, constant.ORDER_STATUS_TRANSITION_INVALID) {
+		if errors.Is(err, errs.ORDER_STATUS_TRANSITION_INVALID) {
 			return response.Reponse(c, 400, constant.INVALID_STATUS, nil)
 		}
 
