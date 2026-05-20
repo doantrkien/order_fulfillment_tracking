@@ -16,7 +16,7 @@ func StartDailyReportScheduler(reportService ReportService) {
 
 			time.Sleep(time.Until(nextRun))
 
-			report, err := reportService.CreateDailyReport(nextRun)
+			report, err := reportService.CreateDailyReport(nextRun.AddDate(0, 0, -1))
 			if err != nil {
 				fmt.Printf("failed to create daily report at %s: %v\n", nextRun.Format("2006-01-02 15:04"), err)
 			} else {

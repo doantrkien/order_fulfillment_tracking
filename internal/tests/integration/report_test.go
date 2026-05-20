@@ -49,7 +49,7 @@ func TestIntegration_Report(t *testing.T) {
 			name:           "create daily report",
 			method:         "POST",
 			path:           "/api/v1/reports/daily",
-			body:           func() []byte { b, _ := json.Marshal(dto.GetDailyReportRequest{Date: "2026-05-04"}); return b }(),
+			body:           func() []byte { b, _ := json.Marshal(dto.GetDailyReportRequest{Date: "2026-05-03"}); return b }(),
 			expectedStatus: 201,
 			validate: func(t *testing.T, respBody []byte) {
 				var postBody struct {
@@ -66,7 +66,7 @@ func TestIntegration_Report(t *testing.T) {
 		{
 			name:           "get daily report",
 			method:         "GET",
-			path:           "/api/v1/reports/daily?date=2026-05-04",
+			path:           "/api/v1/reports/daily?date=2026-05-03",
 			body:           nil,
 			expectedStatus: 200,
 			validate: func(t *testing.T, respBody []byte) {
@@ -79,6 +79,41 @@ func TestIntegration_Report(t *testing.T) {
 				assert.Equal(t, int64(1), getBody.Data.TotalOrders)
 				assert.Equal(t, int64(1), getBody.Data.TotalDelivered)
 			},
+		},
+		{
+			name:           "get daily report - missing date param",
+			method:         "GET",
+			path:           "/api/v1/reports/daily",
+			body:           nil,
+			expectedStatus: 400,
+		},
+		{
+			name:           "get daily report - invalid date format",
+			method:         "GET",
+			path:           "/api/v1/reports/daily?date=04-05-2026",
+			body:           nil,
+			expectedStatus: 400,
+		},
+		{
+			name:           "create daily report - missing date field",
+			method:         "POST",
+			path:           "/api/v1/reports/daily",
+			body:           []byte(`{}`),
+			expectedStatus: 400,
+		},
+		{
+			name:           "create daily report - invalid date format",
+			method:         "POST",
+			path:           "/api/v1/reports/daily",
+			body:           []byte(`{"date": "04/05/2026"}`),
+			expectedStatus: 400,
+		},
+		{
+			name:           "get report - date has no report",
+			method:         "GET",
+			path:           "/api/v1/reports/daily?date=2099-01-01",
+			body:           nil,
+			expectedStatus: 404,
 		},
 	}
 

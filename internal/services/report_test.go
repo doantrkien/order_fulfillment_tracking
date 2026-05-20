@@ -77,20 +77,20 @@ func TestReportService_CreateDailyReport(t *testing.T) {
 			name:        "successfully builds and saves report",
 			requestDate: time.Date(2026, 5, 4, 0, 0, 0, 0, time.UTC),
 			setupMock: func(mockRepo *mocks.ReportRepository) {
-				periodEnd := time.Date(2026, 5, 4, 3, 0, 0, 0, time.UTC)
-				periodStart := periodEnd.Add(-24 * time.Hour)
+				periodStart := time.Date(2026, 5, 4, 3, 0, 0, 0, time.UTC)
+				periodEnd := periodStart.Add(24 * time.Hour)
 				reportFromBuild := &models.Report{Date: periodStart, TotalOrders: 1}
 				mockRepo.On("BuildDailyReport", periodStart, periodEnd).Return(reportFromBuild, nil).Once()
 				mockRepo.On("SaveReport", reportFromBuild).Return(reportFromBuild, nil).Once()
 			},
-			expectedReport: &models.Report{Date: time.Date(2026, 5, 3, 3, 0, 0, 0, time.UTC), TotalOrders: 1},
+			expectedReport: &models.Report{Date: time.Date(2026, 5, 4, 3, 0, 0, 0, time.UTC), TotalOrders: 1},
 		},
 		{
 			name:        "build report failure",
 			requestDate: time.Date(2026, 5, 4, 0, 0, 0, 0, time.UTC),
 			setupMock: func(mockRepo *mocks.ReportRepository) {
-				periodEnd := time.Date(2026, 5, 4, 3, 0, 0, 0, time.UTC)
-				periodStart := periodEnd.Add(-24 * time.Hour)
+				periodStart := time.Date(2026, 5, 4, 3, 0, 0, 0, time.UTC)
+				periodEnd := periodStart.Add(24 * time.Hour)
 				mockRepo.On("BuildDailyReport", periodStart, periodEnd).Return((*models.Report)(nil), assert.AnError).Once()
 			},
 			expectError: true,
@@ -99,8 +99,8 @@ func TestReportService_CreateDailyReport(t *testing.T) {
 			name:        "save report failure",
 			requestDate: time.Date(2026, 5, 4, 0, 0, 0, 0, time.UTC),
 			setupMock: func(mockRepo *mocks.ReportRepository) {
-				periodEnd := time.Date(2026, 5, 4, 3, 0, 0, 0, time.UTC)
-				periodStart := periodEnd.Add(-24 * time.Hour)
+				periodStart := time.Date(2026, 5, 4, 3, 0, 0, 0, time.UTC)
+				periodEnd := periodStart.Add(24 * time.Hour)
 				reportFromBuild := &models.Report{Date: periodStart, TotalOrders: 1}
 				mockRepo.On("BuildDailyReport", periodStart, periodEnd).Return(reportFromBuild, nil).Once()
 				mockRepo.On("SaveReport", reportFromBuild).Return((*models.Report)(nil), assert.AnError).Once()

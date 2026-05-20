@@ -2,6 +2,8 @@ package handlers_test
 
 import (
 	"bytes"
+	"encoding/json"
+	"io"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"main/internal/tests/unit/mocks"
 )
@@ -31,6 +34,7 @@ func TestReportHandler_GetDailyReport(t *testing.T) {
 		query          string
 		setupMock      func(*mocks.ReportService)
 		expectedStatus int
+		validate       func(t *testing.T, respBody []byte)
 	}{
 		{
 			name:  "valid date",
@@ -40,10 +44,25 @@ func TestReportHandler_GetDailyReport(t *testing.T) {
 				mockService.On("GetDailyReport", requestDate).Return(&models.Report{ID: 1, Date: requestDate}, nil).Once()
 			},
 			expectedStatus: 200,
+			validate: func(t *testing.T, respBody []byte) {
+				var resp struct {
+					Status int           `json:"status"`
+					Data   models.Report `json:"data"`
+				}
+				require.NoError(t, json.Unmarshal(respBody, &resp))
+				assert.Equal(t, 200, resp.Status)
+				assert.Equal(t, int64(1), resp.Data.ID)
+			},
+		},
+		{
+			name:           "missing date query param",
+			query:          "",
+			setupMock:      func(mockService *mocks.ReportService) {},
+			expectedStatus: 400,
 		},
 		{
 			name:           "invalid date format",
-			query:          "date=2026-13-01",
+			query:          "date=04-05-2026",
 			setupMock:      func(mockService *mocks.ReportService) {},
 			expectedStatus: 400,
 		},
@@ -72,6 +91,12 @@ func TestReportHandler_GetDailyReport(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectedStatus, resp.StatusCode)
+			if tc.validate != nil {
+				respBody, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+				resp.Body.Close()
+				tc.validate(t, respBody)
+			}
 		})
 	}
 }
@@ -84,6 +109,7 @@ func TestReportHandler_CreateDailyReport(t *testing.T) {
 		body           string
 		setupMock      func(*mocks.ReportService)
 		expectedStatus int
+		validate       func(t *testing.T, respBody []byte)
 	}{
 		{
 			name: "valid request",
@@ -93,10 +119,31 @@ func TestReportHandler_CreateDailyReport(t *testing.T) {
 				mockService.On("CreateDailyReport", requestDate).Return(&models.Report{ID: 2, Date: requestDate}, nil).Once()
 			},
 			expectedStatus: 201,
+			validate: func(t *testing.T, respBody []byte) {
+				var resp struct {
+					Status int           `json:"status"`
+					Data   models.Report `json:"data"`
+				}
+				require.NoError(t, json.Unmarshal(respBody, &resp))
+				assert.Equal(t, 201, resp.Status)
+				assert.Equal(t, int64(2), resp.Data.ID)
+			},
 		},
 		{
 			name:           "invalid json",
 			body:           `{invalid-json}`,
+			setupMock:      func(mockService *mocks.ReportService) {},
+			expectedStatus: 400,
+		},
+		{
+			name:           "missing date field",
+			body:           `{}`,
+			setupMock:      func(mockService *mocks.ReportService) {},
+			expectedStatus: 400,
+		},
+		{
+			name:           "invalid date format",
+			body:           `{"date":"04/05/2026"}`,
 			setupMock:      func(mockService *mocks.ReportService) {},
 			expectedStatus: 400,
 		},
@@ -126,6 +173,12 @@ func TestReportHandler_CreateDailyReport(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectedStatus, resp.StatusCode)
+			if tc.validate != nil {
+				respBody, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+				resp.Body.Close()
+				tc.validate(t, respBody)
+			}
 		})
 	}
 }
