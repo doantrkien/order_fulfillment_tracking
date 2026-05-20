@@ -49,9 +49,9 @@ func (r *reportRepository) BuildDailyReport(start, end time.Time) (*models.Repor
 	}
 
 	if err := r.db.Model(&models.Order{}).
-		Select("status, count(*) AS count").
+		Select("current_status AS status, count(*) AS count").
 		Where("created_at >= ? AND created_at < ?", start, end).
-		Group("status").
+		Group("current_status").
 		Scan(&statusCounts).Error; err != nil {
 		return nil, err
 	}
