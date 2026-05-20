@@ -11,7 +11,7 @@ import (
 
 type OrderRepository interface {
 	GetAllOrder(query dto.OrderQuery) ([]models.Order, int64, error)
-	GetOrderDetail(id int) (*models.Order, error)
+	GetOrderDetail(int64) (*models.Order, error)
 	CreateOrder(order models.Order) (*models.Order, error)
 	UpdateOrderStatus(id int64, status string) (*models.Order, error)
 }
@@ -67,7 +67,7 @@ func (r *orderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int
 	return orders, total, nil
 }
 
-func (r *orderRepository) GetOrderDetail(id int) (*models.Order, error) {
+func (r *orderRepository) GetOrderDetail(id int64) (*models.Order, error) {
 	var order models.Order
 
 	if err := r.db.First(&order, id).Error; err != nil {

@@ -24,7 +24,7 @@ var (
 
 func TestMain(m *testing.M) {
 
-	if err := godotenv.Load("../../../.env"); err != nil {
+	if err := godotenv.Load("../../../.env.local"); err != nil {
 		log.Println("No .env file found, using process environment")
 	}
 
@@ -33,8 +33,9 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	}
 
-	os.Setenv("CUSTOMER_API_KEY", "test-customer-key")
-	os.Setenv("ADMIN_API_KEY", "test-admin-key")
+	os.Setenv("CUSTOMER_API_KEY", "54725cc28e71b4d43646e3697affd2e53d01f502b9f04ccb43a665a83ac2d418")
+	os.Setenv("ADMIN_API_KEY", "8b2062e3c8c1292a47cb900ae480c2e642ae03c22157e311fec14fb40ba8d453")
+	os.Setenv("SHIPPER_API_KEY", "848cf386682fde792d5a5a7c51588b92e8fe1e9e339b130c7b7e13a104839298")
 
 	var err error
 	db, err = postgresql.ConnectDB()

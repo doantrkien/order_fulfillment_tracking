@@ -2,14 +2,18 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/repositories"
+	"main/pkg/utils/constant"
+
+	"gorm.io/gorm"
 )
 
 type OrderService interface {
 	GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, int64, error)
-	GetOrder(id int) (*dto.OrderReponse, error)
+	GetOrder(id int64) (*dto.OrderReponse, error)
 	CreateOrder(dto.OrderRequest) (*models.Order, error)
 	UpdateOrderStatus(id int64, status string) (*models.Order, error)
 }
@@ -45,7 +49,6 @@ func (s *orderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, in
 			Username:        userInfo.Username,
 			UserPhone:       userInfo.UserPhone,
 			ShippingAddress: userInfo.ShippingAddress,
-			UserInfo:        userInfo,
 			Status:          order.CurrentStatus,
 			Ordered_at:      order.CreatedAt,
 		})
@@ -53,13 +56,22 @@ func (s *orderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, in
 	return response, total, nil
 }
 
-func (s *orderService) GetOrder(id int) (*dto.OrderReponse, error) {
+func (s *orderService) GetOrder(id int64) (*dto.OrderReponse, error) {
 	order, err := s.orderRepo.GetOrderDetail(id)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, constant.ERR_NOT_FOUND
+		}
+
 		return nil, err
 	}
 
+	if order == nil {
+		return nil, constant.ERR_NOT_FOUND
+	}
+
 	userInfo := &models.UserInfo{}
+
 	if len(order.UserInfo) > 0 {
 		json.Unmarshal(order.UserInfo, userInfo)
 	}
@@ -70,7 +82,6 @@ func (s *orderService) GetOrder(id int) (*dto.OrderReponse, error) {
 		Username:        userInfo.Username,
 		UserPhone:       userInfo.UserPhone,
 		ShippingAddress: userInfo.ShippingAddress,
-		UserInfo:        userInfo,
 		Status:          order.CurrentStatus,
 		Ordered_at:      order.CreatedAt,
 	}
@@ -97,9 +108,26 @@ func (s *orderService) CreateOrder(req dto.OrderRequest) (*models.Order, error) 
 }
 
 func (s *orderService) UpdateOrderStatus(id int64, status string) (*models.Order, error) {
-	order, err := s.orderRepo.UpdateOrderStatus(id, status)
+	order, err := s.GetOrder(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, constant.ERR_NOT_FOUND
+		}
+		return nil, err
+	}
+
+	if order == nil {
+		return nil, constant.ERR_NOT_FOUND
+	}
+
+	if !models.IsValidTransition(order.Status, models.OrderStatus(status)) {
+		return nil, constant.ORDER_STATUS_TRANSITION_INVALID
+	}
+
+	newOrder, err := s.orderRepo.UpdateOrderStatus(id, status)
 	if err != nil {
 		return nil, err
 	}
-	return order, nil
+
+	return newOrder, nil
 }
