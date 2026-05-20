@@ -27,7 +27,7 @@ func seedOrder(t *testing.T, totalAmount int64, status models.OrderStatus) model
 	return order
 }
 
-func TestIntegration_ImportOrderEvents_Success(t *testing.T) {
+func TestIntegrationImportOrderEventsSuccess(t *testing.T) {
 	cleanAll()
 
 	order := seedOrder(t, 5000, models.ORDER_STATUS_CREATED)
@@ -65,7 +65,7 @@ func TestIntegration_ImportOrderEvents_Success(t *testing.T) {
 	assert.Equal(t, int64(1), eventCount)
 }
 
-func TestIntegration_ImportOrderEvents_InvalidTransition(t *testing.T) {
+func TestIntegrationImportOrderEventsInvalidTransition(t *testing.T) {
 	cleanAll()
 
 	order := seedOrder(t, 5000, models.ORDER_STATUS_CREATED)
@@ -96,7 +96,7 @@ func TestIntegration_ImportOrderEvents_InvalidTransition(t *testing.T) {
 	assert.Equal(t, models.ORDER_STATUS_CREATED, unchangedOrder.CurrentStatus)
 }
 
-func TestIntegration_ImportOrderEvents_DuplicateStatus(t *testing.T) {
+func TestIntegrationImportOrderEventsDuplicateStatus(t *testing.T) {
 	cleanAll()
 
 	order := seedOrder(t, 5000, models.ORDER_STATUS_PAID)
@@ -123,7 +123,7 @@ func TestIntegration_ImportOrderEvents_DuplicateStatus(t *testing.T) {
 	assert.Contains(t, body.Data.Errors[0].Reason, "already in status")
 }
 
-func TestIntegration_ImportOrderEvents_OrderNotFound(t *testing.T) {
+func TestIntegrationImportOrderEventsOrderNotFound(t *testing.T) {
 	cleanAll()
 
 	reqBody := []dto.ImportOrderEventRequest{
@@ -148,7 +148,7 @@ func TestIntegration_ImportOrderEvents_OrderNotFound(t *testing.T) {
 	assert.Contains(t, body.Data.Errors[0].Reason, "Order not found")
 }
 
-func TestIntegration_ImportOrderEvents_ValidationFailure(t *testing.T) {
+func TestIntegrationImportOrderEventsValidationFailure(t *testing.T) {
 	cleanAll()
 
 	reqBody := []dto.ImportOrderEventRequest{
@@ -175,7 +175,7 @@ func TestIntegration_ImportOrderEvents_ValidationFailure(t *testing.T) {
 	assert.Len(t, body.Data.Errors, 3)
 }
 
-func TestIntegration_ImportOrderEvents_InvalidJSON(t *testing.T) {
+func TestIntegrationImportOrderEventsInvalidJSON(t *testing.T) {
 	cleanAll()
 
 	req := httptest.NewRequest("POST", "/api/v1/order-events/import", bytes.NewBuffer([]byte("{invalid-json")))
@@ -194,7 +194,7 @@ func TestIntegration_ImportOrderEvents_InvalidJSON(t *testing.T) {
 	assert.Equal(t, "invalid payload", body.Message)
 }
 
-func TestIntegration_ImportOrderEvents_FullLifecycle(t *testing.T) {
+func TestIntegrationImportOrderEventsFullLifecycle(t *testing.T) {
 	cleanAll()
 
 	order := seedOrder(t, 10000, models.ORDER_STATUS_CREATED)
@@ -231,18 +231,18 @@ func TestIntegration_ImportOrderEvents_FullLifecycle(t *testing.T) {
 	assert.Equal(t, int64(4), eventCount)
 }
 
-func TestIntegration_ImportOrderEvents_MixedBatch(t *testing.T) {
+func TestIntegrationImportOrderEventsMixedBatch(t *testing.T) {
 	cleanAll()
 
-	order1 := seedOrder(t, 1000, models.ORDER_STATUS_CREATED)  // will accept (created → paid)
-	order2 := seedOrder(t, 2000, models.ORDER_STATUS_PAID)     // will duplicate (paid → paid)
-	order3 := seedOrder(t, 3000, models.ORDER_STATUS_CREATED)  // will reject (created → delivered)
+	order1 := seedOrder(t, 1000, models.ORDER_STATUS_CREATED)  
+	order2 := seedOrder(t, 2000, models.ORDER_STATUS_PAID)     
+	order3 := seedOrder(t, 3000, models.ORDER_STATUS_CREATED)  
 
 	reqBody := []dto.ImportOrderEventRequest{
 		{OrderID: order1.ID, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"},
 		{OrderID: order2.ID, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"},
 		{OrderID: order3.ID, Status: "delivered", EventAt: time.Now(), UpdatedBy: "admin"},
-		{OrderID: -1, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"}, // validation fail
+		{OrderID: -1, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"}, 
 	}
 	bodyBytes, _ := json.Marshal(reqBody)
 
