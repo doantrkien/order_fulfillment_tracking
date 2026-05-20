@@ -42,7 +42,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Failed to connect to test database: %v", err)
 	}
 
-	if err := db.AutoMigrate(&models.Order{}); err != nil {
+	if err := db.AutoMigrate(&models.Order{}, &models.OrderEvent{}); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
 
@@ -54,6 +54,11 @@ func TestMain(m *testing.M) {
 	orderHandler := handlers.NewOrderHandler(orderService)
 	routers.SetupOrderRouter(app, orderHandler)
 
+	orderEventRepo := repositories.NewOrderEventRepository(db)
+	orderEventService := services.NewOrderEventService(orderEventRepo, 4)
+	orderEventHandler := handlers.NewOrderEventHandler(orderEventService)
+	routers.SetupOrderEventRouter(app, orderEventHandler)
+
 	code := m.Run()
 
 	sqlDB, _ := db.DB()
@@ -63,5 +68,14 @@ func TestMain(m *testing.M) {
 }
 
 func cleanOrders() {
+	db.Exec("TRUNCATE TABLE orders RESTART IDENTITY CASCADE;")
+}
+
+func cleanOrderEvents() {
+	db.Exec("TRUNCATE TABLE order_events RESTART IDENTITY CASCADE;")
+}
+
+func cleanAll() {
+	db.Exec("TRUNCATE TABLE order_events RESTART IDENTITY CASCADE;")
 	db.Exec("TRUNCATE TABLE orders RESTART IDENTITY CASCADE;")
 }
