@@ -2,7 +2,7 @@ package routers
 
 import (
 	"main/internal/handlers"
-	// "main/internal/middlewares"
+	"main/internal/middlewares"
 
 	"github.com/gofiber/fiber/v3"
 )
