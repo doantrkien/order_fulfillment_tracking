@@ -7,19 +7,19 @@ import (
 	"sync"
 )
 
-const maxWorkers = 7
-
 type OrderEventService interface {
 	ImportOrderEvents(reqs []dto.ImportOrderEventRequest) (dto.ImportOrderEventsResponse, error)
 }
 
 type orderEventService struct {
 	orderEventRepo repositories.OrderEventRepository
+	maxWorkers     int
 }
 
-func NewOrderEventService(orderEventRepo repositories.OrderEventRepository) OrderEventService {
+func NewOrderEventService(orderEventRepo repositories.OrderEventRepository, maxWorkers int) OrderEventService {
 	return &orderEventService{
 		orderEventRepo: orderEventRepo,
+		maxWorkers:     maxWorkers,
 	}
 }
 
@@ -59,7 +59,7 @@ func (s *orderEventService) ImportOrderEvents(reqs []dto.ImportOrderEventRequest
 
 	// Start workers
 	var wg sync.WaitGroup
-	numWorkers := maxWorkers
+	numWorkers := s.maxWorkers
 	if len(validReqs) < numWorkers {
 		numWorkers = len(validReqs)
 	}

@@ -26,8 +26,8 @@ func (s *reportService) GetDailyReport(date time.Time) (*models.Report, error) {
 }
 
 func (s *reportService) CreateDailyReport(date time.Time) (*models.Report, error) {
-	periodEnd := time.Date(date.Year(), date.Month(), date.Day(), 3, 0, 0, 0, date.Location())
-	periodStart := periodEnd.Add(-24 * time.Hour)
+	periodStart := time.Date(date.Year(), date.Month(), date.Day(), 3, 0, 0, 0, date.Location())
+	periodEnd := periodStart.Add(24 * time.Hour)
 
 	report, err := s.reportRepo.BuildDailyReport(periodStart, periodEnd)
 	if err != nil {

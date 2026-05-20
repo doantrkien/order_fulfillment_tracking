@@ -656,6 +656,14 @@ paths:
       summary: Daily order report
       tags:
         - Report
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: "2026-05-18"
       responses:
         "200":
           description: Success
@@ -747,3 +755,62 @@ paths:
                   data:
                     type: object
                     nullable: true
+
+    post:
+      summary: Create daily report manually
+      tags:
+        - Report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - date
+              properties:
+                date:
+                  type: string
+                  format: date
+                  example: "2026-05-18"
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: Success
+                  data:
+                    type: object
+                    properties:
+                      date:
+                        type: string
+                        example: "2026-05-18T00:00:00Z"
+                      total_orders:
+                        type: integer
+                        example: 120
+                      total_created:
+                        type: integer
+                        example: 100
+                      total_delivered:
+                        type: integer
+                        example: 100
+                      total_canceled:
+                        type: integer
+                        example: 20
+                      total_refunded:
+                        type: integer
+                        example: 10
+                      total_income:
+                        type: number
+                        example: 199.99
+                      avg_deliver_time:
+                        type: number
+                        example: 2.5

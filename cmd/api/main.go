@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"main/configs"
 	"main/internal/handlers"
 	"main/internal/repositories"
@@ -14,38 +14,42 @@ import (
 )
 
 func main() {
+	// 1. Load config
 	err := configs.LoadConfig()
 	if err != nil {
-		fmt.Println("Cannot load config:", err)
-		return
+		log.Fatalf("Cannot load config: %v", err)
 	}
 
+	// 2. Initialize DB (exit on failure)
 	db, err := postgresql.ConnectDB()
 	if err != nil {
-		fmt.Printf("Error initializing database: %v", err)
+		log.Fatalf("Error initializing database: %v", err)
 	}
 
 	app := fiber.New()
 
+	// 3. Dependency Injection (Wiring)
 	orderRepo := repositories.NewOrderRepository(db)
 	orderService := services.NewOrderService(orderRepo)
 	orderHandler := handlers.NewOrderHandler(orderService)
 
 	orderEventRepo := repositories.NewOrderEventRepository(db)
-	orderEventService := services.NewOrderEventService(orderEventRepo)
+	orderEventService := services.NewOrderEventService(orderEventRepo, 7)
 	orderEventHandler := handlers.NewOrderEventHandler(orderEventService)
 
-	routers.SetupOrderRouter(app, orderHandler)
-	routers.SetupOrderEventRouter(app, orderEventHandler)
-	swagger.SetupSwaggerRoutes(app)
 	reportRepo := repositories.NewReportRepository(db)
 	reportService := services.NewReportService(reportRepo)
 	reportHandler := handlers.NewReportHandler(reportService)
 
+	// 4. Background tasks
 	services.StartDailyReportScheduler(reportService)
 
+	// 5. Setup Routers
 	routers.SetupOrderRouter(app, orderHandler)
+	routers.SetupOrderEventRouter(app, orderEventHandler)
 	routers.SetupReportRouter(app, reportHandler)
+	swagger.SetupSwaggerRoutes(app)
 
-	app.Listen(":3000")
+	// 6. Start Server
+	log.Fatal(app.Listen(":3000"))
 }
