@@ -17,7 +17,7 @@ import (
 
 const testAPIKey = "8b2062e3c8c1292a47cb900ae480c2e642ae03c22157e311fec14fb40ba8d453"
 
-func TestIntegration_Report(t *testing.T) {
+func TestIntegrationReport(t *testing.T) {
 	cleanOrders()
 
 	order := models.Order{

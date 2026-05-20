@@ -22,7 +22,7 @@ func setupEventServiceTest(t *testing.T, maxWorkers int) (*mocks.OrderEventRepos
 	return mockRepo, service
 }
 
-func TestOrderEventService_ImportOrderEvents(t *testing.T) {
+func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 	now := time.Now()
 
 	t.Run("All events accepted", func(t *testing.T) {
