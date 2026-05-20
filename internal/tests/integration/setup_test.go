@@ -42,7 +42,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Failed to connect to test database: %v", err)
 	}
 
-	if err := db.AutoMigrate(&models.Order{}); err != nil {
+	if err := db.AutoMigrate(&models.Order{}, &models.OrderEvent{}, &models.Report{}); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
 
@@ -52,7 +52,13 @@ func TestMain(m *testing.M) {
 	orderRepo := repositories.NewOrderRepository(db)
 	orderService := services.NewOrderService(orderRepo)
 	orderHandler := handlers.NewOrderHandler(orderService)
+
+	reportRepo := repositories.NewReportRepository(db)
+	reportService := services.NewReportService(reportRepo)
+	reportHandler := handlers.NewReportHandler(reportService)
+
 	routers.SetupOrderRouter(app, orderHandler)
+	routers.SetupReportRouter(app, reportHandler)
 
 	code := m.Run()
 
@@ -64,4 +70,5 @@ func TestMain(m *testing.M) {
 
 func cleanOrders() {
 	db.Exec("TRUNCATE TABLE orders RESTART IDENTITY CASCADE;")
+	db.Exec("TRUNCATE TABLE reports RESTART IDENTITY CASCADE;")
 }
