@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: order_tracking
     ports:
-      - "3000:3000"
+      - "5000:5000"
     env_file:
       - .env.docker
     environment:
@@ -50,5 +50,21 @@ services:
       - postgres
     restart: unless-stopped
 
+  grafana:
+      image: grafana/grafana:latest
+      container_name: grafana
+      ports:
+        - "3001:3000"
+      volumes:
+        - grafana_data:/var/lib/grafana
+      environment:
+        - GF_SECURITY_ADMIN_PASSWORD=admin123
+        - GF_USERS_ALLOW_SIGN_UP=false
+        - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource   # ← Sửa thành dòng này
+      restart: unless-stopped
+      depends_on:
+        - app
+
 volumes:
   postgres_data:
+  grafana_data:

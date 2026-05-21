@@ -25,7 +25,7 @@ COPY --from=builder /app/.env.docker /.env.docker
 COPY --from=builder /bin/app_service /app_service
 COPY --from=builder /bin/app_migrate /app_migrate
 
-EXPOSE 3000
+EXPOSE 5000
 CMD ["/app_service"]
 
 FROM golang:1.26-alpine3.23 AS dev
@@ -38,6 +38,6 @@ RUN go install github.com/cespare/reflex@latest
 
 COPY . .
 
-EXPOSE 3000
+EXPOSE 5000
 
 CMD ["go", "run", "./cmd/api"]
