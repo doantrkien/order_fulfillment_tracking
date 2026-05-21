@@ -1,27 +1,49 @@
+version: '3.9'
+
 services:
-  db:
-    image: postgres:15-alpine
-    container_name: order_fulfillment_db
-    restart: always
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: order_tracking
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.docker
+    environment:
+      APP_ENV: docker
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
-    ports:
-      - "${DB_PORT}:5432"
+      POSTGRES_PASSWORD: 12345
+      POSTGRES_DB: order_tracking
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d order_tracking"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+      start_period: 10s
 
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: pgadmin_ui
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+  adminer:
+    image: adminer
+    container_name: adminer
     ports:
-      - "8086:8080"
+      - "8080:8080"
     depends_on:
-      - db
+      - postgres
+    restart: unless-stopped
 
 volumes:
-  pg_data:
+  postgres_data:
