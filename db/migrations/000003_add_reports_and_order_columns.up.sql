@@ -16,14 +16,19 @@ CREATE TABLE IF NOT EXISTS order_events (
 DO $$
 BEGIN
   IF to_regclass('orders') IS NOT NULL THEN
-    ALTER TABLE IF EXISTS order_events
-      ADD CONSTRAINT IF NOT EXISTS fk_order_events_orders FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conname = 'fk_order_events_orders'
+    ) THEN
+      ALTER TABLE order_events
+        ADD CONSTRAINT fk_order_events_orders FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
+    END IF;
   END IF;
 END$$;
 
 CREATE TABLE IF NOT EXISTS reports (
   id bigserial PRIMARY KEY,
-  date date NOT NULL UNIQUE,
+  date date NOT NULL,
+  CONSTRAINT uni_reports_date UNIQUE (date),
   total_orders integer DEFAULT 0,
   total_new integer DEFAULT 0,
   total_delivered integer DEFAULT 0,

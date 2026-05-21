@@ -1,25 +1,23 @@
 services:
   db:
     image: postgres:15-alpine
-    container_name: order_fulfillment_db
+    container_name: postgres
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
+      POSTGRES_PASSWORD: 12345
+      POSTGRES_DB: order_tracking
     ports:
-      - "${DB_PORT}:5432"
+      - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
 
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: pgadmin_ui
+  adminer:
+    image: adminer
+    container_name: adminer_ui
     restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
     ports:
-      - "8086:8080"
+      - "8081:8080"
     depends_on:
       - db
 
