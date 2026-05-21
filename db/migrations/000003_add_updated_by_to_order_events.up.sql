@@ -1,1 +1,0 @@
-ALTER TABLE order_events ADD COLUMN updated_by VARCHAR(100) NOT NULL DEFAULT '';

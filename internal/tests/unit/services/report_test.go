@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestReportService_GetDailyReport(t *testing.T) {
+func TestReportServiceGetDailyReport(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {

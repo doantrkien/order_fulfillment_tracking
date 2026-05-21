@@ -147,9 +147,9 @@ func TestOrderEventService_ImportOrderEvents(t *testing.T) {
 		{
 			name: "mixed results - validation fail + accepted + duplicate",
 			requests: []dto.ImportOrderEventRequest{
-				{OrderID: 0, Status: "paid", EventAt: now, UpdatedBy: "admin"},  // validation fail
-				{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"},  // will be accepted
-				{OrderID: 2, Status: "paid", EventAt: now, UpdatedBy: "admin"},  // will be duplicate
+				{OrderID: 0, Status: "paid", EventAt: now, UpdatedBy: "admin"}, // validation fail
+				{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"}, // will be accepted
+				{OrderID: 2, Status: "paid", EventAt: now, UpdatedBy: "admin"}, // will be duplicate
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
 				mockRepo.On("ProcessSingleEventTx", mock.MatchedBy(func(e models.OrderEvent) bool {
@@ -169,7 +169,7 @@ func TestOrderEventService_ImportOrderEvents(t *testing.T) {
 			},
 			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
 				assert.Equal(t, 1, resp.Accepted)
-				assert.Equal(t, 1, resp.Rejected)  // validation fail
+				assert.Equal(t, 1, resp.Rejected) // validation fail
 				assert.Equal(t, 1, resp.Duplicate)
 			},
 		},

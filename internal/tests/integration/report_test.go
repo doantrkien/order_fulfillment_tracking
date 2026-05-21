@@ -15,7 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIntegration_Report(t *testing.T) {
+const testAPIKey = "8b2062e3c8c1292a47cb900ae480c2e642ae03c22157e311fec14fb40ba8d453"
+
+func TestIntegrationReport(t *testing.T) {
 	cleanOrders()
 
 	order := models.Order{
@@ -46,10 +48,13 @@ func TestIntegration_Report(t *testing.T) {
 		validate       func(t *testing.T, respBody []byte)
 	}{
 		{
-			name:           "create daily report",
-			method:         "POST",
-			path:           "/api/v1/reports/daily",
-			body:           func() []byte { b, _ := json.Marshal(dto.GetDailyReportRequest{Date: "2026-05-03"}); return b }(),
+			name:   "create daily report",
+			method: "POST",
+			path:   "/api/v1/reports/daily",
+			body: func() []byte {
+				b, _ := json.Marshal(dto.GetDailyReportRequest{Date: "2026-05-03"})
+				return b
+			}(),
 			expectedStatus: 201,
 			validate: func(t *testing.T, respBody []byte) {
 				var postBody struct {
@@ -127,7 +132,9 @@ func TestIntegration_Report(t *testing.T) {
 			} else {
 				req = httptest.NewRequest(tc.method, tc.path, nil)
 			}
-			req.Header.Set("X-API-Key", "test-admin-key")
+
+			// ✅ API KEY ADDED HERE
+			req.Header.Set("X-API-Key", testAPIKey)
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
@@ -136,6 +143,7 @@ func TestIntegration_Report(t *testing.T) {
 			respBody, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
 			resp.Body.Close()
+
 			if tc.validate != nil {
 				tc.validate(t, respBody)
 			}

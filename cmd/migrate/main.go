@@ -3,16 +3,16 @@ package main
 import (
 	"fmt"
 	"log"
+	"main/configs"
 	"os"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	err := godotenv.Load()
+	err := configs.LoadConfig()
 	if err != nil {
 		log.Println("Can not found file .env, system environment variables will be used")
 	}

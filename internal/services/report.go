@@ -1,9 +1,13 @@
 package services
 
 import (
+	"errors"
 	"main/internal/models"
 	"main/internal/repositories"
+	"main/pkg/utils/errs"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type ReportService interface {
@@ -22,7 +26,14 @@ func NewReportService(reportRepo repositories.ReportRepository) ReportService {
 }
 
 func (s *reportService) GetDailyReport(date time.Time) (*models.Report, error) {
-	return s.reportRepo.GetDailyReport(date)
+	report, err := s.reportRepo.GetDailyReport(date)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.ERR_NOT_FOUND
+		}
+		return nil, err
+	}
+	return report, nil
 }
 
 func (s *reportService) CreateDailyReport(date time.Time) (*models.Report, error) {

@@ -3,9 +3,9 @@ package handlers
 import (
 	"errors"
 	"main/internal/dto"
-	"main/internal/models"
 	"main/internal/services"
 	"main/pkg/utils/constant"
+	"main/pkg/utils/errs"
 	"main/pkg/utils/response"
 	"strconv"
 
@@ -52,13 +52,16 @@ func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
 }
 
 func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
 	}
 
 	order, err := h.orderService.GetOrder(id)
 	if err != nil {
+		if errors.Is(err, errs.ERR_NOT_FOUND) {
+			return response.Reponse(c, 404, constant.NOT_FOUND, nil)
+		}
 		return response.Reponse(c, 500, constant.ERROR, nil)
 	}
 
@@ -81,27 +84,32 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 }
 
 func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
-
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	var req dto.UpdateStatusRequest
+
 	if err != nil {
 		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
 	}
 
-	status := c.Query("status")
-	if status == "" {
+	if err := c.Bind().Body(&req); err != nil {
 		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
 	}
 
-	order, err := h.orderService.UpdateOrderStatus(id, status)
+	if req.Status == "" {
+		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
+	}
+
+	_, err = h.orderService.UpdateOrderStatus(id, string(req.Status))
 	if err != nil {
-		if errors.Is(err, constant.ERR_NOT_FOUND) {
+		if errors.Is(err, errs.ERR_NOT_FOUND) {
 			return response.Reponse(c, 404, constant.NOT_FOUND, nil)
 		}
-		return response.Reponse(c, 500, constant.ERROR, nil)
-	}
 
-	if models.IsValidTransition(order.CurrentStatus, models.OrderStatus(status)) {
-		return response.Reponse(c, 400, constant.INVALID_STATUS, nil)
+		if errors.Is(err, errs.ORDER_STATUS_TRANSITION_INVALID) {
+			return response.Reponse(c, 400, constant.INVALID_STATUS, nil)
+		}
+
+		return response.Reponse(c, 500, constant.ERROR, nil)
 	}
 
 	return response.Reponse(c, 200, constant.SUCCESS, nil)

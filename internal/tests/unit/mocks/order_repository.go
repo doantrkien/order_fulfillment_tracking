@@ -76,7 +76,7 @@ func (_m *OrderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, in
 	return r0, r1, r2
 }
 
-func (_m *OrderRepository) GetOrderDetail(id int) (*models.Order, error) {
+func (_m *OrderRepository) GetOrderDetail(id int64) (*models.Order, error) {
 	ret := _m.Called(id)
 
 	if len(ret) == 0 {
@@ -85,10 +85,10 @@ func (_m *OrderRepository) GetOrderDetail(id int) (*models.Order, error) {
 
 	var r0 *models.Order
 	var r1 error
-	if rf, ok := ret.Get(0).(func(int) (*models.Order, error)); ok {
+	if rf, ok := ret.Get(0).(func(int64) (*models.Order, error)); ok {
 		return rf(id)
 	}
-	if rf, ok := ret.Get(0).(func(int) *models.Order); ok {
+	if rf, ok := ret.Get(0).(func(int64) *models.Order); ok {
 		r0 = rf(id)
 	} else {
 		if ret.Get(0) != nil {
@@ -96,7 +96,7 @@ func (_m *OrderRepository) GetOrderDetail(id int) (*models.Order, error) {
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(int) error); ok {
+	if rf, ok := ret.Get(1).(func(int64) error); ok {
 		r1 = rf(id)
 	} else {
 		r1 = ret.Error(1)
