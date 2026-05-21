@@ -2,6 +2,10 @@ package main
 
 import (
 	"log"
+	"os"
+	"runtime"
+	"strconv"
+
 	"main/configs"
 	"main/internal/handlers"
 	"main/internal/repositories"
@@ -34,7 +38,11 @@ func main() {
 	orderHandler := handlers.NewOrderHandler(orderService)
 
 	orderEventRepo := repositories.NewOrderEventRepository(db)
-	orderEventService := services.NewOrderEventService(orderEventRepo, 7)
+	maxWorkers, _ := strconv.Atoi(os.Getenv("IMPORT_MAX_WORKERS"))
+	if maxWorkers <= 0 {
+		maxWorkers = runtime.NumCPU()
+	}
+	orderEventService := services.NewOrderEventService(orderEventRepo, maxWorkers)
 	orderEventHandler := handlers.NewOrderEventHandler(orderEventService)
 
 	reportRepo := repositories.NewReportRepository(db)
