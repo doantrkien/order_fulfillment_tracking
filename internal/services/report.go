@@ -6,6 +6,8 @@ import (
 	"main/internal/repositories"
 	"main/pkg/utils/errs"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type ReportService interface {
@@ -26,7 +28,7 @@ func NewReportService(reportRepo repositories.ReportRepository) ReportService {
 func (s *reportService) GetDailyReport(date time.Time) (*models.Report, error) {
 	report, err := s.reportRepo.GetDailyReport(date)
 	if err != nil {
-		if errors.Is(err, errs.ERR_NOT_FOUND) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errs.ERR_NOT_FOUND
 		}
 		return nil, err

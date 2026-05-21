@@ -36,9 +36,9 @@ func (h *ReportHandler) GetDailyReport(c fiber.Ctx) error {
 	report, err := h.reportService.GetDailyReport(date)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
-			return response.Reponse(c, 500, constant.NOT_FOUND, nil)
+			return response.Reponse(c, 404, constant.NOT_FOUND, nil)
 		}
-		return response.Reponse(c, 404, constant.ERROR, nil)
+		return response.Reponse(c, 500, constant.ERROR, nil)
 	}
 
 	return response.Reponse(c, 200, constant.SUCCESS, report)

@@ -43,6 +43,9 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Failed to connect to test database: %v", err)
 	}
 
+	db.Exec("DROP TABLE IF EXISTS reports CASCADE")
+	db.Exec("DROP TABLE IF EXISTS order_events CASCADE")
+
 	if err := db.AutoMigrate(&models.Order{}, &models.OrderEvent{}, &models.Report{}); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}

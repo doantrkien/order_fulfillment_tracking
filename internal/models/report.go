@@ -4,7 +4,7 @@ import "time"
 
 type Report struct {
 	ID             int64     `gorm:"primaryKey;column:id" json:"id"`
-	Date           time.Time `gorm:"column:date;type:date;uniqueIndex:reports_date_key" json:"date"`
+	Date           time.Time `gorm:"column:date;type:date;not null;uniqueIndex:uni_reports_date"`
 	TotalOrders    int64     `gorm:"column:total_orders;default:0" json:"total_orders"`
 	TotalNew       int64     `gorm:"column:total_new;default:0" json:"total_new"`
 	TotalDelivered int64     `gorm:"column:total_delivered;default:0" json:"total_delivered"`

@@ -1,1 +1,1 @@
-ALTER TABLE order_events DROP COLUMN IF EXISTS updated_by;
+SALTER TABLE order_events DROP COLUMN IF EXISTS updated_by;
