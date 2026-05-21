@@ -12,10 +12,15 @@ services:
       - .env.docker
     environment:
       APP_ENV: docker
+    volumes:
+      - .:/app
+      - /app/tmp               
     depends_on:
       postgres:
         condition: service_healthy
-    restart: unless-stopped
+    # restart: unless-stopped   
+    stdin_open: true
+    tty: true            
 
   postgres:
     image: postgres:16
