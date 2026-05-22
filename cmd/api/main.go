@@ -7,12 +7,22 @@ import (
 	"main/internal/repositories"
 	"main/internal/routers/v1"
 	"main/internal/services"
-	"main/internal/swagger"
 	"main/pkg/postgresql"
 
+	_ "main/docs"
+
+	"github.com/gofiber/contrib/v3/swaggo"
 	"github.com/gofiber/fiber/v3"
 )
 
+// @title Order Fulfillment Tracking API
+// @version 1.0.0
+// @description HTTP API for order fulfillment tracking.
+// @host localhost:3000
+// @BasePath /
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name X-API-Key
 func main() {
 	// 1. Load config
 	err := configs.LoadConfig()
@@ -48,7 +58,7 @@ func main() {
 	routers.SetupOrderRouter(app, orderHandler)
 	routers.SetupOrderEventRouter(app, orderEventHandler)
 	routers.SetupReportRouter(app, reportHandler)
-	swagger.SetupSwaggerRoutes(app)
+	app.Get("/docs/*", swaggo.HandlerDefault)
 
 	// 6. Start Server
 	log.Fatal(app.Listen(":5000"))

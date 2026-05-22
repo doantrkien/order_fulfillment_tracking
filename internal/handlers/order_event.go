@@ -16,6 +16,18 @@ func NewOrderEventHandler(orderEventService services.OrderEventService) *OrderEv
 	return &OrderEventHandler{orderEventService: orderEventService}
 }
 
+// ImportOrderEvents godoc
+// @Summary Import batch order events
+// @Description Process a batch of order status update events concurrently. Each event is validated and processed in its own DB transaction. The response always returns aggregated counts, even on partial failure.
+// @Tags Order Event
+// @Accept json
+// @Produce json
+// @Param request body []dto.ImportOrderEventRequest true "List of events"
+// @Success 200 {object} response.ResponseStruct{data=dto.ImportOrderEventsResponse}
+// @Failure 400 {object} response.ResponseStruct
+// @Failure 500 {object} response.ResponseStruct{data=dto.ImportOrderEventsResponse}
+// @Security ApiKeyAuth
+// @Router /api/v1/order-events/import [post]
 func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
 	var req []dto.ImportOrderEventRequest
 
