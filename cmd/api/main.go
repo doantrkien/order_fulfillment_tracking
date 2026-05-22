@@ -51,5 +51,5 @@ func main() {
 	swagger.SetupSwaggerRoutes(app)
 
 	// 6. Start Server
-	log.Fatal(app.Listen(":3000"))
+	log.Fatal(app.Listen(":5000"))
 }
