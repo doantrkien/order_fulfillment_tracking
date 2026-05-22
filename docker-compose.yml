@@ -1,28 +1,68 @@
+version: '3.9'
+
 services:
-  db:
-    image: postgres:15-alpine
-    container_name: order_fulfillment_db
-    restart: always
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: order_tracking
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env.docker
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
-      POSTGRES_DB: order_tracking
+      APP_ENV: docker
+    volumes:
+      - .:/app
+      - /app/tmp               
+    depends_on:
+      postgres:
+        condition: service_healthy 
+    stdin_open: true
+    tty: true            
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
     ports:
       - "5432:5432"
-    volumes:
-      - pg_data:/var/lib/postgresql/data
-
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: pgadmin_ui
-    restart: always
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345
+      POSTGRES_DB: order_tracking
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d order_tracking"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+      start_period: 10s
+
+  adminer:
+    image: adminer
+    container_name: adminer
     ports:
-      - "8086:80"
+      - "8080:8080"
     depends_on:
-      - db
+      - postgres
+    restart: unless-stopped
+
+  grafana:
+      image: grafana/grafana:latest
+      container_name: grafana
+      ports:
+        - "3001:3000"
+      volumes:
+        - grafana_data:/var/lib/grafana
+      environment:
+        - GF_SECURITY_ADMIN_PASSWORD=admin123
+        - GF_USERS_ALLOW_SIGN_UP=false
+      restart: unless-stopped
+      depends_on:
+        - app
 
 volumes:
-  pg_data:
+  postgres_data:
+  grafana_data:
