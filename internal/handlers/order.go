@@ -5,6 +5,7 @@ import (
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/services"
+	"main/pkg/metrics"
 	"main/pkg/utils/constant"
 	"main/pkg/utils/response"
 	"strconv"
@@ -69,14 +70,17 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 	var req dto.OrderRequest
 
 	if err := c.Bind().Body(&req); err != nil {
+		metrics.OrderCreatedTotal.WithLabelValues("error").Inc()
 		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
 	}
 
 	_, err := h.orderService.CreateOrder(req)
 	if err != nil {
+		metrics.OrderCreatedTotal.WithLabelValues("error").Inc()
 		return response.Reponse(c, 500, constant.ERROR, nil)
 	}
 
+	metrics.OrderCreatedTotal.WithLabelValues("success").Inc()
 	return response.Reponse(c, 201, constant.SUCCESS, nil)
 }
 
@@ -95,14 +99,18 @@ func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
 	order, err := h.orderService.UpdateOrderStatus(id, status)
 	if err != nil {
 		if errors.Is(err, constant.ERR_NOT_FOUND) {
+			metrics.OrderStatusUpdatedTotal.WithLabelValues(status, "not_found").Inc()
 			return response.Reponse(c, 404, constant.NOT_FOUND, nil)
 		}
+		metrics.OrderStatusUpdatedTotal.WithLabelValues(status, "error").Inc()
 		return response.Reponse(c, 500, constant.ERROR, nil)
 	}
 
 	if models.IsValidTransition(order.CurrentStatus, models.OrderStatus(status)) {
+		metrics.OrderStatusUpdatedTotal.WithLabelValues(status, "invalid_transition").Inc()
 		return response.Reponse(c, 400, constant.INVALID_STATUS, nil)
 	}
 
+	metrics.OrderStatusUpdatedTotal.WithLabelValues(status, "success").Inc()
 	return response.Reponse(c, 200, constant.SUCCESS, nil)
 }
