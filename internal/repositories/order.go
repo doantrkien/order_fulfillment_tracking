@@ -4,16 +4,20 @@ import (
 	"errors"
 	"main/internal/dto"
 	"main/internal/models"
+<<<<<<< HEAD
 	"main/pkg/metrics"
 	"main/pkg/utils/constant"
 	"time"
+=======
+	"main/pkg/utils/errs"
+>>>>>>> dev
 
 	"gorm.io/gorm"
 )
 
 type OrderRepository interface {
 	GetAllOrder(query dto.OrderQuery) ([]models.Order, int64, error)
-	GetOrderDetail(id int) (*models.Order, error)
+	GetOrderDetail(int64) (*models.Order, error)
 	CreateOrder(order models.Order) (*models.Order, error)
 	UpdateOrderStatus(id int64, status string) (*models.Order, error)
 }
@@ -64,11 +68,16 @@ func (r *orderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int
 	return orders, total, nil
 }
 
+<<<<<<< HEAD
 func (r *orderRepository) GetOrderDetail(id int) (*models.Order, error) {
 	start := time.Now()
 	defer func() {
 		metrics.OrderDBQueryDuration.WithLabelValues("get_detail").Observe(time.Since(start).Seconds())
 	}()
+=======
+func (r *orderRepository) GetOrderDetail(id int64) (*models.Order, error) {
+	var order models.Order
+>>>>>>> dev
 
 	var order models.Order
 	if err := r.db.First(&order, id).Error; err != nil {
@@ -98,7 +107,7 @@ func (r *orderRepository) UpdateOrderStatus(id int64, status string) (*models.Or
 	var order models.Order
 	if err := r.db.First(&order, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, constant.ERR_NOT_FOUND
+			return nil, errs.ERR_NOT_FOUND
 		}
 		return nil, err
 	}

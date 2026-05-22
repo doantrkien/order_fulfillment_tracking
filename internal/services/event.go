@@ -7,19 +7,19 @@ import (
 	"sync"
 )
 
-const maxWorkers = 7
-
 type OrderEventService interface {
 	ImportOrderEvents(reqs []dto.ImportOrderEventRequest) (dto.ImportOrderEventsResponse, error)
 }
 
 type orderEventService struct {
 	orderEventRepo repositories.OrderEventRepository
+	maxWorkers     int
 }
 
-func NewOrderEventService(orderEventRepo repositories.OrderEventRepository) OrderEventService {
+func NewOrderEventService(orderEventRepo repositories.OrderEventRepository, maxWorkers int) OrderEventService {
 	return &orderEventService{
 		orderEventRepo: orderEventRepo,
+		maxWorkers:     maxWorkers,
 	}
 }
 
@@ -53,41 +53,46 @@ func (s *orderEventService) ImportOrderEvents(reqs []dto.ImportOrderEventRequest
 		return resp, nil
 	}
 
-	// Worker pool
-	jobs := make(chan workerResult, len(validReqs))
+	orderGroups := make(map[int64][]dto.ImportOrderEventRequest)
+	for _, req := range validReqs {
+		orderGroups[req.OrderID] = append(orderGroups[req.OrderID], req)
+	}
+
+	jobs := make(chan []dto.ImportOrderEventRequest, len(orderGroups))
 	results := make(chan workerResult, len(validReqs))
 
-	// Start workers
 	var wg sync.WaitGroup
-	numWorkers := maxWorkers
-	if len(validReqs) < numWorkers {
-		numWorkers = len(validReqs)
+	numWorkers := s.maxWorkers
+	if len(orderGroups) < numWorkers {
+		numWorkers = len(orderGroups)
 	}
 
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for job := range jobs {
-				event := models.OrderEvent{
-					OrderID:   job.req.OrderID,
-					NewStatus: models.OrderStatus(job.req.Status),
-					UpdatedBy: job.req.UpdatedBy,
-					EventAt:   job.req.EventAt,
-				}
+			for group := range jobs {
+				for _, req := range group {
+					event := models.OrderEvent{
+						OrderID:   req.OrderID,
+						NewStatus: models.OrderStatus(req.Status),
+						UpdatedBy: req.UpdatedBy,
+						EventAt:   req.EventAt,
+					}
 
-				detail, err := s.orderEventRepo.ProcessSingleEventTx(event)
-				results <- workerResult{
-					req:    job.req,
-					detail: detail,
-					err:    err,
+					detail, err := s.orderEventRepo.ProcessSingleEventTx(event)
+					results <- workerResult{
+						req:    req,
+						detail: detail,
+						err:    err,
+					}
 				}
 			}
 		}()
 	}
 
-	for _, req := range validReqs {
-		jobs <- workerResult{req: req}
+	for _, events := range orderGroups {
+		jobs <- events
 	}
 	close(jobs)
 

@@ -76,7 +76,7 @@ func (_m *OrderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, i
 	return r0, r1, r2
 }
 
-func (_m *OrderService) GetOrder(id int) (*dto.OrderReponse, error) {
+func (_m *OrderService) GetOrder(id int64) (*dto.OrderReponse, error) {
 	ret := _m.Called(id)
 
 	if len(ret) == 0 {
@@ -85,10 +85,10 @@ func (_m *OrderService) GetOrder(id int) (*dto.OrderReponse, error) {
 
 	var r0 *dto.OrderReponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(int) (*dto.OrderReponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(int64) (*dto.OrderReponse, error)); ok {
 		return rf(id)
 	}
-	if rf, ok := ret.Get(0).(func(int) *dto.OrderReponse); ok {
+	if rf, ok := ret.Get(0).(func(int64) *dto.OrderReponse); ok {
 		r0 = rf(id)
 	} else {
 		if ret.Get(0) != nil {
@@ -96,7 +96,7 @@ func (_m *OrderService) GetOrder(id int) (*dto.OrderReponse, error) {
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(int) error); ok {
+	if rf, ok := ret.Get(1).(func(int64) error); ok {
 		r1 = rf(id)
 	} else {
 		r1 = ret.Error(1)
