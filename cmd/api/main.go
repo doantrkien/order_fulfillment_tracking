@@ -9,14 +9,17 @@ import (
 	"main/configs"
 	"main/internal/handlers"
 	"main/internal/repositories"
-	"main/internal/routers/v1"
+	routers "main/internal/routers/v1"
 	"main/internal/services"
+	_ "main/pkg/metrics"
 	"main/pkg/postgresql"
+	"net/http"
 
 	_ "main/docs"
 
 	"github.com/gofiber/contrib/v3/swaggo"
 	"github.com/gofiber/fiber/v3"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // @title Order Fulfillment Tracking API
@@ -40,6 +43,11 @@ func main() {
 		log.Fatalf("Error initializing database: %v", err)
 	}
 
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":9091", nil)
+	}()
+
 	app := fiber.New()
 
 	// 3. Dependency Injection (Wiring)
@@ -54,6 +62,9 @@ func main() {
 	}
 	orderEventService := services.NewOrderEventService(orderEventRepo, maxWorkers)
 	orderEventHandler := handlers.NewOrderEventHandler(orderEventService)
+
+	routers.SetupOrderRouter(app, orderHandler)
+	routers.SetupOrderEventRouter(app, orderEventHandler)
 
 	reportRepo := repositories.NewReportRepository(db)
 	reportService := services.NewReportService(reportRepo)

@@ -39,6 +39,5 @@ func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
 	if err != nil {
 		return response.Reponse(c, 500, err.Error(), result)
 	}
-
 	return response.Reponse(c, 200, "batch processed", result)
 }

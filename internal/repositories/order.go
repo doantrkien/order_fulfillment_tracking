@@ -4,7 +4,9 @@ import (
 	"errors"
 	"main/internal/dto"
 	"main/internal/models"
+	"main/pkg/metrics"
 	"main/pkg/utils/errs"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -21,12 +23,14 @@ type orderRepository struct {
 }
 
 func NewOrderRepository(db *gorm.DB) *orderRepository {
-	return &orderRepository{
-		db: db,
-	}
+	return &orderRepository{db: db}
 }
 
 func (r *orderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int64, error) {
+	start := time.Now()
+	defer func() {
+		metrics.OrderDBQueryDuration.WithLabelValues("get_all").Observe(time.Since(start).Seconds())
+	}()
 
 	var (
 		orders []models.Order
@@ -41,13 +45,11 @@ func (r *orderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int
 	}
 
 	offset := (query.Page - 1) * query.Limit
-
 	db := r.db.Model(&models.Order{})
 
 	if query.Status != "" {
 		db = db.Where("current_status = ?", query.Status)
 	}
-
 	if query.Date != "" {
 		db = db.Where("DATE(created_at) = ?", query.Date)
 	}
@@ -55,12 +57,7 @@ func (r *orderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-
-	if err := db.
-		Limit(query.Limit).
-		Offset(offset).
-		Order("created_at DESC").
-		Find(&orders).Error; err != nil {
+	if err := db.Limit(query.Limit).Offset(offset).Order("created_at DESC").Find(&orders).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -68,16 +65,24 @@ func (r *orderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int
 }
 
 func (r *orderRepository) GetOrderDetail(id int64) (*models.Order, error) {
-	var order models.Order
+	start := time.Now()
+	defer func() {
+		metrics.OrderDBQueryDuration.WithLabelValues("get_detail").Observe(time.Since(start).Seconds())
+	}()
 
+	var order models.Order
 	if err := r.db.First(&order, id).Error; err != nil {
 		return nil, err
 	}
-
 	return &order, nil
 }
 
 func (r *orderRepository) CreateOrder(order models.Order) (*models.Order, error) {
+	start := time.Now()
+	defer func() {
+		metrics.OrderDBQueryDuration.WithLabelValues("create").Observe(time.Since(start).Seconds())
+	}()
+
 	if err := r.db.Create(&order).Error; err != nil {
 		return nil, err
 	}
@@ -85,8 +90,12 @@ func (r *orderRepository) CreateOrder(order models.Order) (*models.Order, error)
 }
 
 func (r *orderRepository) UpdateOrderStatus(id int64, status string) (*models.Order, error) {
-	var order models.Order
+	start := time.Now()
+	defer func() {
+		metrics.OrderDBQueryDuration.WithLabelValues("update_status").Observe(time.Since(start).Seconds())
+	}()
 
+	var order models.Order
 	if err := r.db.First(&order, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errs.ERR_NOT_FOUND
@@ -95,10 +104,8 @@ func (r *orderRepository) UpdateOrderStatus(id int64, status string) (*models.Or
 	}
 
 	order.CurrentStatus = models.OrderStatus(status)
-
 	if err := r.db.Save(&order).Error; err != nil {
 		return nil, err
 	}
-
 	return &order, nil
 }
