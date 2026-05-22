@@ -11,11 +11,8 @@ import (
 	"main/internal/repositories"
 	routers "main/internal/routers/v1"
 	"main/internal/services"
-<<<<<<< HEAD
 	"main/internal/swagger"
 	_ "main/pkg/metrics"
-=======
->>>>>>> dev
 	"main/pkg/postgresql"
 	"net/http"
 
@@ -67,26 +64,20 @@ func main() {
 	orderEventService := services.NewOrderEventService(orderEventRepo, maxWorkers)
 	orderEventHandler := handlers.NewOrderEventHandler(orderEventService)
 
-<<<<<<< HEAD
 	routers.SetupOrderRouter(app, orderHandler)
 	routers.SetupOrderEventRouter(app, orderEventHandler)
 	swagger.SetupSwaggerRoutes(app)
 
-=======
->>>>>>> dev
 	reportRepo := repositories.NewReportRepository(db)
 	reportService := services.NewReportService(reportRepo)
 	reportHandler := handlers.NewReportHandler(reportService)
 
 	// 4. Background tasks
 	services.StartDailyReportScheduler(reportService)
-<<<<<<< HEAD
-=======
 
 	// 5. Setup Routers
 	routers.SetupOrderRouter(app, orderHandler)
 	routers.SetupOrderEventRouter(app, orderEventHandler)
->>>>>>> dev
 	routers.SetupReportRouter(app, reportHandler)
 	app.Get("/docs/*", swaggo.HandlerDefault)
 
