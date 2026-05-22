@@ -25,7 +25,8 @@ END$$;
 
 CREATE TABLE IF NOT EXISTS reports (
   id bigserial PRIMARY KEY,
-  date date NOT NULL UNIQUE,
+  date date NOT NULL,
+  CONSTRAINT uni_reports_date UNIQUE (date),
   total_orders integer DEFAULT 0,
   total_new integer DEFAULT 0,
   total_delivered integer DEFAULT 0,

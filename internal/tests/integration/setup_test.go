@@ -9,38 +9,46 @@ import (
 	"main/internal/services"
 	"main/pkg/postgresql"
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
+
+	"main/configs"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/logger"
-	"github.com/joho/godotenv"
 	"gorm.io/gorm"
 )
 
 var (
-	app *fiber.App
-	db  *gorm.DB
+	app            *fiber.App
+	db             *gorm.DB
+	customerAPIKey string
+	adminAPIKey    string
+	driverAPIKey   string
 )
 
 func TestMain(m *testing.M) {
+	_, b, _, _ := runtime.Caller(0)
+	basepath := filepath.Dir(b)
+	os.Chdir(filepath.Join(basepath, "../../.."))
 
-	if err := godotenv.Load("../../../.env"); err != nil {
-		log.Println("No .env file found, using process environment")
+	if err := configs.LoadConfig(); err != nil {
+		log.Println("LoadConfig error:", err)
 	}
 
-	if os.Getenv("DB_HOST") == "" {
-		log.Println("DB_HOST not set, skipping integration tests")
-		os.Exit(0)
-	}
-
-	os.Setenv("CUSTOMER_API_KEY", "test-customer-key")
-	os.Setenv("ADMIN_API_KEY", "test-admin-key")
+	customerAPIKey = os.Getenv("CUSTOMER_API_KEY")
+	adminAPIKey = os.Getenv("ADMIN_API_KEY")
+	driverAPIKey = os.Getenv("DRIVER_API_KEY")
 
 	var err error
 	db, err = postgresql.ConnectDB()
 	if err != nil {
 		log.Fatalf("Failed to connect to test database: %v", err)
 	}
+
+	db.Exec("DROP TABLE IF EXISTS reports CASCADE")
+	db.Exec("DROP TABLE IF EXISTS order_events CASCADE")
 
 	if err := db.AutoMigrate(&models.Order{}, &models.OrderEvent{}, &models.Report{}); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)

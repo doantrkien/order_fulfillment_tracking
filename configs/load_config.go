@@ -20,6 +20,8 @@ func LoadConfig() error {
 	}
 	candidates = append(candidates, ".env")
 
+	fmt.Println(candidates)
+
 	for _, path := range candidates {
 		err := godotenv.Load(path)
 		if err == nil {
@@ -31,7 +33,5 @@ func LoadConfig() error {
 		}
 		return fmt.Errorf("error loading %s: %w", path, err)
 	}
-
-	fmt.Println("no .env file found; using process environment only")
 	return nil
 }

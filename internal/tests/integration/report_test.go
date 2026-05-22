@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIntegration_Report(t *testing.T) {
+func TestIntegrationReport(t *testing.T) {
 	cleanOrders()
 
 	order := models.Order{
@@ -42,14 +42,18 @@ func TestIntegration_Report(t *testing.T) {
 		method         string
 		path           string
 		body           []byte
+		apiKey         string
 		expectedStatus int
 		validate       func(t *testing.T, respBody []byte)
 	}{
 		{
-			name:           "create daily report",
-			method:         "POST",
-			path:           "/api/v1/reports/daily",
-			body:           func() []byte { b, _ := json.Marshal(dto.GetDailyReportRequest{Date: "2026-05-03"}); return b }(),
+			name:   "create daily report",
+			method: "POST",
+			path:   "/api/v1/reports/daily",
+			body: func() []byte {
+				b, _ := json.Marshal(dto.GetDailyReportRequest{Date: "2026-05-03"})
+				return b
+			}(),
 			expectedStatus: 201,
 			validate: func(t *testing.T, respBody []byte) {
 				var postBody struct {
@@ -115,6 +119,38 @@ func TestIntegration_Report(t *testing.T) {
 			body:           nil,
 			expectedStatus: 404,
 		},
+		{
+			name:           "get daily report - unauthenticated",
+			method:         "GET",
+			path:           "/api/v1/reports/daily?date=2026-05-03",
+			body:           nil,
+			apiKey:         "",
+			expectedStatus: 401,
+		},
+		{
+			name:           "get daily report - wrong role customer",
+			method:         "GET",
+			path:           "/api/v1/reports/daily?date=2026-05-03",
+			body:           nil,
+			apiKey:         customerAPIKey,
+			expectedStatus: 403,
+		},
+		{
+			name:           "get daily report - wrong role driver",
+			method:         "GET",
+			path:           "/api/v1/reports/daily?date=2026-05-03",
+			body:           nil,
+			apiKey:         driverAPIKey,
+			expectedStatus: 403,
+		},
+		{
+			name:           "create daily report - invalid json body",
+			method:         "POST",
+			path:           "/api/v1/reports/daily",
+			body:           []byte(`{invalid json`),
+			apiKey:         adminAPIKey,
+			expectedStatus: 400,
+		},
 	}
 
 	for _, tc := range cases {
@@ -127,7 +163,12 @@ func TestIntegration_Report(t *testing.T) {
 			} else {
 				req = httptest.NewRequest(tc.method, tc.path, nil)
 			}
-			req.Header.Set("X-API-Key", "test-admin-key")
+
+			if tc.apiKey != "" {
+				req.Header.Set("X-API-Key", tc.apiKey)
+			} else if tc.name != "get daily report - unauthenticated" {
+				req.Header.Set("X-API-Key", adminAPIKey) // fallback to admin for older test cases
+			}
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
@@ -136,6 +177,7 @@ func TestIntegration_Report(t *testing.T) {
 			respBody, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
 			resp.Body.Close()
+
 			if tc.validate != nil {
 				tc.validate(t, respBody)
 			}

@@ -26,7 +26,7 @@ func setupReportHandlerTest(t *testing.T) (*fiber.App, *mocks.ReportService, *ha
 	return app, mockService, handler
 }
 
-func TestReportHandler_GetDailyReport(t *testing.T) {
+func TestReportHandlerGetDailyReport(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
@@ -101,7 +101,7 @@ func TestReportHandler_GetDailyReport(t *testing.T) {
 	}
 }
 
-func TestReportHandler_CreateDailyReport(t *testing.T) {
+func TestReportHandlerCreateDailyReport(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {

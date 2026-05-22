@@ -1,0 +1,12 @@
+.idea
+.git
+.github
+
+.dockerignore
+.env
+.env.local
+.env.example
+.gitignore
+
+Makefile
+README*
