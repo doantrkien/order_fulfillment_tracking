@@ -9,33 +9,37 @@ import (
 	"main/internal/services"
 	"main/pkg/postgresql"
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
+
+	"main/configs"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/logger"
-	"github.com/joho/godotenv"
 	"gorm.io/gorm"
 )
 
 var (
-	app *fiber.App
-	db  *gorm.DB
+	app            *fiber.App
+	db             *gorm.DB
+	customerAPIKey string
+	adminAPIKey    string
+	driverAPIKey   string
 )
 
 func TestMain(m *testing.M) {
+	_, b, _, _ := runtime.Caller(0)
+	basepath := filepath.Dir(b)
+	os.Chdir(filepath.Join(basepath, "../../.."))
 
-	if err := godotenv.Load("../../../.env.local"); err != nil {
-		log.Println("No .env file found, using process environment")
+	if err := configs.LoadConfig(); err != nil {
+		log.Println("LoadConfig error:", err)
 	}
 
-	if os.Getenv("DB_HOST") == "" {
-		log.Println("DB_HOST not set, skipping integration tests")
-		os.Exit(0)
-	}
-
-	os.Setenv("CUSTOMER_API_KEY", "54725cc28e71b4d43646e3697affd2e53d01f502b9f04ccb43a665a83ac2d418")
-	os.Setenv("ADMIN_API_KEY", "8b2062e3c8c1292a47cb900ae480c2e642ae03c22157e311fec14fb40ba8d453")
-	os.Setenv("SHIPPER_API_KEY", "848cf386682fde792d5a5a7c51588b92e8fe1e9e339b130c7b7e13a104839298")
+	customerAPIKey = os.Getenv("CUSTOMER_API_KEY")
+	adminAPIKey = os.Getenv("ADMIN_API_KEY")
+	driverAPIKey = os.Getenv("DRIVER_API_KEY")
 
 	var err error
 	db, err = postgresql.ConnectDB()

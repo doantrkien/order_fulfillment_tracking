@@ -15,8 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testAPIKey = "8b2062e3c8c1292a47cb900ae480c2e642ae03c22157e311fec14fb40ba8d453"
-
 func TestIntegrationReport(t *testing.T) {
 	cleanOrders()
 
@@ -44,6 +42,7 @@ func TestIntegrationReport(t *testing.T) {
 		method         string
 		path           string
 		body           []byte
+		apiKey         string
 		expectedStatus int
 		validate       func(t *testing.T, respBody []byte)
 	}{
@@ -120,6 +119,38 @@ func TestIntegrationReport(t *testing.T) {
 			body:           nil,
 			expectedStatus: 404,
 		},
+		{
+			name:           "get daily report - unauthenticated",
+			method:         "GET",
+			path:           "/api/v1/reports/daily?date=2026-05-03",
+			body:           nil,
+			apiKey:         "",
+			expectedStatus: 401,
+		},
+		{
+			name:           "get daily report - wrong role customer",
+			method:         "GET",
+			path:           "/api/v1/reports/daily?date=2026-05-03",
+			body:           nil,
+			apiKey:         customerAPIKey,
+			expectedStatus: 403,
+		},
+		{
+			name:           "get daily report - wrong role driver",
+			method:         "GET",
+			path:           "/api/v1/reports/daily?date=2026-05-03",
+			body:           nil,
+			apiKey:         driverAPIKey,
+			expectedStatus: 403,
+		},
+		{
+			name:           "create daily report - invalid json body",
+			method:         "POST",
+			path:           "/api/v1/reports/daily",
+			body:           []byte(`{invalid json`),
+			apiKey:         adminAPIKey,
+			expectedStatus: 400,
+		},
 	}
 
 	for _, tc := range cases {
@@ -133,8 +164,11 @@ func TestIntegrationReport(t *testing.T) {
 				req = httptest.NewRequest(tc.method, tc.path, nil)
 			}
 
-			// ✅ API KEY ADDED HERE
-			req.Header.Set("X-API-Key", testAPIKey)
+			if tc.apiKey != "" {
+				req.Header.Set("X-API-Key", tc.apiKey)
+			} else if tc.name != "get daily report - unauthenticated" {
+				req.Header.Set("X-API-Key", adminAPIKey) // fallback to admin for older test cases
+			}
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
