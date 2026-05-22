@@ -11,7 +11,6 @@ import (
 	"main/internal/repositories"
 	routers "main/internal/routers/v1"
 	"main/internal/services"
-	"main/internal/swagger"
 	_ "main/pkg/metrics"
 	"main/pkg/postgresql"
 	"net/http"
@@ -66,7 +65,6 @@ func main() {
 
 	routers.SetupOrderRouter(app, orderHandler)
 	routers.SetupOrderEventRouter(app, orderEventHandler)
-	swagger.SetupSwaggerRoutes(app)
 
 	reportRepo := repositories.NewReportRepository(db)
 	reportService := services.NewReportService(reportRepo)

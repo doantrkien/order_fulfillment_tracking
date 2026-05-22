@@ -166,31 +166,17 @@ func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
 
 	_, err = h.orderService.UpdateOrderStatus(id, string(req.Status))
 	if err != nil {
-<<<<<<< HEAD
-		if errors.Is(err, constant.ERR_NOT_FOUND) {
-			metrics.OrderStatusUpdatedTotal.WithLabelValues(status, "not_found").Inc()
-			return response.Reponse(c, 404, constant.NOT_FOUND, nil)
-		}
-		metrics.OrderStatusUpdatedTotal.WithLabelValues(status, "error").Inc()
-		return response.Reponse(c, 500, constant.ERROR, nil)
-	}
-
-	if models.IsValidTransition(order.CurrentStatus, models.OrderStatus(status)) {
-		metrics.OrderStatusUpdatedTotal.WithLabelValues(status, "invalid_transition").Inc()
-		return response.Reponse(c, 400, constant.INVALID_STATUS, nil)
-=======
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
+			metrics.OrderStatusUpdatedTotal.WithLabelValues(string(req.Status), "not_found").Inc()
 			return response.Reponse(c, 404, constant.NOT_FOUND, nil)
 		}
-
 		if errors.Is(err, errs.ORDER_STATUS_TRANSITION_INVALID) {
 			return response.Reponse(c, 400, constant.INVALID_STATUS, nil)
 		}
-
+		metrics.OrderStatusUpdatedTotal.WithLabelValues(string(req.Status), "error").Inc()
 		return response.Reponse(c, 500, constant.ERROR, nil)
->>>>>>> dev
 	}
 
-	metrics.OrderStatusUpdatedTotal.WithLabelValues(status, "success").Inc()
+	metrics.OrderStatusUpdatedTotal.WithLabelValues(string(req.Status), "success").Inc()
 	return response.Reponse(c, 200, constant.SUCCESS, nil)
 }

@@ -5,9 +5,8 @@ import (
 	"main/internal/dto"
 	"main/internal/models"
 	"main/pkg/metrics"
-	"main/pkg/utils/constant"
-	"time"
 	"main/pkg/utils/errs"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -65,13 +64,11 @@ func (r *orderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int
 	return orders, total, nil
 }
 
-func (r *orderRepository) GetOrderDetail(id int) (*models.Order, error) {
+func (r *orderRepository) GetOrderDetail(id int64) (*models.Order, error) {
 	start := time.Now()
 	defer func() {
 		metrics.OrderDBQueryDuration.WithLabelValues("get_detail").Observe(time.Since(start).Seconds())
 	}()
-func (r *orderRepository) GetOrderDetail(id int64) (*models.Order, error) {
-	var order models.Order
 
 	var order models.Order
 	if err := r.db.First(&order, id).Error; err != nil {
