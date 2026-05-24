@@ -5,13 +5,14 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"time"
 
 	"main/configs"
 	"main/internal/handlers"
 	"main/internal/repositories"
 	routers "main/internal/routers/v1"
 	"main/internal/services"
-	_ "main/pkg/metrics"
+	"main/pkg/metrics"
 	"main/pkg/postgresql"
 	"net/http"
 
@@ -31,13 +32,11 @@ import (
 // @in header
 // @name X-API-Key
 func main() {
-	// 1. Load config
 	err := configs.LoadConfig()
 	if err != nil {
 		log.Fatalf("Cannot load config: %v", err)
 	}
 
-	// 2. Initialize DB (exit on failure)
 	db, err := postgresql.ConnectDB()
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)
@@ -50,7 +49,6 @@ func main() {
 
 	app := fiber.New()
 
-	// 3. Dependency Injection (Wiring)
 	orderRepo := repositories.NewOrderRepository(db)
 	orderService := services.NewOrderService(orderRepo)
 	orderHandler := handlers.NewOrderHandler(orderService)
@@ -70,15 +68,13 @@ func main() {
 	reportService := services.NewReportService(reportRepo)
 	reportHandler := handlers.NewReportHandler(reportService)
 
-	// 4. Background tasks
 	services.StartDailyReportScheduler(reportService)
+	metrics.StartMemoryCollector(5 * time.Second) // log RAM every 5s
 
-	// 5. Setup Routers
 	routers.SetupOrderRouter(app, orderHandler)
 	routers.SetupOrderEventRouter(app, orderEventHandler)
 	routers.SetupReportRouter(app, reportHandler)
 	app.Get("/docs/*", swaggo.HandlerDefault)
 
-	// 6. Start Server
-	log.Fatal(app.Listen(":5000"))
+	log.Fatal(app.Listen(":3000"))
 }
