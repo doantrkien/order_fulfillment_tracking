@@ -7,9 +7,12 @@ import (
 	"main/internal/models"
 	"main/internal/repositories"
 	"main/pkg/utils/errs"
+	"time"
 
 	"gorm.io/gorm"
 )
+
+var loc, _ = time.LoadLocation("Asia/Ho_Chi_Minh")
 
 type OrderService interface {
 	GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, int64, error)
@@ -50,7 +53,7 @@ func (s *orderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, in
 			UserPhone:       userInfo.UserPhone,
 			ShippingAddress: userInfo.ShippingAddress,
 			Status:          order.CurrentStatus,
-			Ordered_at:      order.CreatedAt,
+			Ordered_at:      order.CreatedAt.In(loc),
 		})
 	}
 	return response, total, nil
@@ -83,7 +86,7 @@ func (s *orderService) GetOrder(id int64) (*dto.OrderReponse, error) {
 		UserPhone:       userInfo.UserPhone,
 		ShippingAddress: userInfo.ShippingAddress,
 		Status:          order.CurrentStatus,
-		Ordered_at:      order.CreatedAt,
+		Ordered_at:      order.CreatedAt.In(loc),
 	}
 
 	return &response, nil

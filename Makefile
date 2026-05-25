@@ -17,6 +17,12 @@ download:
 	go mod download
 
 # =========================
+# SWAGGER
+# =========================
+swagger:
+	swag init -g $(MAIN_FILE)/main.go
+
+# =========================
 # TEST
 # =========================
 test:
