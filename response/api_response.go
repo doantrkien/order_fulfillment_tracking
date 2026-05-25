@@ -1,6 +1,11 @@
 package response
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"errors"
+	"main/errs"
+
+	"github.com/gofiber/fiber/v3"
+)
 
 type ResponseStruct struct {
 	Status  int         `json:"status" example:"200"`
@@ -8,7 +13,7 @@ type ResponseStruct struct {
 	Message string      `json:"message" example:"Success"`
 }
 
-func Reponse(c fiber.Ctx, status int, message string, data interface{}) error {
+func ResponseSuccess(c fiber.Ctx, status int, message string, data interface{}) error {
 	return c.Status(status).JSON(ResponseStruct{
 		Status:  status,
 		Message: message,
@@ -39,5 +44,23 @@ func PaginatedSuccess(c fiber.Ctx, message string, data any, currentPage, limitI
 			TotalItems:  totalItems,
 		},
 		Data: data,
+	})
+}
+
+func ResponseError(c fiber.Ctx, err error) error {
+	var appErr *errs.AppError
+
+	if errors.As(err, &appErr) {
+		return c.Status(appErr.StatusCode).JSON(ResponseStruct{
+			Status:  appErr.StatusCode,
+			Data:    nil,
+			Message: appErr.Err.Message,
+		})
+	}
+
+	return c.Status(500).JSON(ResponseStruct{
+		Status:  500,
+		Data:    nil,
+		Message: errs.ERR_INTERNAL_SERVER.Err.Message,
 	})
 }

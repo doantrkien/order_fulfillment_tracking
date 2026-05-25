@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
+	"main/constant"
 	"main/errs"
 	"main/internal/dto"
 	"main/internal/services"
@@ -43,7 +45,7 @@ func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
 	var query dto.OrderQuery
 
 	if err := c.Bind().Query(&query); err != nil {
-		return response.Reponse(c, 400, response.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
 	}
 
 	if query.PageNumber <= 0 {
@@ -55,12 +57,12 @@ func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
 
 	result, totalItems, err := h.orderService.GetAllOrder(query)
 	if err != nil {
-		return response.Reponse(c, 500, response.ERROR, nil)
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER)
 	}
 
 	return response.PaginatedSuccess(
 		c,
-		response.SUCCESS,
+		constant.SUCCESS.Message,
 		result,
 		query.PageNumber,
 		query.LimitItems,
@@ -86,18 +88,18 @@ func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
 func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		return response.Reponse(c, 400, response.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
 	}
-
+	fmt.Printf("GetOrderDetail: id=%d\n", id)
 	order, err := h.orderService.GetOrder(id)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
-			return response.Reponse(c, 404, response.NOT_FOUND, nil)
+			return response.ResponseError(c, errs.ERR_NOT_FOUND)
 		}
-		return response.Reponse(c, 500, response.ERROR, nil)
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER)
 	}
 
-	return response.Reponse(c, 200, response.SUCCESS, order)
+	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, order)
 }
 
 // CreateOrder godoc
@@ -119,17 +121,17 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 
 	if err := c.Bind().Body(&req); err != nil {
 		metrics.OrderCreatedTotal.WithLabelValues("error").Inc()
-		return response.Reponse(c, 400, response.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
 	}
 
 	_, err := h.orderService.CreateOrder(req)
 	if err != nil {
 		metrics.OrderCreatedTotal.WithLabelValues("error").Inc()
-		return response.Reponse(c, 500, response.ERROR, nil)
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER)
 	}
 
 	metrics.OrderCreatedTotal.WithLabelValues("success").Inc()
-	return response.Reponse(c, 201, response.SUCCESS, nil)
+	return response.ResponseSuccess(c, 201, constant.SUCCESS.Message, nil)
 }
 
 // UpdateOrderStatus godoc
@@ -149,33 +151,35 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 // @Router /api/v1/orders/{id}/status [patch]
 func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
+	}
 	var req dto.UpdateStatusRequest
 
 	if err != nil {
-		return response.Reponse(c, 400, response.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER)
 	}
 
 	if err := c.Bind().Body(&req); err != nil {
-		return response.Reponse(c, 400, response.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
 	}
 
 	if req.Status == "" {
-		return response.Reponse(c, 400, response.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
 	}
 
 	_, err = h.orderService.UpdateOrderStatus(id, string(req.Status))
 	if err != nil {
-		if errors.Is(err, errs.ERR_NOT_FOUND) {
+		if errors.As(err, &errs.ERR_NOT_FOUND) {
 			metrics.OrderStatusUpdatedTotal.WithLabelValues(string(req.Status), "not_found").Inc()
-			return response.Reponse(c, 404, response.NOT_FOUND, nil)
+			return response.ResponseError(c, errs.ERR_NOT_FOUND)
 		}
-		if errors.Is(err, errs.ERR_ORDER_STATUS_TRANSITION_INVALID) {
-			return response.Reponse(c, 400, response.INVALID_STATUS, nil)
+		if errors.Is(err, errs.ERR_INVALID_STATUS) {
+			return response.ResponseError(c, errs.ERR_INVALID_STATUS)
 		}
 		metrics.OrderStatusUpdatedTotal.WithLabelValues(string(req.Status), "error").Inc()
-		return response.Reponse(c, 500, response.ERROR, nil)
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER)
 	}
-
 	metrics.OrderStatusUpdatedTotal.WithLabelValues(string(req.Status), "success").Inc()
-	return response.Reponse(c, 200, response.SUCCESS, nil)
+	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, nil)
 }

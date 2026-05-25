@@ -2,14 +2,11 @@ package services
 
 import (
 	"encoding/json"
-	"errors"
 	"main/errs"
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/repositories"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 var loc, _ = time.LoadLocation("Asia/Ho_Chi_Minh")
@@ -62,9 +59,6 @@ func (s *orderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, in
 func (s *orderService) GetOrder(id int64) (*dto.OrderReponse, error) {
 	order, err := s.orderRepo.GetOrderDetail(id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errs.ERR_NOT_FOUND
-		}
 
 		return nil, err
 	}
@@ -113,9 +107,6 @@ func (s *orderService) CreateOrder(req dto.OrderRequest) (*models.Order, error) 
 func (s *orderService) UpdateOrderStatus(id int64, status string) (*models.Order, error) {
 	order, err := s.GetOrder(id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errs.ERR_NOT_FOUND
-		}
 		return nil, err
 	}
 
@@ -123,8 +114,12 @@ func (s *orderService) UpdateOrderStatus(id int64, status string) (*models.Order
 		return nil, errs.ERR_NOT_FOUND
 	}
 
+	if order == nil {
+		return nil, errs.ERR_NOT_FOUND
+	}
+
 	if !models.IsValidTransition(order.Status, models.OrderStatus(status)) {
-		return nil, errs.ERR_ORDER_STATUS_TRANSITION_INVALID
+		return nil, errs.ERR_INVALID_STATUS
 	}
 
 	newOrder, err := s.orderRepo.UpdateOrderStatus(id, status)

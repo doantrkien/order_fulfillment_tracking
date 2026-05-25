@@ -65,15 +65,16 @@ func (r *orderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int
 }
 
 func (r *orderRepository) GetOrderDetail(id int64) (*models.Order, error) {
-	start := time.Now()
-	defer func() {
-		metrics.OrderDBQueryDuration.WithLabelValues("get_detail").Observe(time.Since(start).Seconds())
-	}()
-
 	var order models.Order
+
 	if err := r.db.First(&order, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.ERR_NOT_FOUND
+		}
+
 		return nil, err
 	}
+
 	return &order, nil
 }
 

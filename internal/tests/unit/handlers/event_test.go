@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"main/constant"
 	"main/internal/dto"
 	"main/internal/handlers"
 
@@ -58,13 +59,13 @@ func TestOrderEventHandler_ImportOrderEvents(t *testing.T) {
 			expectedStatus: 200,
 			validate: func(t *testing.T, respBody []byte) {
 				var resp struct {
-					Status  int                          `json:"status"`
-					Message string                       `json:"message"`
+					Status  int                           `json:"status"`
+					Message string                        `json:"message"`
 					Data    dto.ImportOrderEventsResponse `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &resp))
 				assert.Equal(t, 200, resp.Status)
-				assert.Equal(t, "batch processed", resp.Message)
+				assert.Equal(t, constant.SUCCESS.Message, resp.Message)
 				assert.Equal(t, 2, resp.Data.Accepted)
 			},
 		},
@@ -80,7 +81,7 @@ func TestOrderEventHandler_ImportOrderEvents(t *testing.T) {
 				}
 				require.NoError(t, json.Unmarshal(respBody, &resp))
 				assert.Equal(t, 400, resp.Status)
-				assert.Equal(t, "invalid payload", resp.Message)
+				assert.Equal(t, constant.INVALID_INPUT.Message, resp.Message)
 			},
 		},
 		{
@@ -101,8 +102,8 @@ func TestOrderEventHandler_ImportOrderEvents(t *testing.T) {
 			expectedStatus: 500,
 			validate: func(t *testing.T, respBody []byte) {
 				var resp struct {
-					Status  int                          `json:"status"`
-					Message string                       `json:"message"`
+					Status  int                           `json:"status"`
+					Message string                        `json:"message"`
 					Data    dto.ImportOrderEventsResponse `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &resp))

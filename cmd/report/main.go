@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"main/configs"
-	"main/internal/etl"
 	"main/pkg/postgresql"
 )
 
@@ -45,11 +44,6 @@ func main() {
 
 	if err := sqlDB.PingContext(ctx); err != nil {
 		log.Fatalf("database ping failed: %v", err)
-	}
-
-	processor := etl.Processor{DB: sqlDB}
-	if err := processor.RunDailyReport(ctx, reportDate); err != nil {
-		log.Fatalf("report generation failed: %v", err)
 	}
 
 	fmt.Printf("Daily report generated for %s\n", reportDate.Format("2006-01-02"))

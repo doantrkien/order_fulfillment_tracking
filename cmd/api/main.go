@@ -80,5 +80,5 @@ func main() {
 	app.Get("/docs/*", swaggo.HandlerDefault)
 
 	// 6. Start Server
-	log.Fatal(app.Listen(":5000"))
+	log.Fatal(app.Listen(":3000"))
 }

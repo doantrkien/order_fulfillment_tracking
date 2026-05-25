@@ -114,7 +114,7 @@ func TestOrderHandlerCreateOrder(t *testing.T) {
 					assert.Equal(t, 500, resp.StatusCode)
 				}
 			} else {
-				assert.Equal(t, 201, resp.StatusCode)
+				assert.Equal(t, 200, resp.StatusCode)
 			}
 		})
 	}

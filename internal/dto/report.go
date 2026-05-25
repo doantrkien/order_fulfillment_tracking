@@ -5,7 +5,7 @@ import (
 )
 
 type GetDailyReportRequest struct {
-	Date string `json:"date" query:"date" example:"2026-05-18"`
+	Date string `json:"date" query:"date" validate:"required" example:"2026-05-18"`
 }
 
 type DailyReportResponse struct {

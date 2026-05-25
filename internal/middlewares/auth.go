@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"fmt"
+	"main/errs"
 	"main/response"
 	"os"
 
@@ -11,9 +13,10 @@ func Authenticate() fiber.Handler {
 	return func(c fiber.Ctx) error {
 
 		apiKey := c.Get("X-API-Key")
+		fmt.Printf("Received API Key: %s\n", apiKey) // Debug log for received API key
 
 		if apiKey == "" {
-			return response.Reponse(c, 401, response.UN_AUTHENTICATION, nil)
+			return response.ResponseError(c, errs.ERR_UNAUTHENTICATED)
 		}
 
 		switch apiKey {
@@ -27,7 +30,7 @@ func Authenticate() fiber.Handler {
 			c.Locals("role", "admin")
 
 		default:
-			return response.Reponse(c, 401, response.UN_AUTHENTICATION, nil)
+			return response.ResponseError(c, errs.ERR_UNAUTHENTICATED)
 		}
 
 		return c.Next()
@@ -38,7 +41,7 @@ func Authorize(roles []string) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		role, ok := c.Locals("role").(string)
 		if !ok {
-			return response.Reponse(c, 401, response.UN_AUTHENTICATION, nil)
+			return response.ResponseError(c, errs.ERR_UNAUTHENTICATED)
 		}
 
 		for _, r := range roles {
@@ -46,6 +49,6 @@ func Authorize(roles []string) fiber.Handler {
 				return c.Next()
 			}
 		}
-		return response.Reponse(c, 403, response.UN_AUTHORIZATION, nil)
+		return response.ResponseError(c, errs.ERR_UNAUTHORIZED)
 	}
 }

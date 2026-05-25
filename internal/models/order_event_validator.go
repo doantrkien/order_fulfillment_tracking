@@ -2,8 +2,6 @@ package models
 
 import "fmt"
 
-// IsValidStatus checks if a status string is a known OrderStatus value.
-// Used by the service layer for basic input validation.
 func IsValidStatus(s OrderStatus) bool {
 	switch s {
 	case ORDER_STATUS_CREATED, ORDER_STATUS_PAID, ORDER_STATUS_PACKED,

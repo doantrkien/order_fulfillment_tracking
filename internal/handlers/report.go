@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"main/constant"
 	"main/errs"
 	"main/internal/dto"
 	"main/internal/services"
@@ -38,23 +39,23 @@ func NewReportHandler(reportService services.ReportService) *ReportHandler {
 func (h *ReportHandler) GetDailyReport(c fiber.Ctx) error {
 	dateStr := c.Query("date")
 	if dateStr == "" {
-		return response.Reponse(c, 400, response.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
 	}
 
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
-		return response.Reponse(c, 400, response.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
 	}
 
 	report, err := h.reportService.GetDailyReport(date)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
-			return response.Reponse(c, 404, response.NOT_FOUND, nil)
+			return response.ResponseError(c, errs.ERR_NOT_FOUND)
 		}
-		return response.Reponse(c, 500, response.ERROR, nil)
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER)
 	}
 
-	return response.Reponse(c, 200, response.SUCCESS, report)
+	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, report)
 }
 
 // CreateDailyReport godoc
@@ -73,22 +74,22 @@ func (h *ReportHandler) GetDailyReport(c fiber.Ctx) error {
 func (h *ReportHandler) CreateDailyReport(c fiber.Ctx) error {
 	var req dto.GetDailyReportRequest
 	if err := c.Bind().Body(&req); err != nil {
-		return response.Reponse(c, 400, response.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
 	}
 
 	if req.Date == "" {
-		return response.Reponse(c, 400, response.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
 	}
 
 	date, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
-		return response.Reponse(c, 400, response.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
 	}
 
 	report, err := h.reportService.CreateDailyReport(date)
 	if err != nil {
-		return response.Reponse(c, 500, response.ERROR, nil)
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER)
 	}
 
-	return response.Reponse(c, 201, response.SUCCESS, report)
+	return response.ResponseSuccess(c, 201, constant.SUCCESS.Message, report)
 }
