@@ -4,7 +4,6 @@ import (
 	"errors"
 	"main/internal/models"
 	"main/internal/repositories"
-	"main/pkg/utils/errs"
 	"time"
 
 	"gorm.io/gorm"
@@ -20,16 +19,14 @@ type reportService struct {
 }
 
 func NewReportService(reportRepo repositories.ReportRepository) ReportService {
-	return &reportService{
-		reportRepo: reportRepo,
-	}
+	return &reportService{reportRepo: reportRepo}
 }
 
 func (s *reportService) GetDailyReport(date time.Time) (*models.Report, error) {
 	report, err := s.reportRepo.GetDailyReport(date)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errs.ERR_NOT_FOUND
+			return s.CreateDailyReport(date)
 		}
 		return nil, err
 	}
@@ -37,7 +34,12 @@ func (s *reportService) GetDailyReport(date time.Time) (*models.Report, error) {
 }
 
 func (s *reportService) CreateDailyReport(date time.Time) (*models.Report, error) {
-	periodStart := time.Date(date.Year(), date.Month(), date.Day(), 3, 0, 0, 0, date.Location())
+	loc, err := time.LoadLocation("Asia/Ho_Chi_Minh")
+	if err != nil {
+		loc = time.UTC
+	}
+
+	periodStart := time.Date(date.Year(), date.Month(), date.Day(), 3, 0, 0, 0, loc)
 	periodEnd := periodStart.Add(24 * time.Hour)
 
 	report, err := s.reportRepo.BuildDailyReport(periodStart, periodEnd)

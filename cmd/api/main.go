@@ -11,7 +11,6 @@ import (
 	"main/internal/repositories"
 	routers "main/internal/routers/v1"
 	"main/internal/services"
-	_ "main/pkg/metrics"
 	"main/pkg/postgresql"
 	"net/http"
 

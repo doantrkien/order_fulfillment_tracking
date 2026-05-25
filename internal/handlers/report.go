@@ -86,6 +86,11 @@ func (h *ReportHandler) CreateDailyReport(c fiber.Ctx) error {
 		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
 	}
 
+	today := time.Now().Truncate(24 * time.Hour)
+	if date.Truncate(24 * time.Hour).After(today) {
+		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
+	}
+
 	report, err := h.reportService.CreateDailyReport(date)
 	if err != nil {
 		return response.Reponse(c, 500, constant.ERROR, nil)
