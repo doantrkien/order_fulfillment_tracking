@@ -9,10 +9,9 @@ services:
     ports:
       - "5000:5000"
     env_file:
-      - .env
+      - .env.docker
     environment:
       APP_ENV: docker
-      DB_HOST: postgres
     volumes:
       - .:/app
       - /app/tmp               
@@ -28,30 +27,41 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: ${DB_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-12345}
-      POSTGRES_DB: ${DB_DATABASE:-order_tracking}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345
+      POSTGRES_DB: order_tracking
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-order_tracking}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d order_tracking"]
       interval: 5s
       timeout: 5s
       retries: 8
       start_period: 10s
 
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+  adminer:
+    image: adminer
+    container_name: adminer
     ports:
-      - "5050:80"
+      - "8080:8080"
     depends_on:
       - postgres
     restart: unless-stopped
+
+  grafana:
+      image: grafana/grafana:latest
+      container_name: grafana
+      ports:
+        - "3001:3000"
+      volumes:
+        - grafana_data:/var/lib/grafana
+      environment:
+        - GF_SECURITY_ADMIN_PASSWORD=admin123
+        - GF_USERS_ALLOW_SIGN_UP=false
+      restart: unless-stopped
+      depends_on:
+        - app
 
   prometheus:
     image: prom/prometheus:latest
@@ -64,23 +74,6 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    restart: always
-    ports:
-      - "3001:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
-      - GF_USERS_ALLOW_SIGN_UP=false
-    volumes:
-      - grafana_data:/var/lib/grafana
-    depends_on:
-      - app
-      - prometheus
-
 volumes:
   postgres_data:
   grafana_data:
-
