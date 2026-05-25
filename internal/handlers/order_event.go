@@ -3,7 +3,7 @@ package handlers
 import (
 	"main/internal/dto"
 	"main/internal/services"
-	"main/pkg/utils/response"
+	"main/response"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -32,12 +32,12 @@ func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
 	var req []dto.ImportOrderEventRequest
 
 	if err := c.Bind().Body(&req); err != nil {
-		return response.Reponse(c, 400, "invalid payload", nil)
+		return response.Reponse(c, 400, response.INVALID_INPUT, nil)
 	}
 
 	result, err := h.orderEventService.ImportOrderEvents(req)
 	if err != nil {
-		return response.Reponse(c, 500, err.Error(), result)
+		return response.Reponse(c, 500, response.ERROR, result)
 	}
 	return response.Reponse(c, 200, "batch processed", result)
 }

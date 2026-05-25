@@ -1,8 +1,7 @@
 package middlewares
 
 import (
-	"main/pkg/utils/constant"
-	"main/pkg/utils/response"
+	"main/response"
 	"os"
 
 	"github.com/gofiber/fiber/v3"
@@ -14,7 +13,7 @@ func Authenticate() fiber.Handler {
 		apiKey := c.Get("X-API-Key")
 
 		if apiKey == "" {
-			return response.Reponse(c, 401, constant.UN_AUTHENTICATION, nil)
+			return response.Reponse(c, 401, response.UN_AUTHENTICATION, nil)
 		}
 
 		switch apiKey {
@@ -28,7 +27,7 @@ func Authenticate() fiber.Handler {
 			c.Locals("role", "admin")
 
 		default:
-			return response.Reponse(c, 401, constant.UN_AUTHENTICATION, nil)
+			return response.Reponse(c, 401, response.UN_AUTHENTICATION, nil)
 		}
 
 		return c.Next()
@@ -39,7 +38,7 @@ func Authorize(roles []string) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		role, ok := c.Locals("role").(string)
 		if !ok {
-			return response.Reponse(c, 401, constant.UN_AUTHENTICATION, nil)
+			return response.Reponse(c, 401, response.UN_AUTHENTICATION, nil)
 		}
 
 		for _, r := range roles {
@@ -47,6 +46,6 @@ func Authorize(roles []string) fiber.Handler {
 				return c.Next()
 			}
 		}
-		return response.Reponse(c, 403, constant.UN_AUTHORIZATION, nil)
+		return response.Reponse(c, 403, response.UN_AUTHORIZATION, nil)
 	}
 }

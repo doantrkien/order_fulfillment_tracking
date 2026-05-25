@@ -10,8 +10,8 @@ services:
       - "5000:5000"
     env_file:
       - .env.docker
-    environment:
-      APP_ENV: docker
+    # environment:
+    #   APP_ENV: docker
     volumes:
       - .:/app
       - /app/tmp               
@@ -73,20 +73,6 @@ services:
       - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
     extra_hosts:
       - "host.docker.internal:host-gateway"
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    restart: always
-    ports:
-      - "3001:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
-    volumes:
-      - grafana_data:/var/lib/grafana
-    depends_on:
-      - prometheus
 
 volumes:
   postgres_data:

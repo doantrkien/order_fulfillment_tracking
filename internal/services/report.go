@@ -2,9 +2,9 @@ package services
 
 import (
 	"errors"
+	"main/errs"
 	"main/internal/models"
 	"main/internal/repositories"
-	"main/pkg/utils/errs"
 	"time"
 
 	"gorm.io/gorm"

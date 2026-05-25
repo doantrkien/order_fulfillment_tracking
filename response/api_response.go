@@ -17,10 +17,9 @@ func Reponse(c fiber.Ctx, status int, message string, data interface{}) error {
 }
 
 type Pagination struct {
-	Page       int   `json:"current_page" example:"1"`
-	Limit      int   `json:"limit_item" example:"10"`
-	Total      int64 `json:"total_items" example:"100"`
-	TotalPages int   `json:"total_pages" example:"10"`
+	CurrentPage int   `json:"current_page" example:"1"`
+	LimitItems  int   `json:"limit_items" example:"10"`
+	TotalItems  int64 `json:"total_items" example:"100"`
 }
 
 type PaginatedResponse struct {
@@ -30,21 +29,14 @@ type PaginatedResponse struct {
 	Data       any        `json:"data"`
 }
 
-func PaginatedSuccess(c fiber.Ctx, message string, data any, page, limit int, total int64) error {
-
-	totalPages := 0
-	if limit > 0 {
-		totalPages = int((total + int64(limit) - 1) / int64(limit))
-	}
-
+func PaginatedSuccess(c fiber.Ctx, message string, data any, currentPage, limitItems int, totalItems int64) error {
 	return c.Status(200).JSON(PaginatedResponse{
 		Status:  200,
 		Message: message,
 		Pagination: Pagination{
-			Page:       page,
-			Limit:      limit,
-			Total:      total,
-			TotalPages: totalPages,
+			CurrentPage: currentPage,
+			LimitItems:  limitItems,
+			TotalItems:  totalItems,
 		},
 		Data: data,
 	})

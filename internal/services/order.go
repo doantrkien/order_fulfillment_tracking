@@ -3,10 +3,10 @@ package services
 import (
 	"encoding/json"
 	"errors"
+	"main/errs"
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/repositories"
-	"main/pkg/utils/errs"
 	"time"
 
 	"gorm.io/gorm"
@@ -124,7 +124,7 @@ func (s *orderService) UpdateOrderStatus(id int64, status string) (*models.Order
 	}
 
 	if !models.IsValidTransition(order.Status, models.OrderStatus(status)) {
-		return nil, errs.ORDER_STATUS_TRANSITION_INVALID
+		return nil, errs.ERR_ORDER_STATUS_TRANSITION_INVALID
 	}
 
 	newOrder, err := s.orderRepo.UpdateOrderStatus(id, status)

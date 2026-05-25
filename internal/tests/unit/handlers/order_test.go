@@ -142,7 +142,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 						CreatedAt:     mockTime,
 					},
 				}
-				m.On("GetAllOrder", dto.OrderQuery{Page: 1, Limit: 10}).
+				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}).
 					Return(mockOrders, int64(1), nil).Once()
 			},
 			wantCode: 200,
@@ -175,7 +175,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 						CreatedAt:     mockTime,
 					},
 				}
-				m.On("GetAllOrder", dto.OrderQuery{Page: 2, Limit: 5}).
+				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 2, LimitItems: 5}).
 					Return(mockOrders, int64(8), nil).Once()
 			},
 			wantCode: 200,
@@ -195,7 +195,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 			name:  "Service error",
 			query: "",
 			setupMock: func(m *mocks.OrderRepository) {
-				m.On("GetAllOrder", dto.OrderQuery{Page: 1, Limit: 10}).Return(nil, int64(0), assert.AnError).Once()
+				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}).Return(nil, int64(0), assert.AnError).Once()
 			},
 			wantCode: 500,
 		},
@@ -209,7 +209,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 						CurrentStatus: models.ORDER_STATUS_PAID,
 					},
 				}
-				m.On("GetAllOrder", dto.OrderQuery{Page: 1, Limit: 10, Status: "paid"}).
+				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10, Status: "paid"}).
 					Return(mockOrders, int64(1), nil).Once()
 			},
 			wantCode: 200,
@@ -223,7 +223,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 						ID: 3,
 					},
 				}
-				m.On("GetAllOrder", dto.OrderQuery{Page: 1, Limit: 10, Date: "2026-05-19"}).
+				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10, Date: "2026-05-19"}).
 					Return(mockOrders, int64(1), nil).Once()
 			},
 			wantCode: 200,

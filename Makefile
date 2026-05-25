@@ -3,18 +3,22 @@
 # =========================
 APP_NAME=main
 MAIN_FILE=./cmd/api
+MIGRATION_FILE=./cmd/migration
 
 # =========================
 # GO COMMANDS
 # =========================
 run:
-	go run $(MAIN_FILE)
+	ENV_FILE=.env.local go run $(MAIN_FILE)
 
 tidy:
 	go mod tidy
 
 download:
 	go mod download
+
+migrate:
+	ENV_FILE=.env.local go run $(MIGRATION_FILE)
 
 # =========================
 # TEST
@@ -41,9 +45,6 @@ test-unit-handler:
 
 test-integration:
 	go test -v ./internal/tests/integration/... --coverpkg=./internal/...
-
-
-
 
 # =========================
 # DOCKER

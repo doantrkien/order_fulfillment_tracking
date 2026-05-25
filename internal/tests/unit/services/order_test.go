@@ -142,7 +142,7 @@ func TestOrderServiceGetAllOrder(t *testing.T) {
 	}{
 		{
 			name:  "Success",
-			input: dto.OrderQuery{Page: 1, Limit: 10},
+			input: dto.OrderQuery{PageNumber: 1, LimitItems: 10},
 			setupMock: func(mockRepo *mocks.OrderRepository) {
 				mockOrders := []models.Order{
 					{
@@ -162,7 +162,7 @@ func TestOrderServiceGetAllOrder(t *testing.T) {
 				}
 
 				mockRepo.
-					On("GetAllOrder", dto.OrderQuery{Page: 1, Limit: 10}).
+					On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}).
 					Return(mockOrders, int64(2), nil).
 					Once()
 			},
@@ -189,10 +189,10 @@ func TestOrderServiceGetAllOrder(t *testing.T) {
 		},
 		{
 			name:  "Get data error",
-			input: dto.OrderQuery{Page: 1, Limit: 10},
+			input: dto.OrderQuery{PageNumber: 1, LimitItems: 10},
 			setupMock: func(mockRepo *mocks.OrderRepository) {
 				mockRepo.
-					On("GetAllOrder", dto.OrderQuery{Page: 1, Limit: 10}).
+					On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}).
 					Return(nil, int64(0), assert.AnError).
 					Once()
 			},
