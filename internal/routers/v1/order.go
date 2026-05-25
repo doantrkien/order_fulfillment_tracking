@@ -9,7 +9,7 @@ import (
 
 func SetupOrderRouter(app *fiber.App, orderHandler *handlers.OrderHandler) {
 	order := app.Group("api/v1/orders",
-		//middlewares.Authenticate(),
+		middlewares.Authenticate(),
 		middlewares.MetricsMiddleware(),
 	)
 

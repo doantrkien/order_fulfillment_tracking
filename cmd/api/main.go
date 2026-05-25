@@ -26,7 +26,7 @@ import (
 // @title Order Fulfillment Tracking API
 // @version 1.0.0
 // @description HTTP API for order fulfillment tracking.
-// @host localhost:3000
+// @host localhost:5000
 // @BasePath /
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
@@ -61,20 +61,17 @@ func main() {
 	orderEventService := services.NewOrderEventService(orderEventRepo, maxWorkers)
 	orderEventHandler := handlers.NewOrderEventHandler(orderEventService)
 
-	routers.SetupOrderRouter(app, orderHandler)
-	routers.SetupOrderEventRouter(app, orderEventHandler)
-
 	reportRepo := repositories.NewReportRepository(db)
 	reportService := services.NewReportService(reportRepo)
 	reportHandler := handlers.NewReportHandler(reportService)
 
 	services.StartDailyReportScheduler(reportService)
-	metrics.StartMemoryCollector(5 * time.Second) // log RAM every 5s
+	metrics.StartMemoryCollector(5 * time.Second) 
 
 	routers.SetupOrderRouter(app, orderHandler)
 	routers.SetupOrderEventRouter(app, orderEventHandler)
 	routers.SetupReportRouter(app, reportHandler)
 	app.Get("/docs/*", swaggo.HandlerDefault)
 
-	log.Fatal(app.Listen(":3000"))
+	log.Fatal(app.Listen(":5000"))
 }
