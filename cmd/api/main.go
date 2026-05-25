@@ -5,25 +5,18 @@ import (
 	"os"
 	"runtime"
 	"strconv"
-	"time"
 
 	"main/configs"
 	"main/internal/handlers"
 	"main/internal/repositories"
 	routers "main/internal/routers/v1"
 	"main/internal/services"
-<<<<<<< HEAD
-=======
-	"main/pkg/metrics"
->>>>>>> dev
 	"main/pkg/postgresql"
-	"net/http"
 
 	_ "main/docs"
 
 	"github.com/gofiber/contrib/v3/swaggo"
 	"github.com/gofiber/fiber/v3"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // @title Order Fulfillment Tracking API
@@ -45,11 +38,6 @@ func main() {
 		log.Fatalf("Error initializing database: %v", err)
 	}
 
-	go func() {
-		http.Handle("/metrics", promhttp.Handler())
-		http.ListenAndServe(":9091", nil)
-	}()
-
 	app := fiber.New()
 
 	orderRepo := repositories.NewOrderRepository(db)
@@ -69,7 +57,6 @@ func main() {
 	reportHandler := handlers.NewReportHandler(reportService)
 
 	services.StartDailyReportScheduler(reportService)
-	metrics.StartMemoryCollector(5 * time.Second) 
 
 	routers.SetupOrderRouter(app, orderHandler)
 	routers.SetupOrderEventRouter(app, orderEventHandler)
