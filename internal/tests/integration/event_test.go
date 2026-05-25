@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"main/constant"
 	"main/internal/dto"
 	"main/internal/models"
 	"net/http/httptest"
@@ -47,12 +48,12 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 			expectedStatus: 200,
 			validate: func(t *testing.T, respBody []byte) {
 				var body struct {
-					Status  int                          `json:"status"`
-					Message string                       `json:"message"`
+					Status  int                           `json:"status"`
+					Message string                        `json:"message"`
 					Data    dto.ImportOrderEventsResponse `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &body))
-				assert.Equal(t, "batch processed", body.Message)
+				assert.Equal(t, constant.SUCCESS.Message, body.Message)
 				assert.Equal(t, 1, body.Data.Accepted)
 				assert.Equal(t, 0, body.Data.Rejected)
 				assert.Equal(t, 0, body.Data.Duplicate)
@@ -159,7 +160,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 					Message string `json:"message"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &body))
-				assert.Equal(t, "invalid payload", body.Message)
+				assert.Equal(t, constant.INVALID_INPUT.Message, body.Message)
 			},
 		},
 	}
@@ -178,6 +179,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 
 			req := httptest.NewRequest("POST", "/api/v1/order-events/import", bytes.NewBuffer(bodyBytes))
 			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("X-API-Key", adminAPIKey)
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
@@ -208,6 +210,7 @@ func TestIntegrationImportOrderEventsFullLifecycle(t *testing.T) {
 
 		req := httptest.NewRequest("POST", "/api/v1/order-events/import", bytes.NewBuffer(bodyBytes))
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-API-Key", adminAPIKey)
 
 		resp, err := app.Test(req)
 		require.NoError(t, err)
@@ -247,6 +250,7 @@ func TestIntegrationImportOrderEventsMixedBatch(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/api/v1/order-events/import", bytes.NewBuffer(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", adminAPIKey)
 
 	resp, err := app.Test(req)
 	require.NoError(t, err)

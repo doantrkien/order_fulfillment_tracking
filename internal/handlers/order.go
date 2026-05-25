@@ -11,6 +11,7 @@ import (
 	"main/response"
 	"strconv"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -118,12 +119,14 @@ func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
 // @Router /api/v1/orders [post]
 func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 	var req dto.OrderRequest
-
 	if err := c.Bind().Body(&req); err != nil {
 		metrics.OrderCreatedTotal.WithLabelValues("error").Inc()
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
 	}
 
+	if err := validator.New().Struct(req); err != nil {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
+	}
 	_, err := h.orderService.CreateOrder(req)
 	if err != nil {
 		metrics.OrderCreatedTotal.WithLabelValues("error").Inc()
@@ -131,7 +134,7 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 	}
 
 	metrics.OrderCreatedTotal.WithLabelValues("success").Inc()
-	return response.ResponseSuccess(c, 201, constant.SUCCESS.Message, nil)
+	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, nil)
 }
 
 // UpdateOrderStatus godoc
@@ -156,10 +159,6 @@ func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
 	}
 	var req dto.UpdateStatusRequest
 
-	if err != nil {
-		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER)
-	}
-
 	if err := c.Bind().Body(&req); err != nil {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
 	}
@@ -170,7 +169,7 @@ func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
 
 	_, err = h.orderService.UpdateOrderStatus(id, string(req.Status))
 	if err != nil {
-		if errors.As(err, &errs.ERR_NOT_FOUND) {
+		if errors.Is(err, errs.ERR_NOT_FOUND) {
 			metrics.OrderStatusUpdatedTotal.WithLabelValues(string(req.Status), "not_found").Inc()
 			return response.ResponseError(c, errs.ERR_NOT_FOUND)
 		}

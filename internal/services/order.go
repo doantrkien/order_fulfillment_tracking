@@ -63,10 +63,6 @@ func (s *orderService) GetOrder(id int64) (*dto.OrderReponse, error) {
 		return nil, err
 	}
 
-	if order == nil {
-		return nil, errs.ERR_NOT_FOUND
-	}
-
 	userInfo := &models.UserInfo{}
 
 	if len(order.UserInfo) > 0 {
@@ -108,14 +104,6 @@ func (s *orderService) UpdateOrderStatus(id int64, status string) (*models.Order
 	order, err := s.GetOrder(id)
 	if err != nil {
 		return nil, err
-	}
-
-	if order == nil {
-		return nil, errs.ERR_NOT_FOUND
-	}
-
-	if order == nil {
-		return nil, errs.ERR_NOT_FOUND
 	}
 
 	if !models.IsValidTransition(order.Status, models.OrderStatus(status)) {

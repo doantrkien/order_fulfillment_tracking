@@ -28,7 +28,7 @@ func setupEventHandlerTest(t *testing.T) (*fiber.App, *mocks.OrderEventService, 
 	return app, mockService, handler
 }
 
-func TestOrderEventHandler_ImportOrderEvents(t *testing.T) {
+func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now()
