@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"main/internal/dto"
 	"main/internal/services"
 	"main/pkg/utils/response"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -28,6 +30,7 @@ func NewOrderEventHandler(orderEventService services.OrderEventService) *OrderEv
 // @Failure 500 {object} response.ResponseStruct{data=dto.ImportOrderEventsResponse}
 // @Security ApiKeyAuth
 // @Router /api/v1/order-events/import [post]
+// func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
 func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
 	var req []dto.ImportOrderEventRequest
 
@@ -35,7 +38,15 @@ func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
 		return response.Reponse(c, 400, "invalid payload", nil)
 	}
 
-	result, err := h.orderEventService.ImportOrderEvents(req)
+	const maxBatchSize = 1000
+	if len(req) > maxBatchSize {
+		return response.Reponse(c, 400, "batch too large, max 1000 events", nil)
+	}
+
+	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	defer cancel()
+
+	result, err := h.orderEventService.ImportOrderEvents(ctx, req)
 	if err != nil {
 		return response.Reponse(c, 500, err.Error(), result)
 	}

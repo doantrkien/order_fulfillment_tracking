@@ -178,6 +178,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 
 			req := httptest.NewRequest("POST", "/api/v1/order-events/import", bytes.NewBuffer(bodyBytes))
 			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("X-API-Key", adminAPIKey)
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
@@ -208,6 +209,7 @@ func TestIntegrationImportOrderEventsFullLifecycle(t *testing.T) {
 
 		req := httptest.NewRequest("POST", "/api/v1/order-events/import", bytes.NewBuffer(bodyBytes))
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-API-Key", adminAPIKey)
 
 		resp, err := app.Test(req)
 		require.NoError(t, err)
@@ -247,6 +249,7 @@ func TestIntegrationImportOrderEventsMixedBatch(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/api/v1/order-events/import", bytes.NewBuffer(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", adminAPIKey)
 
 	resp, err := app.Test(req)
 	require.NoError(t, err)

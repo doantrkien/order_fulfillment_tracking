@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"main/internal/models"
@@ -22,7 +23,7 @@ type ProcessResultDetail struct {
 }
 
 type OrderEventRepository interface {
-	ProcessSingleEventTx(event models.OrderEvent) (ProcessResultDetail, error)
+	ProcessSingleEventTx(ctx context.Context, event models.OrderEvent) (ProcessResultDetail, error)
 }
 
 type orderEventRepository struct {
@@ -35,10 +36,10 @@ func NewOrderEventRepository(db *gorm.DB) *orderEventRepository {
 	}
 }
 
-func (r *orderEventRepository) ProcessSingleEventTx(event models.OrderEvent) (ProcessResultDetail, error) {
+func (r *orderEventRepository) ProcessSingleEventTx(ctx context.Context, event models.OrderEvent) (ProcessResultDetail, error) {
 	var result ProcessResultDetail
 
-	err := r.db.Transaction(func(tx *gorm.DB) error {
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var order models.Order
 		if err := tx.Raw("SELECT * FROM orders WHERE id = ? FOR UPDATE", event.OrderID).Scan(&order).Error; err != nil {
 			return err

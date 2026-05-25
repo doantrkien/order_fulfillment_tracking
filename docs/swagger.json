@@ -6,7 +6,7 @@
         "contact": {},
         "version": "1.0.0"
     },
-    "host": "localhost:3000",
+    "host": "localhost:5000",
     "basePath": "/",
     "paths": {
         "/api/v1/order-events/import": {
