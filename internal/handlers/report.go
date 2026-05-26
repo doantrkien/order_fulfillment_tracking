@@ -47,6 +47,11 @@ func (h *ReportHandler) GetDailyReport(c fiber.Ctx) error {
 		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
 	}
 
+	today := time.Now().Truncate(24 * time.Hour)
+	if date.Truncate(24 * time.Hour).After(today) {
+		return response.Reponse(c, 404, constant.NOT_FOUND, nil)
+	}
+
 	report, err := h.reportService.GetDailyReport(date)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
