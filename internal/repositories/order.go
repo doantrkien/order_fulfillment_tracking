@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"fmt"
 	"errors"
 	"main/errs"
 	"main/internal/dto"
