@@ -44,6 +44,8 @@ definitions:
       date:
         example: "2026-05-18"
         type: string
+    required:
+    - date
     type: object
   dto.ImportOrderEventRequest:
     properties:
@@ -95,7 +97,7 @@ definitions:
         example: 100000
         type: integer
       user_phone:
-        example: "19008199"
+        example: "0123456789"
         type: string
       username:
         example: Supper Man
@@ -105,21 +107,15 @@ definitions:
     properties:
       shipping_address:
         example: Viet Nam
-        maxLength: 255
-        minLength: 2
         type: string
       total_amount:
         example: 100000
         type: integer
       user_phone:
-        example: "19008199"
-        maxLength: 15
-        minLength: 10
+        example: "10123456789"
         type: string
       username:
         example: Supper Man
-        maxLength: 100
-        minLength: 5
         type: string
     required:
     - shipping_address
@@ -171,14 +167,11 @@ definitions:
       current_page:
         example: 1
         type: integer
-      limit_item:
+      limit_items:
         example: 10
         type: integer
       total_items:
         example: 100
-        type: integer
-      total_pages:
-        example: 10
         type: integer
     type: object
   response.ResponseStruct:

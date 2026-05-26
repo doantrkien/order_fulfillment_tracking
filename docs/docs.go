@@ -614,6 +614,9 @@ const docTemplate = `{
         },
         "dto.GetDailyReportRequest": {
             "type": "object",
+            "required": [
+                "date"
+            ],
             "properties": {
                 "date": {
                     "type": "string",
@@ -694,7 +697,7 @@ const docTemplate = `{
                 },
                 "user_phone": {
                     "type": "string",
-                    "example": "19008199"
+                    "example": "0123456789"
                 },
                 "username": {
                     "type": "string",
@@ -713,8 +716,6 @@ const docTemplate = `{
             "properties": {
                 "shipping_address": {
                     "type": "string",
-                    "maxLength": 255,
-                    "minLength": 2,
                     "example": "Viet Nam"
                 },
                 "total_amount": {
@@ -723,14 +724,10 @@ const docTemplate = `{
                 },
                 "user_phone": {
                     "type": "string",
-                    "maxLength": 15,
-                    "minLength": 10,
-                    "example": "19008199"
+                    "example": "10123456789"
                 },
                 "username": {
                     "type": "string",
-                    "maxLength": 100,
-                    "minLength": 5,
                     "example": "Supper Man"
                 }
             }
@@ -796,17 +793,13 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
-                "limit_item": {
+                "limit_items": {
                     "type": "integer",
                     "example": 10
                 },
                 "total_items": {
                     "type": "integer",
                     "example": 100
-                },
-                "total_pages": {
-                    "type": "integer",
-                    "example": 10
                 }
             }
         },

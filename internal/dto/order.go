@@ -7,9 +7,9 @@ import (
 
 type OrderRequest struct {
 	TotalAmount     int64  `json:"total_amount" validate:"required,gt=0" example:"100000"`
-	Username        string `json:"username" validate:"required,min=5,max=100" example:"Supper Man"`
-	UserPhone       string `json:"user_phone" validate:"required,min=10,max=15" example:"19008199"`
-	ShippingAddress string `json:"shipping_address" validate:"required,min=2,max=255" example:"Viet Nam"`
+	Username        string `json:"username" validate:"required" example:"Supper Man"`
+	UserPhone       string `json:"user_phone" validate:"required,min=10,max=11" example:"10123456789"`
+	ShippingAddress string `json:"shipping_address" validate:"required" example:"Viet Nam"`
 }
 
 type UpdateStatusRequest struct {
@@ -20,15 +20,15 @@ type OrderReponse struct {
 	ID              int64              `json:"id" example:"1"`
 	TotalAmount     int64              `json:"total_amount" example:"100000"`
 	Username        string             `json:"username" example:"Supper Man"`
-	UserPhone       string             `json:"user_phone" example:"19008199"`
+	UserPhone       string             `json:"user_phone" example:"0123456789"`
 	ShippingAddress string             `json:"shipping_address" example:"Viet Nam"`
 	Status          models.OrderStatus `json:"status" example:"paid"`
 	Ordered_at      time.Time          `json:"ordered_at" example:"2026-05-01T00:00:00Z"`
 }
 
 type OrderQuery struct {
-	Page   int    `query:"page"`
-	Limit  int    `query:"limit"`
-	Status string `query:"status"`
-	Date   string `query:"date"`
+	PageNumber int    `query:"page"`
+	LimitItems int    `query:"limit"`
+	Status     string `query:"status"`
+	Date       string `query:"date"`
 }

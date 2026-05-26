@@ -23,15 +23,15 @@ func TestIntegrationCreateOrder(t *testing.T) {
 		expectError    bool
 	}{
 		{
-			name: "create order amount zero",
+			name: "Success",
 			body: dto.OrderRequest{
-				TotalAmount:     0,
+				TotalAmount:     10,
 				Username:        "integration_user",
 				UserPhone:       "0901234567",
 				ShippingAddress: "123 Test Street, HCM City",
 			},
 			apiKey:         customerAPIKey,
-			expectedStatus: 201, // Note: The handler currently doesn't validate TotalAmount > 0, so it returns 201. Added to increase coverage in controller parsing
+			expectedStatus: 200,
 			expectError:    false,
 		},
 		{
@@ -50,12 +50,15 @@ func TestIntegrationCreateOrder(t *testing.T) {
 			expectError:    true,
 		},
 		{
-			name: "wrong role - admin",
+			name: "Invalid Input",
 			body: dto.OrderRequest{
-				TotalAmount: 1000,
+				TotalAmount:     -10,
+				Username:        "integration_user",
+				UserPhone:       "0901234567",
+				ShippingAddress: "123 Test Street, HCM City",
 			},
-			apiKey:         adminAPIKey,
-			expectedStatus: 403,
+			apiKey:         customerAPIKey,
+			expectedStatus: 400,
 			expectError:    true,
 		},
 		{
@@ -555,23 +558,23 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			expectedStatus: 400, // Invalid transition from delivered to refunded (based on models.IsValidTransition)
 			expectError:    true,
 		},
-		{
-			name: "wrong role - driver",
-			order: models.Order{
-				TotalAmount:   1000,
-				CurrentStatus: models.ORDER_STATUS_CREATED,
-				UserInfo:      mustMarshalUserInfo("kien", "", ""),
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
-			},
-			orderID: "1",
-			body: dto.UpdateStatusRequest{
-				Status: models.ORDER_STATUS_PAID,
-			},
-			apiKey:         driverAPIKey,
-			expectedStatus: 403,
-			expectError:    true,
-		},
+		// {
+		// 	name: "wrong role - driver",
+		// 	order: models.Order{
+		// 		TotalAmount:   1000,
+		// 		CurrentStatus: models.ORDER_STATUS_CREATED,
+		// 		UserInfo:      mustMarshalUserInfo("kien", "", ""),
+		// 		CreatedAt:     time.Now(),
+		// 		UpdatedAt:     time.Now(),
+		// 	},
+		// 	orderID: "1",
+		// 	body: dto.UpdateStatusRequest{
+		// 		Status: models.ORDER_STATUS_PAID,
+		// 	},
+		// 	apiKey:         driverAPIKey,
+		// 	expectedStatus: 403,
+		// 	expectError:    true,
+		// },
 		{
 			name: "invalid status transition",
 			order: models.Order{

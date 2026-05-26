@@ -8,15 +8,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// LoadConfig loads dotenv files into the process environment.
-// When APP_ENV is set (e.g. production), it tries .env.{APP_ENV} first, then .env.
-// When APP_ENV is empty, only .env is used (not ".env." from concatenation).
-// If no file exists, configuration continues using only the OS environment.
 func LoadConfig() error {
-	appEnv := os.Getenv("APP_ENV")
+	envFile := os.Getenv("ENV_FILE")
 	var candidates []string
-	if appEnv != "" {
-		candidates = append(candidates, ".env."+appEnv)
+	if envFile != "" {
+		candidates = append(candidates, envFile)
 	}
 	candidates = append(candidates, ".env")
 

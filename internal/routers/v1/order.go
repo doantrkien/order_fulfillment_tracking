@@ -12,8 +12,8 @@ func SetupOrderRouter(app *fiber.App, orderHandler *handlers.OrderHandler) {
 		middlewares.Authenticate(),
 	)
 
-	order.Get("", middlewares.Authorize([]string{"admin", "customer", "shipper"}), orderHandler.GetAllOrder)
-	order.Get("/:id", middlewares.Authorize([]string{"admin", "customer", "shipper"}), orderHandler.GetOrderDetail)
+	order.Get("", middlewares.Authorize([]string{"admin", "customer", "driver"}), orderHandler.GetAllOrder)
+	order.Get("/:id", middlewares.Authorize([]string{"admin", "customer", "driver"}), orderHandler.GetOrderDetail)
 	order.Post("", middlewares.Authorize([]string{"customer", "admin"}), orderHandler.CreateOrder)
-	order.Patch("/:id/status", middlewares.Authorize([]string{"admin", "customer", "shipper"}), orderHandler.UpdateOrderStatus)
+	order.Patch("/:id/status", middlewares.Authorize([]string{"admin", "customer", "driver"}), orderHandler.UpdateOrderStatus)
 }
