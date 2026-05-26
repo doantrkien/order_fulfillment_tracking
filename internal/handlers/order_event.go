@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"main/constant"
 	"main/errs"
 	"main/internal/dto"
@@ -36,15 +37,15 @@ func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
-	const maxBatchSize = 2000
+	const maxBatchSize = 1000
 	if len(req) > maxBatchSize {
-		return response.Reponse(c, 400, "batch too large, max 2000 events", nil)
+		return response.ResponseSuccess(c, 400, "batch too large, max 1000 events", nil)
 	}
 
 	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
 	defer cancel()
 
-	result, err := h.orderEventService.ImportOrderEvents(c, req)
+	result, err := h.orderEventService.ImportOrderEvents(ctx, req)
 	if err != nil {
 		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, result)
 	}
