@@ -11,7 +11,7 @@ import (
 	"main/response"
 	"strconv"
 
-	"github.com/go-playground/validator/v10"
+	"github.com/go-playground/validator"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -46,7 +46,7 @@ func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
 	var query dto.OrderQuery
 
 	if err := c.Bind().Query(&query); err != nil {
-		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
 	if query.PageNumber <= 0 {
@@ -58,7 +58,7 @@ func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
 
 	result, totalItems, err := h.orderService.GetAllOrder(query)
 	if err != nil {
-		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER)
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
 
 	return response.PaginatedSuccess(
@@ -89,15 +89,15 @@ func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
 func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 	fmt.Printf("GetOrderDetail: id=%d\n", id)
 	order, err := h.orderService.GetOrder(id)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
-			return response.ResponseError(c, errs.ERR_NOT_FOUND)
+			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)
 		}
-		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER)
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
 
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, order)
@@ -121,16 +121,16 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 	var req dto.OrderRequest
 	if err := c.Bind().Body(&req); err != nil {
 		metrics.OrderCreatedTotal.WithLabelValues("error").Inc()
-		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
 	if err := validator.New().Struct(req); err != nil {
-		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 	_, err := h.orderService.CreateOrder(req)
 	if err != nil {
 		metrics.OrderCreatedTotal.WithLabelValues("error").Inc()
-		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER)
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
 
 	metrics.OrderCreatedTotal.WithLabelValues("success").Inc()
@@ -155,29 +155,29 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 	var req dto.UpdateStatusRequest
 
 	if err := c.Bind().Body(&req); err != nil {
-		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
 	if req.Status == "" {
-		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
 	_, err = h.orderService.UpdateOrderStatus(id, string(req.Status))
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
 			metrics.OrderStatusUpdatedTotal.WithLabelValues(string(req.Status), "not_found").Inc()
-			return response.ResponseError(c, errs.ERR_NOT_FOUND)
+			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)
 		}
 		if errors.Is(err, errs.ERR_INVALID_STATUS) {
-			return response.ResponseError(c, errs.ERR_INVALID_STATUS)
+			return response.ResponseError(c, errs.ERR_INVALID_STATUS, nil)
 		}
 		metrics.OrderStatusUpdatedTotal.WithLabelValues(string(req.Status), "error").Inc()
-		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER)
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
 	metrics.OrderStatusUpdatedTotal.WithLabelValues(string(req.Status), "success").Inc()
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, nil)

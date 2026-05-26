@@ -34,12 +34,12 @@ func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
 	var req []dto.ImportOrderEventRequest
 
 	if err := c.Bind().Body(&req); err != nil {
-		return response.ResponseError(c, errs.ERR_INVALID_INPUT)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
 	result, err := h.orderEventService.ImportOrderEvents(req)
 	if err != nil {
-		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER)
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, result)
 	}
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, result)
 }

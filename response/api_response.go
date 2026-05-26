@@ -47,20 +47,20 @@ func PaginatedSuccess(c fiber.Ctx, message string, data any, currentPage, limitI
 	})
 }
 
-func ResponseError(c fiber.Ctx, err error) error {
+func ResponseError(c fiber.Ctx, err error, data interface{}) error {
 	var appErr *errs.AppError
 
 	if errors.As(err, &appErr) {
 		return c.Status(appErr.StatusCode).JSON(ResponseStruct{
 			Status:  appErr.StatusCode,
-			Data:    nil,
+			Data:    data,
 			Message: appErr.Err.Message,
 		})
 	}
 
 	return c.Status(500).JSON(ResponseStruct{
 		Status:  500,
-		Data:    nil,
+		Data:    data,
 		Message: errs.ERR_INTERNAL_SERVER.Err.Message,
 	})
 }
