@@ -1,14 +1,16 @@
 package services
 
 import (
+	"context"
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/repositories"
+	"sort"
 	"sync"
 )
 
 type OrderEventService interface {
-	ImportOrderEvents(reqs []dto.ImportOrderEventRequest) (dto.ImportOrderEventsResponse, error)
+	ImportOrderEvents(ctx context.Context, reqs []dto.ImportOrderEventRequest) (dto.ImportOrderEventsResponse, error)
 }
 
 type orderEventService struct {
@@ -29,7 +31,7 @@ type workerResult struct {
 	err    error
 }
 
-func (s *orderEventService) ImportOrderEvents(reqs []dto.ImportOrderEventRequest) (dto.ImportOrderEventsResponse, error) {
+func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto.ImportOrderEventRequest) (dto.ImportOrderEventsResponse, error) {
 	resp := dto.ImportOrderEventsResponse{
 		Errors: []dto.EventError{},
 	}
@@ -66,32 +68,14 @@ func (s *orderEventService) ImportOrderEvents(reqs []dto.ImportOrderEventRequest
 	if len(orderGroups) < numWorkers {
 		numWorkers = len(orderGroups)
 	}
+	// run workers
+	s.startWorkers(ctx, numWorkers, &wg, jobs, results)
 
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for group := range jobs {
-				for _, req := range group {
-					event := models.OrderEvent{
-						OrderID:   req.OrderID,
-						NewStatus: models.OrderStatus(req.Status),
-						UpdatedBy: req.UpdatedBy,
-						EventAt:   req.EventAt,
-					}
-
-					detail, err := s.orderEventRepo.ProcessSingleEventTx(event)
-					results <- workerResult{
-						req:    req,
-						detail: detail,
-						err:    err,
-					}
-				}
-			}
-		}()
-	}
-
+	// send jobs to workers
 	for _, events := range orderGroups {
+		sort.Slice(events, func(i, j int) bool {
+			return events[i].EventAt.Before(events[j].EventAt)
+		})
 		jobs <- events
 	}
 	close(jobs)
@@ -135,6 +119,49 @@ func (s *orderEventService) ImportOrderEvents(reqs []dto.ImportOrderEventRequest
 	}
 
 	return resp, processingErr
+}
+
+func (s *orderEventService) startWorkers(ctx context.Context, numWorkers int, wg *sync.WaitGroup, jobs <-chan []dto.ImportOrderEventRequest, results chan<- workerResult) {
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go s.worker(i, ctx, wg, jobs, results)
+	}
+}
+
+func (s *orderEventService) worker(id int, ctx context.Context, wg *sync.WaitGroup, jobs <-chan []dto.ImportOrderEventRequest, results chan<- workerResult) {
+	defer wg.Done()
+
+	for group := range jobs {
+		s.processGroup(ctx, group, results)
+	}
+}
+
+func (s *orderEventService) processGroup(ctx context.Context, group []dto.ImportOrderEventRequest, results chan<- workerResult) {
+	for _, req := range group {
+		results <- s.processEvent(ctx, req)
+	}
+}
+
+func (s *orderEventService) processEvent(ctx context.Context, req dto.ImportOrderEventRequest) workerResult {
+	select {
+	case <-ctx.Done():
+		return workerResult{req: req, err: ctx.Err()}
+	default:
+	}
+
+	event := models.OrderEvent{
+		OrderID:   req.OrderID,
+		NewStatus: models.OrderStatus(req.Status),
+		UpdatedBy: req.UpdatedBy,
+		EventAt:   req.EventAt,
+	}
+
+	detail, err := s.orderEventRepo.ProcessSingleEventTx(ctx, event)
+	return workerResult{
+		req:    req,
+		detail: detail,
+		err:    err,
+	}
 }
 
 func validateBasic(req dto.ImportOrderEventRequest) string {

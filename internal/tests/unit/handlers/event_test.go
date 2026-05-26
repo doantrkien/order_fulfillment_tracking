@@ -47,7 +47,7 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 				{OrderID: 2, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockService *mocks.OrderEventService) {
-				mockService.On("ImportOrderEvents", mock.AnythingOfType("[]dto.ImportOrderEventRequest")).Return(
+				mockService.On("ImportOrderEvents", mock.Anything, mock.AnythingOfType("[]dto.ImportOrderEventRequest")).Return(
 					dto.ImportOrderEventsResponse{
 						Accepted:  2,
 						Rejected:  0,
@@ -71,7 +71,7 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 		},
 		{
 			name:           "invalid payload - bad JSON",
-			body:           nil, // handled separately with raw bytes
+			body:           nil,
 			setupMock:      func(mockService *mocks.OrderEventService) {},
 			expectedStatus: 400,
 			validate: func(t *testing.T, respBody []byte) {
@@ -90,7 +90,7 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 				{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockService *mocks.OrderEventService) {
-				mockService.On("ImportOrderEvents", mock.AnythingOfType("[]dto.ImportOrderEventRequest")).Return(
+				mockService.On("ImportOrderEvents", mock.Anything, mock.AnythingOfType("[]dto.ImportOrderEventRequest")).Return(
 					dto.ImportOrderEventsResponse{
 						Rejected: 1,
 						Errors: []dto.EventError{
@@ -119,7 +119,7 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 				{OrderID: 3, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockService *mocks.OrderEventService) {
-				mockService.On("ImportOrderEvents", mock.AnythingOfType("[]dto.ImportOrderEventRequest")).Return(
+				mockService.On("ImportOrderEvents", mock.Anything, mock.AnythingOfType("[]dto.ImportOrderEventRequest")).Return(
 					dto.ImportOrderEventsResponse{
 						Accepted:  1,
 						Rejected:  1,
@@ -147,7 +147,7 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 			name: "empty request body",
 			body: []dto.ImportOrderEventRequest{},
 			setupMock: func(mockService *mocks.OrderEventService) {
-				mockService.On("ImportOrderEvents", mock.AnythingOfType("[]dto.ImportOrderEventRequest")).Return(
+				mockService.On("ImportOrderEvents", mock.Anything, mock.AnythingOfType("[]dto.ImportOrderEventRequest")).Return(
 					dto.ImportOrderEventsResponse{
 						Accepted:  0,
 						Rejected:  0,
@@ -178,7 +178,6 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 
 			var reqBody []byte
 			if tc.body == nil {
-				// bad JSON case
 				reqBody = []byte("{invalid-json}")
 			} else {
 				reqBody, _ = json.Marshal(tc.body)

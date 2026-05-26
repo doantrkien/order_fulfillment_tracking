@@ -7,7 +7,6 @@ import (
 	"main/errs"
 	"main/internal/dto"
 	"main/internal/services"
-	"main/pkg/metrics"
 	"main/response"
 	"strconv"
 
@@ -120,7 +119,6 @@ func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
 func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 	var req dto.OrderRequest
 	if err := c.Bind().Body(&req); err != nil {
-		metrics.OrderCreatedTotal.WithLabelValues("error").Inc()
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
@@ -129,11 +127,9 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 	}
 	_, err := h.orderService.CreateOrder(req)
 	if err != nil {
-		metrics.OrderCreatedTotal.WithLabelValues("error").Inc()
 		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
 
-	metrics.OrderCreatedTotal.WithLabelValues("success").Inc()
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, nil)
 }
 
@@ -170,15 +166,12 @@ func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
 	_, err = h.orderService.UpdateOrderStatus(id, string(req.Status))
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
-			metrics.OrderStatusUpdatedTotal.WithLabelValues(string(req.Status), "not_found").Inc()
 			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)
 		}
 		if errors.Is(err, errs.ERR_INVALID_STATUS) {
 			return response.ResponseError(c, errs.ERR_INVALID_STATUS, nil)
 		}
-		metrics.OrderStatusUpdatedTotal.WithLabelValues(string(req.Status), "error").Inc()
 		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
-	metrics.OrderStatusUpdatedTotal.WithLabelValues(string(req.Status), "success").Inc()
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, nil)
 }

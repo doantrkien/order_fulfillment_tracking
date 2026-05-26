@@ -1,6 +1,7 @@
 package services_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -40,7 +41,7 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 				{OrderID: 2, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
-				mockRepo.On("ProcessSingleEventTx", mock.Anything).Return(
+				mockRepo.On("ProcessSingleEventTx", mock.Anything, mock.Anything).Return(
 					repositories.ProcessResultDetail{Result: repositories.Accepted}, nil,
 				).Times(2)
 			},
@@ -95,7 +96,7 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 				{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
-				mockRepo.On("ProcessSingleEventTx", mock.Anything).Return(
+				mockRepo.On("ProcessSingleEventTx", mock.Anything, mock.Anything).Return(
 					repositories.ProcessResultDetail{
 						Result: repositories.Duplicate,
 						Reason: "Order is already in status 'paid'",
@@ -115,7 +116,7 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 				{OrderID: 1, Status: "delivered", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
-				mockRepo.On("ProcessSingleEventTx", mock.Anything).Return(
+				mockRepo.On("ProcessSingleEventTx", mock.Anything, mock.Anything).Return(
 					repositories.ProcessResultDetail{
 						Result: repositories.Rejected,
 						Reason: "Invalid transition from 'created' to 'delivered'",
@@ -134,7 +135,7 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 				{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
-				mockRepo.On("ProcessSingleEventTx", mock.Anything).Return(
+				mockRepo.On("ProcessSingleEventTx", mock.Anything, mock.Anything).Return(
 					repositories.ProcessResultDetail{}, assert.AnError,
 				).Once()
 			},
@@ -152,13 +153,13 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 				{OrderID: 2, Status: "paid", EventAt: now, UpdatedBy: "admin"}, // will be duplicate
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
-				mockRepo.On("ProcessSingleEventTx", mock.MatchedBy(func(e models.OrderEvent) bool {
+				mockRepo.On("ProcessSingleEventTx", mock.Anything, mock.MatchedBy(func(e models.OrderEvent) bool {
 					return e.OrderID == 1
 				})).Return(
 					repositories.ProcessResultDetail{Result: repositories.Accepted}, nil,
 				).Once()
 
-				mockRepo.On("ProcessSingleEventTx", mock.MatchedBy(func(e models.OrderEvent) bool {
+				mockRepo.On("ProcessSingleEventTx", mock.Anything, mock.MatchedBy(func(e models.OrderEvent) bool {
 					return e.OrderID == 2
 				})).Return(
 					repositories.ProcessResultDetail{
@@ -207,7 +208,7 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 			mockRepo, service := setupEventServiceTest(t, 2)
 			tc.setupMock(mockRepo)
 
-			resp, err := service.ImportOrderEvents(tc.requests)
+			resp, err := service.ImportOrderEvents(context.Background(), tc.requests)
 
 			if tc.expectErr {
 				assert.Error(t, err)

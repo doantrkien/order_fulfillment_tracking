@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS order_events (
 
 DO $$
 BEGIN
-<<<<<<< HEAD
   IF to_regclass('orders') IS NOT NULL THEN
     IF NOT EXISTS (
       SELECT 1 FROM pg_constraint WHERE conname = 'fk_order_events_orders'
@@ -23,13 +22,6 @@ BEGIN
       ALTER TABLE order_events
         ADD CONSTRAINT fk_order_events_orders FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
     END IF;
-=======
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'fk_order_events_orders'
-  ) THEN
-    ALTER TABLE IF EXISTS order_events
-      ADD CONSTRAINT fk_order_events_orders FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
->>>>>>> dev
   END IF;
 END$$;
 

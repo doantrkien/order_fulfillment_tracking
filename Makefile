@@ -21,6 +21,12 @@ migrate:
 	ENV_FILE=.env.local go run $(MIGRATION_FILE)
 
 # =========================
+# SWAGGER
+# =========================
+swagger:
+	swag init -g $(MAIN_FILE)/main.go
+
+# =========================
 # TEST
 # =========================
 test:

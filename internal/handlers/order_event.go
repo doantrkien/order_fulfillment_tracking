@@ -37,7 +37,7 @@ func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
-	result, err := h.orderEventService.ImportOrderEvents(req)
+	result, err := h.orderEventService.ImportOrderEvents(c, req)
 	if err != nil {
 		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, result)
 	}

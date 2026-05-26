@@ -5,8 +5,6 @@ import (
 	"main/errs"
 	"main/internal/dto"
 	"main/internal/models"
-	"main/pkg/metrics"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -27,11 +25,6 @@ func NewOrderRepository(db *gorm.DB) *orderRepository {
 }
 
 func (r *orderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int64, error) {
-	start := time.Now()
-	defer func() {
-		metrics.OrderDBQueryDuration.WithLabelValues("get_all").Observe(time.Since(start).Seconds())
-	}()
-
 	var (
 		orders []models.Order
 		total  int64
@@ -65,6 +58,7 @@ func (r *orderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int
 }
 
 func (r *orderRepository) GetOrderDetail(id int64) (*models.Order, error) {
+
 	var order models.Order
 
 	if err := r.db.First(&order, id).Error; err != nil {
@@ -79,10 +73,6 @@ func (r *orderRepository) GetOrderDetail(id int64) (*models.Order, error) {
 }
 
 func (r *orderRepository) CreateOrder(order models.Order) (*models.Order, error) {
-	start := time.Now()
-	defer func() {
-		metrics.OrderDBQueryDuration.WithLabelValues("create").Observe(time.Since(start).Seconds())
-	}()
 
 	if err := r.db.Create(&order).Error; err != nil {
 		return nil, err
@@ -91,10 +81,6 @@ func (r *orderRepository) CreateOrder(order models.Order) (*models.Order, error)
 }
 
 func (r *orderRepository) UpdateOrderStatus(id int64, status string) (*models.Order, error) {
-	start := time.Now()
-	defer func() {
-		metrics.OrderDBQueryDuration.WithLabelValues("update_status").Observe(time.Since(start).Seconds())
-	}()
 
 	var order models.Order
 	if err := r.db.First(&order, id).Error; err != nil {
