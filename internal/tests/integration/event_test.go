@@ -33,7 +33,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 	testCases := []struct {
 		name           string
 		seedDB         func(t *testing.T) []dto.ImportOrderEventRequest
-		rawBody        []byte // if set, overrides seedDB for invalid JSON tests
+		rawBody        []byte 
 		expectedStatus int
 		validate       func(t *testing.T, respBody []byte)
 	}{
@@ -58,7 +58,6 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 				assert.Equal(t, 0, body.Data.Rejected)
 				assert.Equal(t, 0, body.Data.Duplicate)
 
-				// verify DB side effects
 				var orders []models.Order
 				db.Find(&orders)
 				require.Len(t, orders, 1)
@@ -87,7 +86,6 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 				assert.Equal(t, 1, body.Data.Rejected)
 				assert.Contains(t, body.Data.Errors[0].Reason, "Invalid transition")
 
-				// verify order unchanged
 				var orders []models.Order
 				db.Where("current_status = ?", models.ORDER_STATUS_CREATED).Find(&orders)
 				assert.Len(t, orders, 1)
@@ -136,7 +134,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 				return []dto.ImportOrderEventRequest{
 					{OrderID: -1, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"},
 					{OrderID: 1, Status: "unknown_status", EventAt: time.Now(), UpdatedBy: "admin"},
-					{OrderID: 1, Status: "paid", UpdatedBy: "admin"}, // missing EventAt
+					{OrderID: 1, Status: "paid", UpdatedBy: "admin"}, 
 				}
 			},
 			expectedStatus: 200,
