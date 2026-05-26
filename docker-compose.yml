@@ -1,5 +1,4 @@
 version: '3.9'
-
 services:
   app:
     build:
@@ -14,12 +13,12 @@ services:
       APP_ENV: docker
     volumes:
       - .:/app
-      - /app/tmp               
+      - /app/tmp
     depends_on:
       postgres:
-        condition: service_healthy 
+        condition: service_healthy
     stdin_open: true
-    tty: true            
+    tty: true
 
   postgres:
     image: postgres:16
@@ -50,29 +49,21 @@ services:
     restart: unless-stopped
 
   grafana:
-      image: grafana/grafana:latest
-      container_name: grafana
-      ports:
-        - "3001:3000"
-      volumes:
-        - grafana_data:/var/lib/grafana
-      environment:
-        - GF_SECURITY_ADMIN_PASSWORD=admin123
-        - GF_USERS_ALLOW_SIGN_UP=false
-      restart: unless-stopped
-      depends_on:
-        - app
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    restart: always
+    image: grafana/grafana:latest
+    container_name: grafana
     ports:
-      - "9090:9090"
+      - "3001:3000"
     volumes:
-      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
+    restart: unless-stopped
+    depends_on:
+      - app
 
 volumes:
   postgres_data:

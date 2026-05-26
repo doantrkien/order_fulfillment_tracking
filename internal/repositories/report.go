@@ -19,69 +19,62 @@ type reportRepository struct {
 }
 
 func NewReportRepository(db *gorm.DB) *reportRepository {
-	return &reportRepository{
-		db: db,
-	}
+	return &reportRepository{db: db}
 }
 
 func (r *reportRepository) GetDailyReport(date time.Time) (*models.Report, error) {
 	var report models.Report
-
 	if err := r.db.Where("date = ?", date.Format("2006-01-02")).First(&report).Error; err != nil {
 		return nil, err
 	}
-
 	return &report, nil
 }
 
 func (r *reportRepository) BuildDailyReport(start, end time.Time) (*models.Report, error) {
 	report := &models.Report{Date: start}
 
-	if err := r.db.Model(&models.Order{}).
-		Where("created_at >= ? AND created_at < ?", start, end).
-		Count(&report.TotalOrders).Error; err != nil {
+	type summaryResult struct {
+		TotalOrders    int64
+		TotalNew       int64
+		TotalDelivered int64
+		TotalCancelled int64
+		TotalRefunded  int64
+		TotalIncome    float64
+	}
+
+	var summary summaryResult
+
+	err := r.db.Raw(`
+		SELECT
+			COUNT(id) AS total_orders,
+			COUNT(CASE WHEN current_status = 'created' THEN 1 END) AS total_new,
+			COUNT(CASE WHEN current_status = 'delivered' THEN 1 END) AS total_delivered,
+			COUNT(CASE WHEN current_status = 'cancelled' THEN 1 END) AS total_cancelled,
+			COUNT(CASE WHEN current_status = 'refunded' THEN 1 END) AS total_refunded,
+			COALESCE(SUM(CASE WHEN current_status = 'delivered' THEN total_amount ELSE 0 END), 0) AS total_income
+		FROM orders
+		WHERE created_at >= ? AND created_at < ?
+	`, start, end).Scan(&summary).Error
+	if err != nil {
 		return nil, err
 	}
 
-	var statusCounts []struct {
-		Status models.OrderStatus
-		Count  int64
-	}
-
-	if err := r.db.Model(&models.Order{}).
-		Select("current_status AS status, count(*) AS count").
-		Where("created_at >= ? AND created_at < ?", start, end).
-		Group("current_status").
-		Scan(&statusCounts).Error; err != nil {
-		return nil, err
-	}
-
-	for _, statusCount := range statusCounts {
-		switch statusCount.Status {
-		case models.ORDER_STATUS_CREATED:
-			report.TotalNew = statusCount.Count
-		case models.ORDER_STATUS_DELIVERED:
-			report.TotalDelivered = statusCount.Count
-		case models.ORDER_STATUS_CANCELLED:
-			report.TotalCancelled = statusCount.Count
-		case models.ORDER_STATUS_REFUNDED:
-			report.TotalRefunded = statusCount.Count
-		}
-	}
-
-	if err := r.db.Model(&models.Order{}).
-		Select("COALESCE(SUM(total_amount), 0)").
-		Where("created_at >= ? AND created_at < ? AND current_status = ?", start, end, models.ORDER_STATUS_DELIVERED).
-		Scan(&report.TotalIncome).Error; err != nil {
-		return nil, err
-	}
+	report.TotalOrders = summary.TotalOrders
+	report.TotalNew = summary.TotalNew
+	report.TotalDelivered = summary.TotalDelivered
+	report.TotalCancelled = summary.TotalCancelled
+	report.TotalRefunded = summary.TotalRefunded
+	report.TotalIncome = summary.TotalIncome
 
 	var avgSeconds float64
-	if err := r.db.Table("orders AS o").
-		Select("COALESCE(AVG(EXTRACT(EPOCH FROM oe.event_at - o.created_at)), 0)").
-		Joins("JOIN order_events oe ON oe.order_id = o.id").
-		Where("oe.new_status = ? AND oe.event_at >= ? AND oe.event_at < ?", models.ORDER_STATUS_DELIVERED, start, end).
-		Row().Scan(&avgSeconds); err != nil {
+	err = r.db.Raw(`
+		SELECT COALESCE(AVG(EXTRACT(EPOCH FROM oe.event_at - o.created_at)), 0)
+		FROM orders o
+		JOIN order_events oe ON oe.order_id = o.id
+		WHERE oe.new_status = 'delivered'
+		  AND oe.event_at >= ? AND oe.event_at < ?
+	`, start, end).Scan(&avgSeconds).Error
+	if err != nil {
 		return nil, err
 	}
 
@@ -97,6 +90,5 @@ func (r *reportRepository) SaveReport(report *models.Report) (*models.Report, er
 	}).Create(report).Error; err != nil {
 		return nil, err
 	}
-
 	return report, nil
 }

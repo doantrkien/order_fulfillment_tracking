@@ -1,0 +1,18 @@
+apiVersion: 1
+
+datasources:
+  - name: yesoreyeram-infinity-datasource
+    type: yesoreyeram-infinity-datasource
+    jsonData:
+      tlsSkipVerify: true
+      httpHeaderName1: "X-API-KEY"
+    secureJsonData:
+      httpHeaderValue1: "8b2062e3c8c1292a47cb900ae480c2e642ae03c22157e311fec14fb40ba8d453"
+
+  - name: infinity-docker
+    type: yesoreyeram-infinity-datasource
+    jsonData:
+      tlsSkipVerify: true
+      httpHeaderName1: "X-API-KEY"
+    secureJsonData:
+      httpHeaderValue1: "8b2062e3c8c1292a47cb900ae480c2e642ae03c22157e311fec14fb40ba8d453"
