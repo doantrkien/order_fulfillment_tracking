@@ -13,3 +13,5 @@ cmd/benchmark/
 docs/api_import_batch_order.md
 coverage.html
 coverage.out
+venv/
+seed/
