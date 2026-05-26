@@ -9,7 +9,6 @@ type ImportOrderEventRequest struct {
 	UpdatedBy string    `json:"updated_by" example:"warehouse_staff_01"`
 }
 
-// EventError holds the detail of a single rejected or duplicate event.
 type EventError struct {
 	OrderID int64  `json:"order_id" example:"100157"`
 	Status  string `json:"status" example:"delivered"`

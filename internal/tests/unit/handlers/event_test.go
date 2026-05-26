@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"main/constant"
 	"main/internal/dto"
 	"main/internal/handlers"
 
@@ -27,7 +28,7 @@ func setupEventHandlerTest(t *testing.T) (*fiber.App, *mocks.OrderEventService, 
 	return app, mockService, handler
 }
 
-func TestOrderEventHandler_ImportOrderEvents(t *testing.T) {
+func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now()
@@ -64,7 +65,7 @@ func TestOrderEventHandler_ImportOrderEvents(t *testing.T) {
 				}
 				require.NoError(t, json.Unmarshal(respBody, &resp))
 				assert.Equal(t, 200, resp.Status)
-				assert.Equal(t, "batch processed", resp.Message)
+				assert.Equal(t, constant.SUCCESS.Message, resp.Message)
 				assert.Equal(t, 2, resp.Data.Accepted)
 			},
 		},
@@ -80,7 +81,7 @@ func TestOrderEventHandler_ImportOrderEvents(t *testing.T) {
 				}
 				require.NoError(t, json.Unmarshal(respBody, &resp))
 				assert.Equal(t, 400, resp.Status)
-				assert.Equal(t, "invalid payload", resp.Message)
+				assert.Equal(t, constant.INVALID_INPUT.Message, resp.Message)
 			},
 		},
 		{

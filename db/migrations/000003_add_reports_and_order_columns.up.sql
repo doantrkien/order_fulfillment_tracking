@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS order_events (
   order_id bigint NOT NULL,
   new_status varchar(64),
   event_at timestamptz DEFAULT now(),
-  payload jsonb,
   created_at timestamptz DEFAULT now()
 );
 

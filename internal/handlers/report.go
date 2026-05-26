@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"errors"
+	"main/constant"
+	"main/errs"
 	"main/internal/dto"
 	"main/internal/services"
-	"main/pkg/utils/constant"
-	"main/pkg/utils/errs"
-	"main/pkg/utils/response"
+	"main/response"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -39,23 +39,28 @@ func NewReportHandler(reportService services.ReportService) *ReportHandler {
 func (h *ReportHandler) GetDailyReport(c fiber.Ctx) error {
 	dateStr := c.Query("date")
 	if dateStr == "" {
-		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
-		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	}
+
+	today := time.Now().Truncate(24 * time.Hour)
+	if date.Truncate(24 * time.Hour).After(today) {
+		return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)
 	}
 
 	report, err := h.reportService.GetDailyReport(date)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
-			return response.Reponse(c, 404, constant.NOT_FOUND, nil)
+			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)
 		}
-		return response.Reponse(c, 500, constant.ERROR, nil)
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
 
-	return response.Reponse(c, 200, constant.SUCCESS, report)
+	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, report)
 }
 
 // CreateDailyReport godoc
@@ -74,22 +79,27 @@ func (h *ReportHandler) GetDailyReport(c fiber.Ctx) error {
 func (h *ReportHandler) CreateDailyReport(c fiber.Ctx) error {
 	var req dto.GetDailyReportRequest
 	if err := c.Bind().Body(&req); err != nil {
-		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
 	if req.Date == "" {
-		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
 	date, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
-		return response.Reponse(c, 400, constant.INVALID_INPUT, nil)
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	}
+
+	today := time.Now().Truncate(24 * time.Hour)
+	if date.Truncate(24 * time.Hour).After(today) {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
 	report, err := h.reportService.CreateDailyReport(date)
 	if err != nil {
-		return response.Reponse(c, 500, constant.ERROR, nil)
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
 
-	return response.Reponse(c, 201, constant.SUCCESS, report)
+	return response.ResponseSuccess(c, 201, constant.SUCCESS.Message, report)
 }
