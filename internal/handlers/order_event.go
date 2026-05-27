@@ -8,6 +8,7 @@ import (
 	"main/internal/services"
 	"main/response"
 	"time"
+
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -27,8 +28,8 @@ func NewOrderEventHandler(orderEventService services.OrderEventService) *OrderEv
 // @Produce json
 // @Param request body []dto.ImportOrderEventRequest true "List of events"
 // @Success 200 {object} response.ResponseStruct{data=dto.ImportOrderEventsResponse}
-// @Failure 400 {object} response.ResponseStruct
-// @Failure 500 {object} response.ResponseStruct{data=dto.ImportOrderEventsResponse}
+// @Failure 400 {object} response.Error400Response
+// @Failure 500 {object} response.Error500Response{data=dto.ImportOrderEventsResponse}
 // @Security ApiKeyAuth
 // @Router /api/v1/order-events/import [post]
 func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
