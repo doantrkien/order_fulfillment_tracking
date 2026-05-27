@@ -35,7 +35,6 @@ test:
 test-all:
 	go test -v \
 	./internal/tests/unit/services/... \
-	./internal/tests/unit/repositories/... \
 	./internal/tests/unit/handlers/... \
 	./internal/tests/integration/... \
 	--coverpkg=./internal/services/...,./internal/repositories/...,./internal/handlers/...

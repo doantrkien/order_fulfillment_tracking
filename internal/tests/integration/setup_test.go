@@ -1,22 +1,26 @@
 package integration
 
 import (
+	"context"
 	"log"
+	"os"
+	"path/filepath"
+	"runtime"
+	"testing"
+	"time"
+
 	"main/internal/handlers"
 	"main/internal/models"
 	"main/internal/repositories"
 	routers "main/internal/routers/v1"
 	"main/internal/services"
-	"main/pkg/postgresql"
-	"os"
-	"path/filepath"
-	"runtime"
-	"testing"
-
-	"main/configs"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/logger"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
+	gormpostgres "gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -33,22 +37,50 @@ func TestMain(m *testing.M) {
 	basepath := filepath.Dir(b)
 	os.Chdir(filepath.Join(basepath, "../../.."))
 
-	if err := configs.LoadConfig(); err != nil {
-		log.Println("LoadConfig error:", err)
+	// Hardcode API keys for testing to avoid depending on .env
+	customerAPIKey = "test_customer_key"
+	adminAPIKey = "test_admin_key"
+	driverAPIKey = "test_driver_key"
+
+	os.Setenv("CUSTOMER_API_KEY", customerAPIKey)
+	os.Setenv("ADMIN_API_KEY", adminAPIKey)
+	os.Setenv("DRIVER_API_KEY", driverAPIKey)
+
+	ctx := context.Background()
+
+	// Spin up postgres container
+	postgresContainer, err := postgres.RunContainer(ctx,
+		testcontainers.WithImage("postgres:16-alpine"),
+		postgres.WithDatabase("test_db"),
+		postgres.WithUsername("test_user"),
+		postgres.WithPassword("test_pass"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).WithStartupTimeout(20*time.Second),
+		),
+	)
+	if err != nil {
+		log.Fatalf("failed to start postgres container: %v", err)
 	}
 
-	customerAPIKey = os.Getenv("CUSTOMER_API_KEY")
-	adminAPIKey = os.Getenv("ADMIN_API_KEY")
-	driverAPIKey = os.Getenv("DRIVER_API_KEY")
+	// Clean up the container after tests
+	defer func() {
+		if err := postgresContainer.Terminate(ctx); err != nil {
+			log.Fatalf("failed to terminate container: %v", err)
+		}
+	}()
 
-	var err error
-	db, err = postgresql.ConnectDB()
+	// Get connection string
+	connStr, err := postgresContainer.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		log.Fatalf("failed to get connection string: %v", err)
+	}
+
+	// Connect GORM to the test database
+	db, err = gorm.Open(gormpostgres.Open(connStr), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Failed to connect to test database: %v", err)
 	}
-
-	db.Exec("DROP TABLE IF EXISTS reports CASCADE")
-	db.Exec("DROP TABLE IF EXISTS order_events CASCADE")
 
 	if err := db.AutoMigrate(&models.Order{}, &models.OrderEvent{}, &models.Report{}); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
