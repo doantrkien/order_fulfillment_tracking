@@ -39,6 +39,35 @@ func (_m *OrderEventRepository) ProcessSingleEventTx(ctx context.Context, event 
 	return r0, r1
 }
 
+func (_m *OrderEventRepository) ProcessBatchEventsTx(ctx context.Context, events []models.OrderEvent) ([]repositories.ProcessResultDetail, error) {
+	ret := _m.Called(ctx, events)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ProcessBatchEventsTx")
+	}
+
+	var r0 []repositories.ProcessResultDetail
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []models.OrderEvent) ([]repositories.ProcessResultDetail, error)); ok {
+		return rf(ctx, events)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []models.OrderEvent) []repositories.ProcessResultDetail); ok {
+		r0 = rf(ctx, events)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]repositories.ProcessResultDetail)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []models.OrderEvent) error); ok {
+		r1 = rf(ctx, events)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 func NewOrderEventRepository(t interface {
 	mock.TestingT
 	Cleanup(func())

@@ -37,9 +37,9 @@ func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
-	const maxBatchSize = 1000
+	const maxBatchSize = 50000
 	if len(req) > maxBatchSize {
-		return response.ResponseSuccess(c, 400, "batch too large, max 1000 events", nil)
+		return response.ResponseSuccess(c, 400, "batch too large, max 50000 events", nil)
 	}
 
 	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
