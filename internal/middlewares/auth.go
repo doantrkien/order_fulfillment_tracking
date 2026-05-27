@@ -20,9 +20,6 @@ func Authenticate() fiber.Handler {
 		}
 
 		switch apiKey {
-		case os.Getenv("CUSTOMER_API_KEY"):
-			c.Locals("role", "customer")
-
 		case os.Getenv("DRIVER_API_KEY"):
 			c.Locals("role", "driver")
 

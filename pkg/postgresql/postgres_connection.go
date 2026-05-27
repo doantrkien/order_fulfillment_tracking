@@ -29,7 +29,6 @@ func ConnectDB() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	// connection pool
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetConnMaxLifetime(time.Hour)

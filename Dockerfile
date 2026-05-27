@@ -20,24 +20,10 @@ FROM scratch AS production
 WORKDIR /
 COPY --from=builder /app/configs /config
 COPY --from=builder /app/db/migrations /db/migrations
-COPY --from=builder /app/.env.docker /.env.docker
 
 COPY --from=builder /bin/app_service /app_service
 COPY --from=builder /bin/app_migrate /app_migrate
 
 EXPOSE 5000
+
 CMD ["/app_service"]
-
-FROM golang:1.26-alpine3.23 AS dev
-
-WORKDIR /app
-
-COPY --from=modules /go/pkg /go/pkg
-
-RUN go install github.com/cespare/reflex@latest
-
-COPY . .
-
-EXPOSE 5000
-
-CMD ["go", "run", "./cmd/api"]
