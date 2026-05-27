@@ -25,10 +25,9 @@ func NewOrderEventService(orderEventRepo repositories.OrderEventRepository, maxW
 	}
 }
 
-type workerResult struct {
-	req    dto.ImportOrderEventRequest
-	detail repositories.ProcessResultDetail
-	err    error
+type batchResult struct {
+	details []repositories.ProcessResultDetail
+	err     error
 }
 
 func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto.ImportOrderEventRequest) (dto.ImportOrderEventsResponse, error) {
@@ -59,109 +58,111 @@ func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto.Im
 	for _, req := range validReqs {
 		orderGroups[req.OrderID] = append(orderGroups[req.OrderID], req)
 	}
-
-	jobs := make(chan []dto.ImportOrderEventRequest, len(orderGroups))
-	results := make(chan workerResult, len(validReqs))
-
-	var wg sync.WaitGroup
-	numWorkers := s.maxWorkers
-	if len(orderGroups) < numWorkers {
-		numWorkers = len(orderGroups)
-	}
-	// run workers
-	s.startWorkers(ctx, numWorkers, &wg, jobs, results)
-
-	// send jobs to workers
 	for _, events := range orderGroups {
 		sort.Slice(events, func(i, j int) bool {
 			return events[i].EventAt.Before(events[j].EventAt)
 		})
-		jobs <- events
 	}
-	close(jobs)
+
+	orderedEvents := make([]models.OrderEvent, 0, len(validReqs))
+	for _, events := range orderGroups {
+		for _, req := range events {
+			orderedEvents = append(orderedEvents, models.OrderEvent{
+				OrderID:   req.OrderID,
+				NewStatus: models.OrderStatus(req.Status),
+				UpdatedBy: req.UpdatedBy,
+				EventAt:   req.EventAt,
+			})
+		}
+	}
+
+	// Split into chunks for parallel processing by workers
+	chunks := splitIntoChunks(orderedEvents, s.maxWorkers)
+
+	var wg sync.WaitGroup
+	resultsChan := make(chan batchResult, len(chunks))
+
+	for _, chunk := range chunks {
+		wg.Add(1)
+		go func(events []models.OrderEvent) {
+			defer wg.Done()
+			select {
+			case <-ctx.Done():
+				resultsChan <- batchResult{err: ctx.Err()}
+				return
+			default:
+			}
+			details, err := s.orderEventRepo.ProcessBatchEventsTx(ctx, events)
+			resultsChan <- batchResult{details: details, err: err}
+		}(chunk.events)
+	}
 
 	go func() {
 		wg.Wait()
-		close(results)
+		close(resultsChan)
 	}()
 
+	// Collect results
 	var processingErr error
-	for wr := range results {
-		if wr.err != nil {
-			processingErr = wr.err
-			resp.Rejected++
-			resp.Errors = append(resp.Errors, dto.EventError{
-				OrderID: wr.req.OrderID,
-				Status:  wr.req.Status,
-				Reason:  wr.err.Error(),
-			})
+	for br := range resultsChan {
+		if br.err != nil {
+			processingErr = br.err
 			continue
 		}
-
-		switch wr.detail.Result {
-		case repositories.Accepted:
-			resp.Accepted++
-		case repositories.Rejected:
-			resp.Rejected++
-			resp.Errors = append(resp.Errors, dto.EventError{
-				OrderID: wr.req.OrderID,
-				Status:  wr.req.Status,
-				Reason:  wr.detail.Reason,
-			})
-		case repositories.Duplicate:
-			resp.Duplicate++
-			resp.Errors = append(resp.Errors, dto.EventError{
-				OrderID: wr.req.OrderID,
-				Status:  wr.req.Status,
-				Reason:  wr.detail.Reason,
-			})
+		for _, detail := range br.details {
+			switch detail.Result {
+			case repositories.Accepted:
+				resp.Accepted++
+			case repositories.Rejected:
+				resp.Rejected++
+				resp.Errors = append(resp.Errors, dto.EventError{
+					OrderID: detail.OrderID,
+					Status:  detail.Status,
+					Reason:  detail.Reason,
+				})
+			case repositories.Duplicate:
+				resp.Duplicate++
+				resp.Errors = append(resp.Errors, dto.EventError{
+					OrderID: detail.OrderID,
+					Status:  detail.Status,
+					Reason:  detail.Reason,
+				})
+			}
 		}
 	}
 
 	return resp, processingErr
 }
 
-func (s *orderEventService) startWorkers(ctx context.Context, numWorkers int, wg *sync.WaitGroup, jobs <-chan []dto.ImportOrderEventRequest, results chan<- workerResult) {
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go s.worker(i, ctx, wg, jobs, results)
-	}
+// chunk holds a slice of events and their corresponding original requests
+type chunk struct {
+	events []models.OrderEvent
 }
 
-func (s *orderEventService) worker(id int, ctx context.Context, wg *sync.WaitGroup, jobs <-chan []dto.ImportOrderEventRequest, results chan<- workerResult) {
-	defer wg.Done()
-
-	for group := range jobs {
-		s.processGroup(ctx, group, results)
+func splitIntoChunks(events []models.OrderEvent, numChunks int) []chunk {
+	if numChunks <= 0 {
+		numChunks = 1
 	}
-}
-
-func (s *orderEventService) processGroup(ctx context.Context, group []dto.ImportOrderEventRequest, results chan<- workerResult) {
-	for _, req := range group {
-		results <- s.processEvent(ctx, req)
-	}
-}
-
-func (s *orderEventService) processEvent(ctx context.Context, req dto.ImportOrderEventRequest) workerResult {
-	select {
-	case <-ctx.Done():
-		return workerResult{req: req, err: ctx.Err()}
-	default:
+	orderGroups := make(map[int64][]models.OrderEvent)
+	var orderKeys []int64
+	for _, e := range events {
+		if _, exists := orderGroups[e.OrderID]; !exists {
+			orderKeys = append(orderKeys, e.OrderID)
+		}
+		orderGroups[e.OrderID] = append(orderGroups[e.OrderID], e)
 	}
 
-	event := models.OrderEvent{
-		OrderID:   req.OrderID,
-		NewStatus: models.OrderStatus(req.Status),
-		UpdatedBy: req.UpdatedBy,
-		EventAt:   req.EventAt,
+	if len(orderKeys) < numChunks {
+		numChunks = len(orderKeys)
 	}
 
-	detail, err := s.orderEventRepo.ProcessSingleEventTx(ctx, event)
-	return workerResult{
-		req:    req,
-		detail: detail,
-		err:    err,
+	chunks := make([]chunk, numChunks)
+	for i, key := range orderKeys {
+		idx := i % numChunks
+		chunks[idx].events = append(chunks[idx].events, orderGroups[key]...)
 	}
+
+	return chunks
 }
 
 func validateBasic(req dto.ImportOrderEventRequest) string {
