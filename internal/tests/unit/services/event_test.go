@@ -41,9 +41,19 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 				{OrderID: 2, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
-				mockRepo.On("ProcessSingleEventTx", mock.Anything, mock.Anything).Return(
-					repositories.ProcessResultDetail{Result: repositories.Accepted}, nil,
-				).Times(2)
+				mockRepo.On("ProcessBatchEventsTx", mock.Anything, mock.Anything).Return(
+					func(_ context.Context, events []models.OrderEvent) []repositories.ProcessResultDetail {
+						details := make([]repositories.ProcessResultDetail, len(events))
+						for i, e := range events {
+							details[i] = repositories.ProcessResultDetail{
+								Result:  repositories.Accepted,
+								OrderID: e.OrderID,
+								Status:  string(e.NewStatus),
+							}
+						}
+						return details
+					}, nil,
+				)
 			},
 			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
 				assert.Equal(t, 2, resp.Accepted)
@@ -96,12 +106,16 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 				{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
-				mockRepo.On("ProcessSingleEventTx", mock.Anything, mock.Anything).Return(
-					repositories.ProcessResultDetail{
-						Result: repositories.Duplicate,
-						Reason: "Order is already in status 'paid'",
+				mockRepo.On("ProcessBatchEventsTx", mock.Anything, mock.Anything).Return(
+					[]repositories.ProcessResultDetail{
+						{
+							Result:  repositories.Duplicate,
+							Reason:  "Order is already in status 'paid'",
+							OrderID: 1,
+							Status:  "paid",
+						},
 					}, nil,
-				).Once()
+				)
 			},
 			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
 				assert.Equal(t, 0, resp.Accepted)
@@ -116,12 +130,16 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 				{OrderID: 1, Status: "delivered", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
-				mockRepo.On("ProcessSingleEventTx", mock.Anything, mock.Anything).Return(
-					repositories.ProcessResultDetail{
-						Result: repositories.Rejected,
-						Reason: "Invalid transition from 'created' to 'delivered'",
+				mockRepo.On("ProcessBatchEventsTx", mock.Anything, mock.Anything).Return(
+					[]repositories.ProcessResultDetail{
+						{
+							Result:  repositories.Rejected,
+							Reason:  "Invalid transition from 'created' to 'delivered'",
+							OrderID: 1,
+							Status:  "delivered",
+						},
 					}, nil,
-				).Once()
+				)
 			},
 			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
 				assert.Equal(t, 0, resp.Accepted)
@@ -135,14 +153,14 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 				{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
-				mockRepo.On("ProcessSingleEventTx", mock.Anything, mock.Anything).Return(
-					repositories.ProcessResultDetail{}, assert.AnError,
-				).Once()
+				mockRepo.On("ProcessBatchEventsTx", mock.Anything, mock.Anything).Return(
+					[]repositories.ProcessResultDetail(nil), assert.AnError,
+				)
 			},
 			expectErr: true,
 			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
-				assert.Equal(t, 1, resp.Rejected)
-				assert.Equal(t, "assert.AnError general error for testing", resp.Errors[0].Reason)
+				// When batch fails entirely, no individual results are tallied
+				assert.Equal(t, 0, resp.Accepted)
 			},
 		},
 		{
@@ -153,20 +171,28 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 				{OrderID: 2, Status: "paid", EventAt: now, UpdatedBy: "admin"}, // will be duplicate
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
-				mockRepo.On("ProcessSingleEventTx", mock.Anything, mock.MatchedBy(func(e models.OrderEvent) bool {
-					return e.OrderID == 1
-				})).Return(
-					repositories.ProcessResultDetail{Result: repositories.Accepted}, nil,
-				).Once()
-
-				mockRepo.On("ProcessSingleEventTx", mock.Anything, mock.MatchedBy(func(e models.OrderEvent) bool {
-					return e.OrderID == 2
-				})).Return(
-					repositories.ProcessResultDetail{
-						Result: repositories.Duplicate,
-						Reason: "Order is already in status 'paid'",
+				mockRepo.On("ProcessBatchEventsTx", mock.Anything, mock.Anything).Return(
+					func(_ context.Context, events []models.OrderEvent) []repositories.ProcessResultDetail {
+						details := make([]repositories.ProcessResultDetail, len(events))
+						for i, e := range events {
+							if e.OrderID == 1 {
+								details[i] = repositories.ProcessResultDetail{
+									Result:  repositories.Accepted,
+									OrderID: 1,
+									Status:  "paid",
+								}
+							} else if e.OrderID == 2 {
+								details[i] = repositories.ProcessResultDetail{
+									Result:  repositories.Duplicate,
+									Reason:  "Order is already in status 'paid'",
+									OrderID: 2,
+									Status:  "paid",
+								}
+							}
+						}
+						return details
 					}, nil,
-				).Once()
+				)
 			},
 			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
 				assert.Equal(t, 1, resp.Accepted)
@@ -191,7 +217,7 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 				{OrderID: 1, Status: "invalid_status", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
-				// The mock's Cleanup will verify ProcessSingleEventTx was NEVER called
+				// The mock's Cleanup will verify ProcessBatchEventsTx was NEVER called
 			},
 			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
 				assert.Equal(t, 0, resp.Accepted)
