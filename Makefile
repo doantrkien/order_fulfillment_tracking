@@ -9,7 +9,7 @@ MIGRATION_FILE=./cmd/migration
 # GO COMMANDS
 # =========================
 run:
-	ENV_FILE=.env.local go run $(MAIN_FILE)
+	ENV_FILE=".env.local" go run $(MAIN_FILE)
 
 tidy:
 	go mod tidy
@@ -18,10 +18,10 @@ download:
 	go mod download
 
 migrate:
-	ENV_FILE=.env.local go run $(MIGRATION_FILE)
+	ENV_FILE=".env.local" go run $(MIGRATION_FILE)
 
 migrate-up:
-	docker exec -it order_tracking go run ./cmd/migrate
+	docker exec -it order_tracking /app_migrate
 
 # =========================
 # SWAGGER
@@ -66,5 +66,10 @@ docker-down:
 docker-logs:
 	docker compose logs -f
 
+# =========================
+# Swagger
+# =========================
+init-swagger:
+	swag init -g $(MAIN_FILE)/main.go
 
 

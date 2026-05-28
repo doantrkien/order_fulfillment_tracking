@@ -72,6 +72,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -115,12 +127,6 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Order Status",
                         "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Customer Name",
-                        "name": "customer_name",
                         "in": "query"
                     },
                     {
@@ -772,7 +778,9 @@ const docTemplate = `{
         "response.ErrorBadReqResponse": {
             "type": "object",
             "properties": {
-                "data": {},
+                "data": {
+                    "type": "object"
+                },
                 "message": {
                     "type": "string",
                     "example": "Invalid input data"
@@ -786,7 +794,9 @@ const docTemplate = `{
         "response.ErrorInternalServerErrorResponse": {
             "type": "object",
             "properties": {
-                "data": {},
+                "data": {
+                    "type": "object"
+                },
                 "message": {
                     "type": "string",
                     "example": "Internal server error"
@@ -800,7 +810,9 @@ const docTemplate = `{
         "response.ErrorNotFoundResponse": {
             "type": "object",
             "properties": {
-                "data": {},
+                "data": {
+                    "type": "object"
+                },
                 "message": {
                     "type": "string",
                     "example": "Resource not found"
@@ -814,7 +826,9 @@ const docTemplate = `{
         "response.ErrorUnauthenticatedResponse": {
             "type": "object",
             "properties": {
-                "data": {},
+                "data": {
+                    "type": "object"
+                },
                 "message": {
                     "type": "string",
                     "example": "Authentication required"
@@ -828,7 +842,9 @@ const docTemplate = `{
         "response.ErrorUnauthorizedResponse": {
             "type": "object",
             "properties": {
-                "data": {},
+                "data": {
+                    "type": "object"
+                },
                 "message": {
                     "type": "string",
                     "example": "Permission denied"

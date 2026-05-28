@@ -29,6 +29,8 @@ func NewOrderEventHandler(orderEventService services.OrderEventService) *OrderEv
 // @Param request body []dto.ImportOrderEventRequest true "List of events"
 // @Success 200 {object} response.ResponseStruct{data=dto.ImportOrderEventsResponse}
 // @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 401 {object} response.ErrorUnauthenticatedResponse
+// @Failure 403 {object} response.ErrorUnauthorizedResponse
 // @Failure 500 {object} response.ErrorInternalServerErrorResponse{data=dto.ImportOrderEventsResponse}
 // @Security ApiKeyAuth
 // @Router /api/v1/order-events/import [post]

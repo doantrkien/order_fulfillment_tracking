@@ -152,7 +152,8 @@ definitions:
     - ORDER_STATUS_REFUNDED
   response.ErrorBadReqResponse:
     properties:
-      data: {}
+      data:
+        type: object
       message:
         example: Invalid input data
         type: string
@@ -162,7 +163,8 @@ definitions:
     type: object
   response.ErrorInternalServerErrorResponse:
     properties:
-      data: {}
+      data:
+        type: object
       message:
         example: Internal server error
         type: string
@@ -172,7 +174,8 @@ definitions:
     type: object
   response.ErrorNotFoundResponse:
     properties:
-      data: {}
+      data:
+        type: object
       message:
         example: Resource not found
         type: string
@@ -182,7 +185,8 @@ definitions:
     type: object
   response.ErrorUnauthenticatedResponse:
     properties:
-      data: {}
+      data:
+        type: object
       message:
         example: Authentication required
         type: string
@@ -192,7 +196,8 @@ definitions:
     type: object
   response.ErrorUnauthorizedResponse:
     properties:
-      data: {}
+      data:
+        type: object
       message:
         example: Permission denied
         type: string
@@ -271,6 +276,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ErrorBadReqResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorUnauthenticatedResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorUnauthorizedResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -293,10 +306,6 @@ paths:
       - description: Order Status
         in: query
         name: status
-        type: string
-      - description: Customer Name
-        in: query
-        name: customer_name
         type: string
       - description: Ordered Date
         in: query

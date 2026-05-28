@@ -30,7 +30,6 @@ func NewOrderHandler(orderService services.OrderService) *OrderHandler {
 // @Accept json
 // @Produce json
 // @Param status query string false "Order Status"
-// @Param customer_name query string false "Customer Name"
 // @Param ordered_at query string false "Ordered Date"
 // @Param page query int false "Page number"
 // @Param limit query int false "Page size"

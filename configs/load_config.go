@@ -16,8 +16,6 @@ func LoadConfig() error {
 	}
 	candidates = append(candidates, ".env")
 
-	fmt.Println(candidates)
-
 	for _, path := range candidates {
 		err := godotenv.Load(path)
 		if err == nil {
