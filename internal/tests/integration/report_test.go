@@ -64,7 +64,7 @@ func TestIntegrationReport(t *testing.T) {
 				assert.Equal(t, 201, postBody.Status)
 				assert.Equal(t, int64(1), postBody.Data.TotalOrders)
 				assert.Equal(t, int64(1), postBody.Data.TotalDelivered)
-				assert.Equal(t, float64(1000), postBody.Data.TotalIncome)
+				assert.Equal(t, int64(1000), postBody.Data.TotalIncome)
 			},
 		},
 		{
@@ -165,9 +165,9 @@ func TestIntegrationReport(t *testing.T) {
 			}
 
 			if tc.apiKey != "" {
-				req.Header.Set("X-API-Key", tc.apiKey)
+				req.Header.Set("X-API-KEY", tc.apiKey)
 			} else if tc.name != "get daily report - unauthenticated" {
-				req.Header.Set("X-API-Key", adminAPIKey) // fallback to admin for older test cases
+				req.Header.Set("X-API-KEY", adminAPIKey) // fallback to admin for older test cases
 			}
 
 			resp, err := app.Test(req)

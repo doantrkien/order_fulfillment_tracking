@@ -26,7 +26,7 @@ import (
 // @BasePath /
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
-// @name X-API-Key
+// @name X-API-KEY
 func main() {
 	err := configs.LoadConfig()
 	if err != nil {

@@ -33,7 +33,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 	testCases := []struct {
 		name           string
 		seedDB         func(t *testing.T) []dto.ImportOrderEventRequest
-		rawBody        []byte 
+		rawBody        []byte
 		expectedStatus int
 		validate       func(t *testing.T, respBody []byte)
 	}{
@@ -134,7 +134,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 				return []dto.ImportOrderEventRequest{
 					{OrderID: -1, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"},
 					{OrderID: 1, Status: "unknown_status", EventAt: time.Now(), UpdatedBy: "admin"},
-					{OrderID: 1, Status: "paid", UpdatedBy: "admin"}, 
+					{OrderID: 1, Status: "paid", UpdatedBy: "admin"},
 				}
 			},
 			expectedStatus: 200,
@@ -177,7 +177,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 
 			req := httptest.NewRequest("POST", "/api/v1/order-events/import", bytes.NewBuffer(bodyBytes))
 			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("X-API-Key", adminAPIKey)
+			req.Header.Set("X-API-KEY", adminAPIKey)
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
@@ -208,7 +208,7 @@ func TestIntegrationImportOrderEventsFullLifecycle(t *testing.T) {
 
 		req := httptest.NewRequest("POST", "/api/v1/order-events/import", bytes.NewBuffer(bodyBytes))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-API-Key", adminAPIKey)
+		req.Header.Set("X-API-KEY", adminAPIKey)
 
 		resp, err := app.Test(req)
 		require.NoError(t, err)
@@ -248,7 +248,7 @@ func TestIntegrationImportOrderEventsMixedBatch(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/api/v1/order-events/import", bytes.NewBuffer(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-API-Key", adminAPIKey)
+	req.Header.Set("X-API-KEY", adminAPIKey)
 
 	resp, err := app.Test(req)
 	require.NoError(t, err)
