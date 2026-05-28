@@ -23,3 +23,5 @@ COPY --from=builder /app/db/migrations /db/migrations
 
 COPY --from=builder /bin/app_service /app_service
 COPY --from=builder /bin/app_migrate /app_migrate
+
+CMD ["/app_service"]
