@@ -33,38 +33,43 @@ func (r *reportRepository) GetDailyReport(date time.Time) (*models.Report, error
 func (r *reportRepository) BuildDailyReport(start, end time.Time) (*models.Report, error) {
 	report := &models.Report{Date: start}
 
-	type summaryResult struct {
-		TotalOrders    int64
-		TotalNew       int64
+	type createdSummary struct {
+		TotalOrders int64
+		TotalNew    int64
+	}
+
+	var created createdSummary
+	err := r.db.Raw(`
+		SELECT
+			COUNT(id)                                                    AS total_orders,
+			COUNT(CASE WHEN current_status = 'created' THEN 1 END)      AS total_new
+		FROM orders
+		WHERE created_at >= ? AND created_at < ?
+	`, start, end).Scan(&created).Error
+	if err != nil {
+		return nil, err
+	}
+
+	type eventSummary struct {
 		TotalDelivered int64
 		TotalCancelled int64
 		TotalRefunded  int64
 		TotalIncome    int64
 	}
-
-	var summary summaryResult
-
-	err := r.db.Raw(`
+	var events eventSummary
+	err = r.db.Raw(`
 		SELECT
-			COUNT(id) AS total_orders,
-			COUNT(CASE WHEN current_status = 'created' THEN 1 END) AS total_new,
-			COUNT(CASE WHEN current_status = 'delivered' THEN 1 END) AS total_delivered,
-			COUNT(CASE WHEN current_status = 'cancelled' THEN 1 END) AS total_cancelled,
-			COUNT(CASE WHEN current_status = 'refunded' THEN 1 END) AS total_refunded,
-			COALESCE(SUM(CASE WHEN current_status = 'delivered' THEN total_amount ELSE 0 END), 0) AS total_income
-		FROM orders
-		WHERE created_at >= ? AND created_at < ?
-	`, start, end).Scan(&summary).Error
+			COUNT(CASE WHEN oe.new_status = 'delivered'  THEN 1 END)                                AS total_delivered,
+			COUNT(CASE WHEN oe.new_status = 'cancelled'  THEN 1 END)                                AS total_cancelled,
+			COUNT(CASE WHEN oe.new_status = 'refunded'   THEN 1 END)                                AS total_refunded,
+			COALESCE(SUM(CASE WHEN oe.new_status = 'delivered' THEN o.total_amount ELSE 0 END), 0)  AS total_income
+		FROM order_events oe
+		JOIN orders o ON o.id = oe.order_id
+		WHERE oe.event_at >= ? AND oe.event_at < ?
+	`, start, end).Scan(&events).Error
 	if err != nil {
 		return nil, err
 	}
-
-	report.TotalOrders = summary.TotalOrders
-	report.TotalNew = summary.TotalNew
-	report.TotalDelivered = summary.TotalDelivered
-	report.TotalCancelled = summary.TotalCancelled
-	report.TotalRefunded = summary.TotalRefunded
-	report.TotalIncome = summary.TotalIncome
 
 	var avgSeconds float64
 	err = r.db.Raw(`
@@ -78,6 +83,12 @@ func (r *reportRepository) BuildDailyReport(start, end time.Time) (*models.Repor
 		return nil, err
 	}
 
+	report.TotalOrders = created.TotalOrders
+	report.TotalNew = created.TotalNew
+	report.TotalDelivered = events.TotalDelivered
+	report.TotalCancelled = events.TotalCancelled
+	report.TotalRefunded = events.TotalRefunded
+	report.TotalIncome = events.TotalIncome
 	report.AvgDeliverTime = avgSeconds / 3600
 
 	return report, nil
