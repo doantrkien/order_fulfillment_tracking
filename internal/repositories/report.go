@@ -39,7 +39,7 @@ func (r *reportRepository) BuildDailyReport(start, end time.Time) (*models.Repor
 		TotalDelivered int64
 		TotalCancelled int64
 		TotalRefunded  int64
-		TotalIncome    float64
+		TotalIncome    int64
 	}
 
 	var summary summaryResult
