@@ -2,9 +2,9 @@ name: Go CI
 
 on:
   push:
-    branches: ["dev"]
+    branches: ["dev" ,"main"]
   pull_request:
-    branches: ["dev"]
+    branches: ["dev", "main"]
 
 jobs:
   build-and-test:
@@ -30,8 +30,16 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Build
-        run: go build -v ./...
+      - name: Run go vet
+        run: go vet ./...
 
       - name: Run tests
         run: make test-all
+
+      - name: Verify all packages compile
+        run: go build ./...
+      
+      - name: Build server binary
+        run: |
+          mkdir -p bin
+          go build -o bin/server ./cmd/api
