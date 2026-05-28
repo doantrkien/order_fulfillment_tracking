@@ -26,7 +26,7 @@ import (
 // @BasePath /
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
-// @name X-API-Key
+// @name X-API-KEY
 func main() {
 	err := configs.LoadConfig()
 	if err != nil {
@@ -39,7 +39,7 @@ func main() {
 	}
 
 	app := fiber.New(fiber.Config{
-		BodyLimit: 50 * 1024 * 1024, 
+		BodyLimit: 50 * 1024 * 1024,
 	})
 
 	orderRepo := repositories.NewOrderRepository(db)

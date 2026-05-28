@@ -9,8 +9,6 @@ services:
       - "5000:5000"
     env_file:
       - .env.docker
-    # environment:
-    #   APP_ENV: docker
     volumes:
       - .:/app
       - /app/tmp

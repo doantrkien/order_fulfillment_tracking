@@ -54,6 +54,9 @@ func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
 	if query.LimitItems <= 0 {
 		query.LimitItems = 10
 	}
+	if query.LimitItems > 100 {
+		query.LimitItems = 100
+	}
 
 	result, totalItems, err := h.orderService.GetAllOrder(query)
 	if err != nil {
@@ -130,7 +133,7 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
 
-	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, nil)
+	return response.ResponseSuccess(c, 201, constant.SUCCESS.Message, nil)
 }
 
 // UpdateOrderStatus godoc

@@ -165,9 +165,9 @@ func TestIntegrationReport(t *testing.T) {
 			}
 
 			if tc.apiKey != "" {
-				req.Header.Set("X-API-Key", tc.apiKey)
+				req.Header.Set("X-API-KEY", tc.apiKey)
 			} else if tc.name != "get daily report - unauthenticated" {
-				req.Header.Set("X-API-Key", adminAPIKey) // fallback to admin for older test cases
+				req.Header.Set("X-API-KEY", adminAPIKey) // fallback to admin for older test cases
 			}
 
 			resp, err := app.Test(req)
