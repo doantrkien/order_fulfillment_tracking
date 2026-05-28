@@ -36,7 +36,6 @@ func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto.Im
 	}
 
 	var validReqs []dto.ImportOrderEventRequest
-
 	for _, req := range reqs {
 		if reason := validateBasic(req); reason != "" {
 			resp.Rejected++
@@ -64,45 +63,43 @@ func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto.Im
 		})
 	}
 
-	orderedEvents := make([]models.OrderEvent, 0, len(validReqs))
-	for _, events := range orderGroups {
-		for _, req := range events {
-			orderedEvents = append(orderedEvents, models.OrderEvent{
-				OrderID:   req.OrderID,
-				NewStatus: models.OrderStatus(req.Status),
-				UpdatedBy: req.UpdatedBy,
-				EventAt:   req.EventAt,
-			})
-		}
+	
+	batches := splitIntoBatches(orderGroups, s.maxWorkers)
+	if len(batches) == 0 {
+		return resp, nil
 	}
 
-	// Split into chunks for parallel processing by workers
-	chunks := splitIntoChunks(orderedEvents, s.maxWorkers)
+	jobs := make(chan []models.OrderEvent, len(batches))
+	resultsChan := make(chan batchResult, len(batches))
 
 	var wg sync.WaitGroup
-	resultsChan := make(chan batchResult, len(chunks))
-
-	for _, chunk := range chunks {
+	for i := 0; i < s.maxWorkers; i++ {
 		wg.Add(1)
-		go func(events []models.OrderEvent) {
+		go func() {
 			defer wg.Done()
-			select {
-			case <-ctx.Done():
-				resultsChan <- batchResult{err: ctx.Err()}
-				return
-			default:
+			for events := range jobs {
+				select {
+				case <-ctx.Done():
+					resultsChan <- batchResult{err: ctx.Err()}
+					continue
+				default:
+				}
+				details, err := s.orderEventRepo.ProcessBatchEventsTx(ctx, events)
+				resultsChan <- batchResult{details: details, err: err}
 			}
-			details, err := s.orderEventRepo.ProcessBatchEventsTx(ctx, events)
-			resultsChan <- batchResult{details: details, err: err}
-		}(chunk.events)
+		}()
 	}
+
+	for _, batch := range batches {
+		jobs <- batch
+	}
+	close(jobs)
 
 	go func() {
 		wg.Wait()
 		close(resultsChan)
 	}()
 
-	// Collect results
 	var processingErr error
 	for br := range resultsChan {
 		if br.err != nil {
@@ -134,35 +131,31 @@ func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto.Im
 	return resp, processingErr
 }
 
-// chunk holds a slice of events and their corresponding original requests
-type chunk struct {
-	events []models.OrderEvent
-}
-
-func splitIntoChunks(events []models.OrderEvent, numChunks int) []chunk {
-	if numChunks <= 0 {
-		numChunks = 1
+func splitIntoBatches(orderGroups map[int64][]dto.ImportOrderEventRequest, numBatches int) [][]models.OrderEvent {
+	if numBatches <= 0 {
+		numBatches = 1
 	}
-	orderGroups := make(map[int64][]models.OrderEvent)
-	var orderKeys []int64
-	for _, e := range events {
-		if _, exists := orderGroups[e.OrderID]; !exists {
-			orderKeys = append(orderKeys, e.OrderID)
+	if len(orderGroups) < numBatches {
+		numBatches = len(orderGroups)
+	}
+
+	batches := make([][]models.OrderEvent, numBatches)
+
+	i := 0
+	for _, reqs := range orderGroups {
+		idx := i % numBatches
+		for _, req := range reqs {
+			batches[idx] = append(batches[idx], models.OrderEvent{
+				OrderID:   req.OrderID,
+				NewStatus: models.OrderStatus(req.Status),
+				UpdatedBy: req.UpdatedBy,
+				EventAt:   req.EventAt,
+			})
 		}
-		orderGroups[e.OrderID] = append(orderGroups[e.OrderID], e)
+		i++
 	}
 
-	if len(orderKeys) < numChunks {
-		numChunks = len(orderKeys)
-	}
-
-	chunks := make([]chunk, numChunks)
-	for i, key := range orderKeys {
-		idx := i % numChunks
-		chunks[idx].events = append(chunks[idx].events, orderGroups[key]...)
-	}
-
-	return chunks
+	return batches
 }
 
 func validateBasic(req dto.ImportOrderEventRequest) string {
@@ -177,3 +170,6 @@ func validateBasic(req dto.ImportOrderEventRequest) string {
 	}
 	return ""
 }
+
+
+
