@@ -20,6 +20,9 @@ download:
 migrate:
 	ENV_FILE=.env.local go run $(MIGRATION_FILE)
 
+migrate-up:
+	docker exec -it order_tracking go run ./cmd/migrate
+
 # =========================
 # SWAGGER
 # =========================

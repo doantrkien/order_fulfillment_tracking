@@ -150,7 +150,7 @@ definitions:
     - ORDER_STATUS_DELIVERED
     - ORDER_STATUS_CANCELLED
     - ORDER_STATUS_REFUNDED
-  response.ErrorBadReqResponse:
+  response.Error400Response:
     properties:
       data: {}
       message:
@@ -160,27 +160,7 @@ definitions:
         example: 400
         type: integer
     type: object
-  response.ErrorInternalServerErrorResponse:
-    properties:
-      data: {}
-      message:
-        example: Internal server error
-        type: string
-      status:
-        example: 500
-        type: integer
-    type: object
-  response.ErrorNotFoundResponse:
-    properties:
-      data: {}
-      message:
-        example: Resource not found
-        type: string
-      status:
-        example: 404
-        type: integer
-    type: object
-  response.ErrorUnauthenticatedResponse:
+  response.Error401Response:
     properties:
       data: {}
       message:
@@ -190,7 +170,7 @@ definitions:
         example: 401
         type: integer
     type: object
-  response.ErrorUnauthorizedResponse:
+  response.Error403Response:
     properties:
       data: {}
       message:
@@ -198,6 +178,26 @@ definitions:
         type: string
       status:
         example: 403
+        type: integer
+    type: object
+  response.Error404Response:
+    properties:
+      data: {}
+      message:
+        example: Resource not found
+        type: string
+      status:
+        example: 404
+        type: integer
+    type: object
+  response.Error500Response:
+    properties:
+      data: {}
+      message:
+        example: Internal server error
+        type: string
+      status:
+        example: 500
         type: integer
     type: object
   response.PaginatedResponse:
@@ -228,8 +228,10 @@ definitions:
     properties:
       data: {}
       message:
+        example: Success
         type: string
       status:
+        example: 200
         type: integer
     type: object
 host: localhost:5000
@@ -270,12 +272,12 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/response.ErrorBadReqResponse'
+            $ref: '#/definitions/response.Error400Response'
         "500":
           description: Internal Server Error
           schema:
             allOf:
-            - $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
+            - $ref: '#/definitions/response.Error500Response'
             - properties:
                 data:
                   $ref: '#/definitions/dto.ImportOrderEventsResponse'
@@ -327,19 +329,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/response.ErrorBadReqResponse'
+            $ref: '#/definitions/response.Error400Response'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/response.ErrorUnauthenticatedResponse'
+            $ref: '#/definitions/response.Error401Response'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/response.ErrorUnauthorizedResponse'
+            $ref: '#/definitions/response.Error403Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
+            $ref: '#/definitions/response.Error500Response'
       security:
       - ApiKeyAuth: []
       summary: Get all orders
@@ -366,19 +368,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/response.ErrorBadReqResponse'
+            $ref: '#/definitions/response.Error400Response'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/response.ErrorUnauthenticatedResponse'
+            $ref: '#/definitions/response.Error401Response'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/response.ErrorUnauthorizedResponse'
+            $ref: '#/definitions/response.Error403Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
+            $ref: '#/definitions/response.Error500Response'
       security:
       - ApiKeyAuth: []
       summary: Create order
@@ -410,23 +412,23 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/response.ErrorBadReqResponse'
+            $ref: '#/definitions/response.Error400Response'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/response.ErrorUnauthenticatedResponse'
+            $ref: '#/definitions/response.Error401Response'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/response.ErrorUnauthorizedResponse'
+            $ref: '#/definitions/response.Error403Response'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/response.ErrorNotFoundResponse'
+            $ref: '#/definitions/response.Error404Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
+            $ref: '#/definitions/response.Error500Response'
       security:
       - ApiKeyAuth: []
       summary: Get order detail
@@ -458,23 +460,23 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/response.ErrorBadReqResponse'
+            $ref: '#/definitions/response.Error400Response'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/response.ErrorUnauthenticatedResponse'
+            $ref: '#/definitions/response.Error401Response'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/response.ErrorUnauthorizedResponse'
+            $ref: '#/definitions/response.Error403Response'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/response.ErrorNotFoundResponse'
+            $ref: '#/definitions/response.Error404Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
+            $ref: '#/definitions/response.Error500Response'
       security:
       - ApiKeyAuth: []
       summary: Update order status
@@ -505,23 +507,23 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/response.ErrorBadReqResponse'
+            $ref: '#/definitions/response.Error400Response'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/response.ErrorUnauthenticatedResponse'
+            $ref: '#/definitions/response.Error401Response'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/response.ErrorUnauthorizedResponse'
+            $ref: '#/definitions/response.Error403Response'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/response.ErrorNotFoundResponse'
+            $ref: '#/definitions/response.Error404Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
+            $ref: '#/definitions/response.Error500Response'
       security:
       - ApiKeyAuth: []
       summary: Daily order report
@@ -552,19 +554,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/response.ErrorBadReqResponse'
+            $ref: '#/definitions/response.Error400Response'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/response.ErrorUnauthenticatedResponse'
+            $ref: '#/definitions/response.Error401Response'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/response.ErrorUnauthorizedResponse'
+            $ref: '#/definitions/response.Error403Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
+            $ref: '#/definitions/response.Error500Response'
       security:
       - ApiKeyAuth: []
       summary: Create daily report manually
@@ -573,6 +575,6 @@ paths:
 securityDefinitions:
   ApiKeyAuth:
     in: header
-    name: X-API-KEY
+    name: X-API-Key
     type: apiKey
 swagger: "2.0"

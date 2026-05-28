@@ -8,9 +8,9 @@ import (
 )
 
 type ResponseStruct struct {
-	Status  int         `json:"status" example:"200"`
+	Status  int         `json:"status"`
 	Data    interface{} `json:"data"`
-	Message string      `json:"message" example:"Success"`
+	Message string      `json:"message"`
 }
 
 func ResponseSuccess(c fiber.Ctx, status int, message string, data interface{}) error {
