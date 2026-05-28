@@ -64,7 +64,7 @@ func TestIntegrationReport(t *testing.T) {
 				assert.Equal(t, 201, postBody.Status)
 				assert.Equal(t, int64(1), postBody.Data.TotalOrders)
 				assert.Equal(t, int64(1), postBody.Data.TotalDelivered)
-				assert.Equal(t, float64(1000), postBody.Data.TotalIncome)
+				assert.Equal(t, int64(1000), postBody.Data.TotalIncome)
 			},
 		},
 		{
