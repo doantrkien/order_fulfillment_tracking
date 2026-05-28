@@ -63,7 +63,7 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Error400Response"
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "500": {
@@ -71,7 +71,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/response.Error500Response"
+                                    "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
                                 },
                                 {
                                     "type": "object",
@@ -161,25 +161,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Error400Response"
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/response.Error401Response"
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.Error403Response"
+                            "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Error500Response"
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
                         }
                     }
                 }
@@ -222,25 +222,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Error400Response"
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/response.Error401Response"
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.Error403Response"
+                            "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Error500Response"
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
                         }
                     }
                 }
@@ -295,31 +295,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Error400Response"
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/response.Error401Response"
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.Error403Response"
+                            "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/response.Error404Response"
+                            "$ref": "#/definitions/response.ErrorNotFoundResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Error500Response"
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
                         }
                     }
                 }
@@ -370,31 +370,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Error400Response"
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/response.Error401Response"
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.Error403Response"
+                            "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/response.Error404Response"
+                            "$ref": "#/definitions/response.ErrorNotFoundResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Error500Response"
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
                         }
                     }
                 }
@@ -448,31 +448,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Error400Response"
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/response.Error401Response"
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.Error403Response"
+                            "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/response.Error404Response"
+                            "$ref": "#/definitions/response.ErrorNotFoundResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Error500Response"
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
                         }
                     }
                 }
@@ -526,25 +526,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Error400Response"
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/response.Error401Response"
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.Error403Response"
+                            "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Error500Response"
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
                         }
                     }
                 }
@@ -763,7 +763,7 @@
                 "ORDER_STATUS_REFUNDED"
             ]
         },
-        "response.Error400Response": {
+        "response.ErrorBadReqResponse": {
             "type": "object",
             "properties": {
                 "data": {},
@@ -777,35 +777,21 @@
                 }
             }
         },
-        "response.Error401Response": {
+        "response.ErrorInternalServerErrorResponse": {
             "type": "object",
             "properties": {
                 "data": {},
                 "message": {
                     "type": "string",
-                    "example": "Authentication required"
+                    "example": "Internal server error"
                 },
                 "status": {
                     "type": "integer",
-                    "example": 401
+                    "example": 500
                 }
             }
         },
-        "response.Error403Response": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "message": {
-                    "type": "string",
-                    "example": "Permission denied"
-                },
-                "status": {
-                    "type": "integer",
-                    "example": 403
-                }
-            }
-        },
-        "response.Error404Response": {
+        "response.ErrorNotFoundResponse": {
             "type": "object",
             "properties": {
                 "data": {},
@@ -819,17 +805,31 @@
                 }
             }
         },
-        "response.Error500Response": {
+        "response.ErrorUnauthenticatedResponse": {
             "type": "object",
             "properties": {
                 "data": {},
                 "message": {
                     "type": "string",
-                    "example": "Internal server error"
+                    "example": "Authentication required"
                 },
                 "status": {
                     "type": "integer",
-                    "example": 500
+                    "example": 401
+                }
+            }
+        },
+        "response.ErrorUnauthorizedResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string",
+                    "example": "Permission denied"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 403
                 }
             }
         },
@@ -872,12 +872,10 @@
             "properties": {
                 "data": {},
                 "message": {
-                    "type": "string",
-                    "example": "Success"
+                    "type": "string"
                 },
                 "status": {
-                    "type": "integer",
-                    "example": 200
+                    "type": "integer"
                 }
             }
         }

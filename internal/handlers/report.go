@@ -29,11 +29,11 @@ func NewReportHandler(reportService services.ReportService) *ReportHandler {
 // @Produce json
 // @Param date query string true "Date (YYYY-MM-DD)"
 // @Success 200 {object} response.ResponseStruct{data=dto.DailyReportResponse}
-// @Failure 400 {object} response.Error400Response
-// @Failure 401 {object} response.Error401Response
-// @Failure 403 {object} response.Error403Response
-// @Failure 404 {object} response.Error404Response
-// @Failure 500 {object} response.Error500Response
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 401 {object} response.ErrorUnauthenticatedResponse
+// @Failure 403 {object} response.ErrorUnauthorizedResponse
+// @Failure 404 {object} response.ErrorNotFoundResponse
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse
 // @Security ApiKeyAuth
 // @Router /api/v1/reports/daily [get]
 func (h *ReportHandler) GetDailyReport(c fiber.Ctx) error {
@@ -70,10 +70,10 @@ func (h *ReportHandler) GetDailyReport(c fiber.Ctx) error {
 // @Produce json
 // @Param request body dto.GetDailyReportRequest true "Date request"
 // @Success 201 {object} response.ResponseStruct{data=dto.DailyReportResponse}
-// @Failure 400 {object} response.Error400Response
-// @Failure 401 {object} response.Error401Response
-// @Failure 403 {object} response.Error403Response
-// @Failure 500 {object} response.Error500Response
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 401 {object} response.ErrorUnauthenticatedResponse
+// @Failure 403 {object} response.ErrorUnauthorizedResponse
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse
 // @Security ApiKeyAuth
 // @Router /api/v1/reports/daily [post]
 func (h *ReportHandler) CreateDailyReport(c fiber.Ctx) error {

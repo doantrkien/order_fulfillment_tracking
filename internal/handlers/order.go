@@ -35,10 +35,10 @@ func NewOrderHandler(orderService services.OrderService) *OrderHandler {
 // @Param page query int false "Page number"
 // @Param limit query int false "Page size"
 // @Success 200 {object} response.PaginatedResponse{data=[]dto.OrderReponse}
-// @Failure 400 {object} response.Error400Response
-// @Failure 401 {object} response.Error401Response
-// @Failure 403 {object} response.Error403Response
-// @Failure 500 {object} response.Error500Response
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 401 {object} response.ErrorUnauthenticatedResponse
+// @Failure 403 {object} response.ErrorUnauthorizedResponse
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse
 // @Security ApiKeyAuth
 // @Router /api/v1/orders [get]
 func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
@@ -78,11 +78,11 @@ func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
 // @Produce json
 // @Param id path int true "Order ID"
 // @Success 200 {object} response.ResponseStruct{data=dto.OrderReponse}
-// @Failure 400 {object} response.Error400Response
-// @Failure 401 {object} response.Error401Response
-// @Failure 403 {object} response.Error403Response
-// @Failure 404 {object} response.Error404Response
-// @Failure 500 {object} response.Error500Response
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 401 {object} response.ErrorUnauthenticatedResponse
+// @Failure 403 {object} response.ErrorUnauthorizedResponse
+// @Failure 404 {object} response.ErrorNotFoundResponse
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse
 // @Security ApiKeyAuth
 // @Router /api/v1/orders/{id} [get]
 func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
@@ -110,10 +110,10 @@ func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
 // @Produce json
 // @Param request body dto.OrderRequest true "Order details"
 // @Success 201 {object} response.ResponseStruct
-// @Failure 400 {object} response.Error400Response
-// @Failure 401 {object} response.Error401Response
-// @Failure 403 {object} response.Error403Response
-// @Failure 500 {object} response.Error500Response
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 401 {object} response.ErrorUnauthenticatedResponse
+// @Failure 403 {object} response.ErrorUnauthorizedResponse
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse
 // @Security ApiKeyAuth
 // @Router /api/v1/orders [post]
 func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
@@ -141,11 +141,11 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 // @Param id path int true "Order ID"
 // @Param status body dto.UpdateStatusRequest true "New status"
 // @Success 200 {object} response.ResponseStruct
-// @Failure 400 {object} response.Error400Response
-// @Failure 401 {object} response.Error401Response
-// @Failure 403 {object} response.Error403Response
-// @Failure 404 {object} response.Error404Response
-// @Failure 500 {object} response.Error500Response
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 401 {object} response.ErrorUnauthenticatedResponse
+// @Failure 403 {object} response.ErrorUnauthorizedResponse
+// @Failure 404 {object} response.ErrorNotFoundResponse
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse
 // @Security ApiKeyAuth
 // @Router /api/v1/orders/{id}/status [patch]
 func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {

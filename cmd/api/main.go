@@ -39,7 +39,7 @@ func main() {
 	}
 
 	app := fiber.New(fiber.Config{
-		BodyLimit: 50 * 1024 * 1024, 
+		BodyLimit: 50 * 1024 * 1024,
 	})
 
 	orderRepo := repositories.NewOrderRepository(db)
@@ -63,7 +63,7 @@ func main() {
 	routers.SetupOrderRouter(app, orderHandler)
 	routers.SetupOrderEventRouter(app, orderEventHandler)
 	routers.SetupReportRouter(app, reportHandler)
-	app.Get("/docs/*", swaggo.HandlerDefault)
+	app.Get("/docs/swagger/*", swaggo.HandlerDefault)
 
 	log.Fatal(app.Listen(":5000"))
 }
