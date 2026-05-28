@@ -94,7 +94,7 @@ func TestIntegrationCreateOrder(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 
 			if tt.apiKey != "" {
-				req.Header.Set("X-API-Key", tt.apiKey)
+				req.Header.Set("X-API-KEY", tt.apiKey)
 			}
 
 			resp, err := app.Test(req)
@@ -289,7 +289,7 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 			req := httptest.NewRequest("GET", tt.query, nil)
 
 			if tt.apiKey != "" {
-				req.Header.Set("X-API-Key", tt.apiKey)
+				req.Header.Set("X-API-KE", tt.apiKey)
 			}
 
 			resp, err := app.Test(req)
@@ -420,7 +420,7 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 			)
 
 			if tt.apiKey != "" {
-				req.Header.Set("X-API-Key", tt.apiKey)
+				req.Header.Set("X-API-KEY", tt.apiKey)
 			}
 
 			resp, err := app.Test(req)
@@ -658,7 +658,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 
 			if tt.apiKey != "" {
-				req.Header.Set("X-API-Key", tt.apiKey)
+				req.Header.Set("X-API-KEY", tt.apiKey)
 			}
 
 			resp, err := app.Test(req)

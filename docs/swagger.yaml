@@ -525,6 +525,6 @@ paths:
 securityDefinitions:
   ApiKeyAuth:
     in: header
-    name: X-API-Key
+    name: X-API-KEY
     type: apiKey
 swagger: "2.0"
