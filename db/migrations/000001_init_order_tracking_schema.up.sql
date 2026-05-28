@@ -1,7 +1,7 @@
 CREATE TABLE orders (
     id BIGSERIAL PRIMARY KEY,
     user_info JSONB,
-    total_amount DECIMAL(12,2) NOT NULL,
+    total_amount BIGINT NOT NULL,
     current_status VARCHAR(20) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -24,7 +24,7 @@ CREATE TABLE reports (
     total_delivered BIGINT NOT NULL DEFAULT 0,
     total_cancelled BIGINT NOT NULL DEFAULT 0,
     total_refunded BIGINT NOT NULL DEFAULT 0,
-    total_income DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    total_income BIGINT NOT NULL DEFAULT 0,
     avg_deliver_time DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

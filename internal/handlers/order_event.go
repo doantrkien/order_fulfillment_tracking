@@ -8,6 +8,7 @@ import (
 	"main/internal/services"
 	"main/response"
 	"time"
+
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -27,8 +28,8 @@ func NewOrderEventHandler(orderEventService services.OrderEventService) *OrderEv
 // @Produce json
 // @Param request body []dto.ImportOrderEventRequest true "List of events"
 // @Success 200 {object} response.ResponseStruct{data=dto.ImportOrderEventsResponse}
-// @Failure 400 {object} response.ResponseStruct
-// @Failure 500 {object} response.ResponseStruct{data=dto.ImportOrderEventsResponse}
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse{data=dto.ImportOrderEventsResponse}
 // @Security ApiKeyAuth
 // @Router /api/v1/order-events/import [post]
 func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
@@ -39,7 +40,7 @@ func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
 	}
 	const maxBatchSize = 50000
 	if len(req) > maxBatchSize {
-		return response.ResponseSuccess(c, 400, "batch too large, max 50000 events", nil)
+		return response.ResponseError(c, errs.ERR_BATCH_TOO_LARGE, nil)
 	}
 
 	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
