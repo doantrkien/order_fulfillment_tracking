@@ -12,7 +12,7 @@ import (
 func Authenticate() fiber.Handler {
 	return func(c fiber.Ctx) error {
 
-		apiKey := c.Get("X-API-Key")
+		apiKey := c.Get("X-API-KEY")
 		fmt.Printf("Received API Key: %s\n", apiKey) // Debug log for received API key
 
 		if apiKey == "" {
