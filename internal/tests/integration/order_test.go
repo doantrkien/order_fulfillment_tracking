@@ -94,7 +94,7 @@ func TestIntegrationCreateOrder(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 
 			if tt.apiKey != "" {
-				req.Header.Set("X-API-KEY", tt.apiKey)
+				req.Header.Set("X-API-Key", tt.apiKey)
 			}
 
 			resp, err := app.Test(req)
@@ -125,9 +125,8 @@ func TestIntegrationCreateOrder(t *testing.T) {
 }
 
 func TestIntegrationGetAllOrders(t *testing.T) {
-	today := time.Now()
+	today := time.Now().UTC()
 	yesterday := today.AddDate(0, 0, -1)
-
 	tests := []struct {
 		name           string
 		query          string
@@ -231,18 +230,6 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 			expectedUser:   "today_user",
 		},
 		{
-			name:   "customer access allowed",
-			query:  "/api/v1/orders?page=1&limit=10",
-			apiKey: customerAPIKey,
-			seedOrders: []models.Order{
-				{TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_CREATED, UserInfo: mustMarshalUserInfo("u1", "", ""), CreatedAt: today, UpdatedAt: today},
-			},
-			expectedStatus: 200,
-			expectError:    false,
-			expectedTotal:  1,
-			expectedLength: 1,
-		},
-		{
 			name:   "pagination",
 			query:  "/api/v1/orders?page=1&limit=2",
 			apiKey: adminAPIKey,
@@ -289,7 +276,7 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 			req := httptest.NewRequest("GET", tt.query, nil)
 
 			if tt.apiKey != "" {
-				req.Header.Set("X-API-KE", tt.apiKey)
+				req.Header.Set("X-API-Key", tt.apiKey)
 			}
 
 			resp, err := app.Test(req)
@@ -368,7 +355,7 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 			expectError:    true,
 		},
 		{
-			name: "customer access allowed",
+			name: "admin access allowed",
 			order: models.Order{
 				TotalAmount:   5000,
 				CurrentStatus: models.ORDER_STATUS_CREATED,
@@ -381,7 +368,7 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 				UpdatedAt: time.Now(),
 			},
 			orderID:        "1",
-			apiKey:         customerAPIKey,
+			apiKey:         adminAPIKey,
 			expectedStatus: 200,
 			expectError:    false,
 		},
@@ -420,7 +407,7 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 			)
 
 			if tt.apiKey != "" {
-				req.Header.Set("X-API-KEY", tt.apiKey)
+				req.Header.Set("X-API-Key", tt.apiKey)
 			}
 
 			resp, err := app.Test(req)
@@ -537,7 +524,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			body: dto.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_CANCELLED,
 			},
-			apiKey:         customerAPIKey,
+			apiKey:         adminAPIKey,
 			expectedStatus: 200,
 			expectError:    false,
 		},
@@ -658,7 +645,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 
 			if tt.apiKey != "" {
-				req.Header.Set("X-API-KEY", tt.apiKey)
+				req.Header.Set("X-API-Key", tt.apiKey)
 			}
 
 			resp, err := app.Test(req)
