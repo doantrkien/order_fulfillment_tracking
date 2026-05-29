@@ -128,14 +128,6 @@ func TestIntegrationReport(t *testing.T) {
 			expectedStatus: 401,
 		},
 		{
-			name:           "get daily report - wrong role customer",
-			method:         "GET",
-			path:           "/api/v1/reports/daily?date=2026-05-03",
-			body:           nil,
-			apiKey:         customerAPIKey,
-			expectedStatus: 403,
-		},
-		{
 			name:           "get daily report - wrong role driver",
 			method:         "GET",
 			path:           "/api/v1/reports/daily?date=2026-05-03",

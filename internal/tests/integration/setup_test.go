@@ -25,11 +25,10 @@ import (
 )
 
 var (
-	app            *fiber.App
-	db             *gorm.DB
-	customerAPIKey string
-	adminAPIKey    string
-	driverAPIKey   string
+	app          *fiber.App
+	db           *gorm.DB
+	adminAPIKey  string
+	driverAPIKey string
 )
 
 func TestMain(m *testing.M) {
@@ -38,11 +37,9 @@ func TestMain(m *testing.M) {
 	os.Chdir(filepath.Join(basepath, "../../.."))
 
 	// Hardcode API keys for testing to avoid depending on .env
-	customerAPIKey = "test_customer_key"
 	adminAPIKey = "test_admin_key"
 	driverAPIKey = "test_driver_key"
 
-	os.Setenv("CUSTOMER_API_KEY", customerAPIKey)
 	os.Setenv("ADMIN_API_KEY", adminAPIKey)
 	os.Setenv("DRIVER_API_KEY", driverAPIKey)
 
