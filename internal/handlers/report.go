@@ -34,7 +34,7 @@ func NewReportHandler(reportService services.ReportService) *ReportHandler {
 // @Failure 403 {object} response.ErrorUnauthorizedResponse
 // @Failure 404 {object} response.ErrorNotFoundResponse
 // @Failure 500 {object} response.ErrorInternalServerErrorResponse
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Router /api/v1/reports/daily [get]
 func (h *ReportHandler) GetDailyReport(c fiber.Ctx) error {
 	dateStr := c.Query("date")
@@ -74,7 +74,7 @@ func (h *ReportHandler) GetDailyReport(c fiber.Ctx) error {
 // @Failure 401 {object} response.ErrorUnauthenticatedResponse
 // @Failure 403 {object} response.ErrorUnauthorizedResponse
 // @Failure 500 {object} response.ErrorInternalServerErrorResponse
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Router /api/v1/reports/daily [post]
 func (h *ReportHandler) CreateDailyReport(c fiber.Ctx) error {
 	var req dto.GetDailyReportRequest

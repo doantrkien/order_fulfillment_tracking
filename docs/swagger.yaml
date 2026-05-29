@@ -78,6 +78,32 @@ definitions:
         example: 1
         type: integer
     type: object
+  dto.LoginRequest:
+    properties:
+      email:
+        example: admin@demo.com
+        type: string
+      password:
+        example: Admin@123
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        description: seconds, e.g. 86400
+        type: integer
+      role:
+        description: '"admin" or "driver"'
+        type: string
+      token_type:
+        description: '"Bearer"'
+        type: string
+    type: object
   dto.OrderReponse:
     properties:
       id:
@@ -239,6 +265,41 @@ info:
   title: Order Fulfillment Tracking API
   version: 1.0.0
 paths:
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate with email and password to receive a JWT token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ResponseStruct'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.LoginResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBadReqResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorUnauthenticatedResponse'
+      summary: Login to get access token
+      tags:
+      - Auth
   /api/v1/order-events/import:
     post:
       consumes:
@@ -281,7 +342,7 @@ paths:
                   $ref: '#/definitions/dto.ImportOrderEventsResponse'
               type: object
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Import batch order events
       tags:
       - Order Event
@@ -341,7 +402,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Get all orders
       tags:
       - Order
@@ -380,7 +441,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Create order
       tags:
       - Order
@@ -428,7 +489,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Get order detail
       tags:
       - Order
@@ -476,7 +537,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Update order status
       tags:
       - Order
@@ -523,7 +584,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Daily order report
       tags:
       - Report
@@ -566,13 +627,14 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Create daily report manually
       tags:
       - Report
 securityDefinitions:
-  ApiKeyAuth:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and the JWT token.
     in: header
-    name: X-API-KEY
+    name: Authorization
     type: apiKey
 swagger: "2.0"

@@ -39,7 +39,7 @@ func NewOrderHandler(orderService services.OrderService) *OrderHandler {
 // @Failure 401 {object} response.ErrorUnauthenticatedResponse
 // @Failure 403 {object} response.ErrorUnauthorizedResponse
 // @Failure 500 {object} response.ErrorInternalServerErrorResponse
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Router /api/v1/orders [get]
 func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
 	var query dto.OrderQuery
@@ -86,7 +86,7 @@ func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
 // @Failure 403 {object} response.ErrorUnauthorizedResponse
 // @Failure 404 {object} response.ErrorNotFoundResponse
 // @Failure 500 {object} response.ErrorInternalServerErrorResponse
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Router /api/v1/orders/{id} [get]
 func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
@@ -117,7 +117,7 @@ func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
 // @Failure 401 {object} response.ErrorUnauthenticatedResponse
 // @Failure 403 {object} response.ErrorUnauthorizedResponse
 // @Failure 500 {object} response.ErrorInternalServerErrorResponse
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Router /api/v1/orders [post]
 func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 	var req dto.OrderRequest
@@ -149,7 +149,7 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 // @Failure 403 {object} response.ErrorUnauthorizedResponse
 // @Failure 404 {object} response.ErrorNotFoundResponse
 // @Failure 500 {object} response.ErrorInternalServerErrorResponse
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Router /api/v1/orders/{id}/status [patch]
 func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
