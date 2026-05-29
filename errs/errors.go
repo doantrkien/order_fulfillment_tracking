@@ -18,5 +18,5 @@ var (
 	ERR_INTERNAL_SERVER = &AppError{Err: constant.INTERNAL_SERVER_ERROR, StatusCode: 500}
 	ERR_UNAUTHENTICATED = &AppError{Err: constant.UN_AUTHENTICATED, StatusCode: 401}
 	ERR_UNAUTHORIZED    = &AppError{Err: constant.UN_AUTHORIZED, StatusCode: 403}
-	ERR_ROUTE_NOT_FOUND = &AppError{Err: constant.ROUTE_NOT_FOUND, StatusCode: 404}
+	ERR_BATCH_TOO_LARGE = &AppError{Err: constant.BATCH_TOO_LARGE, StatusCode: 400}
 )

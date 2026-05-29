@@ -8,7 +8,7 @@ import (
 type OrderRequest struct {
 	TotalAmount     int64  `json:"total_amount" validate:"required,gt=0" example:"100000"`
 	Username        string `json:"username" validate:"required" example:"Supper Man"`
-	UserPhone       string `json:"user_phone" validate:"required,min=10,max=11" example:"10123456789"`
+	UserPhone       string `json:"user_phone" validate:"required" example:"10123456789"`
 	ShippingAddress string `json:"shipping_address" validate:"required" example:"Viet Nam"`
 }
 
