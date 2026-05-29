@@ -175,13 +175,14 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 					func(_ context.Context, events []models.OrderEvent) []repositories.ProcessResultDetail {
 						details := make([]repositories.ProcessResultDetail, len(events))
 						for i, e := range events {
-							if e.OrderID == 1 {
+							switch e.OrderID {
+							case 1:
 								details[i] = repositories.ProcessResultDetail{
 									Result:  repositories.Accepted,
 									OrderID: 1,
 									Status:  "paid",
 								}
-							} else if e.OrderID == 2 {
+							case 2:
 								details[i] = repositories.ProcessResultDetail{
 									Result:  repositories.Duplicate,
 									Reason:  "Order is already in status 'paid'",

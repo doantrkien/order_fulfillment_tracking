@@ -14,6 +14,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// seedUser tạo user trong DB để dùng chung cho integration test
+func seedUser(t *testing.T, username, phone, address string) models.User {
+	t.Helper()
+	user := models.User{
+		Username: username,
+		Password: "hashed_password",
+		Phone:    phone,
+		Address:  address,
+		Role:     "customer",
+	}
+	err := db.Create(&user).Error
+	require.NoError(t, err)
+	return user
+}
+
 func TestIntegrationCreateOrder(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -25,10 +40,8 @@ func TestIntegrationCreateOrder(t *testing.T) {
 		{
 			name: "Success",
 			body: dto.OrderRequest{
-				TotalAmount:     10,
-				Username:        "integration_user",
-				UserPhone:       "0901234567",
-				ShippingAddress: "123 Test Street, HCM City",
+				UserID:      1,
+				TotalAmount: 10,
 			},
 			apiKey:         adminAPIKey,
 			expectedStatus: 201,
@@ -44,18 +57,17 @@ func TestIntegrationCreateOrder(t *testing.T) {
 		{
 			name: "unauthenticated",
 			body: dto.OrderRequest{
+				UserID:      1,
 				TotalAmount: 1000,
 			},
 			expectedStatus: 401,
 			expectError:    true,
 		},
 		{
-			name: "Invalid Input",
+			name: "Invalid Input - negative amount",
 			body: dto.OrderRequest{
-				TotalAmount:     -10,
-				Username:        "integration_user",
-				UserPhone:       "0901234567",
-				ShippingAddress: "123 Test Street, HCM City",
+				UserID:      1,
+				TotalAmount: -10,
 			},
 			apiKey:         adminAPIKey,
 			expectedStatus: 400,
@@ -64,6 +76,7 @@ func TestIntegrationCreateOrder(t *testing.T) {
 		{
 			name: "wrong role - driver",
 			body: dto.OrderRequest{
+				UserID:      1,
 				TotalAmount: 1000,
 			},
 			apiKey:         driverAPIKey,
@@ -77,7 +90,6 @@ func TestIntegrationCreateOrder(t *testing.T) {
 			cleanOrders()
 
 			var bodyBytes []byte
-
 			switch v := tt.body.(type) {
 			case string:
 				bodyBytes = []byte(v)
@@ -85,39 +97,25 @@ func TestIntegrationCreateOrder(t *testing.T) {
 				bodyBytes, _ = json.Marshal(v)
 			}
 
-			req := httptest.NewRequest(
-				"POST",
-				"/api/v1/orders",
-				bytes.NewBuffer(bodyBytes),
-			)
-
+			req := httptest.NewRequest("POST", "/api/v1/orders", bytes.NewBuffer(bodyBytes))
 			req.Header.Set("Content-Type", "application/json")
-
 			if tt.apiKey != "" {
 				req.Header.Set("X-API-Key", tt.apiKey)
 			}
 
 			resp, err := app.Test(req)
-
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
 			if !tt.expectError {
 				var order models.Order
-
 				err = db.First(&order).Error
 				require.NoError(t, err)
 
 				if reqBody, ok := tt.body.(dto.OrderRequest); ok {
 					assert.Equal(t, reqBody.TotalAmount, order.TotalAmount)
+					assert.Equal(t, reqBody.UserID, order.UserID)
 					assert.Equal(t, models.ORDER_STATUS_CREATED, order.CurrentStatus)
-
-					var userInfo models.UserInfo
-					json.Unmarshal(order.UserInfo, &userInfo)
-
-					assert.Equal(t, reqBody.Username, userInfo.Username)
-					assert.Equal(t, reqBody.UserPhone, userInfo.UserPhone)
-					assert.Equal(t, reqBody.ShippingAddress, userInfo.ShippingAddress)
 				}
 			}
 		})
@@ -127,11 +125,12 @@ func TestIntegrationCreateOrder(t *testing.T) {
 func TestIntegrationGetAllOrders(t *testing.T) {
 	today := time.Now().UTC()
 	yesterday := today.AddDate(0, 0, -1)
+
 	tests := []struct {
 		name           string
 		query          string
 		apiKey         string
-		seedOrders     []models.Order
+		seedOrders     func(t *testing.T) []models.Order
 		expectedStatus int
 		expectError    bool
 		expectedTotal  int64
@@ -142,61 +141,35 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 			name:   "get all orders success",
 			query:  "/api/v1/orders?page=1&limit=10",
 			apiKey: adminAPIKey,
-			seedOrders: []models.Order{
-				{
-					TotalAmount:   1000,
-					CurrentStatus: models.ORDER_STATUS_CREATED,
-					UserInfo:      mustMarshalUserInfo("alice", "", ""),
-					CreatedAt:     today.Add(-3 * time.Minute),
-					UpdatedAt:     today,
-				},
-				{
-					TotalAmount:   2000,
-					CurrentStatus: models.ORDER_STATUS_PAID,
-					UserInfo:      mustMarshalUserInfo("bob", "", ""),
-					CreatedAt:     today.Add(-2 * time.Minute),
-					UpdatedAt:     today,
-				},
-				{
-					TotalAmount:   3000,
-					CurrentStatus: models.ORDER_STATUS_DELIVERED,
-					UserInfo:      mustMarshalUserInfo("carol", "", ""),
-					CreatedAt:     today.Add(-1 * time.Minute),
-					UpdatedAt:     today,
-				},
+			seedOrders: func(t *testing.T) []models.Order {
+				u1 := seedUser(t, "alice", "", "")
+				u2 := seedUser(t, "bob", "", "")
+				u3 := seedUser(t, "carol", "", "")
+				return []models.Order{
+					{UserID: u1.ID, TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_CREATED, CreatedAt: today.Add(-3 * time.Minute), UpdatedAt: today},
+					{UserID: u2.ID, TotalAmount: 2000, CurrentStatus: models.ORDER_STATUS_PAID, CreatedAt: today.Add(-2 * time.Minute), UpdatedAt: today},
+					{UserID: u3.ID, TotalAmount: 3000, CurrentStatus: models.ORDER_STATUS_DELIVERED, CreatedAt: today.Add(-1 * time.Minute), UpdatedAt: today},
+				}
 			},
 			expectedStatus: 200,
 			expectError:    false,
 			expectedTotal:  3,
 			expectedLength: 3,
-			expectedUser:   "carol",
+			expectedUser:   "carol", // DESC order → carol là mới nhất
 		},
 		{
 			name:   "filter by status",
 			query:  "/api/v1/orders?status=paid&page=1&limit=10",
 			apiKey: adminAPIKey,
-			seedOrders: []models.Order{
-				{
-					TotalAmount:   1000,
-					CurrentStatus: models.ORDER_STATUS_CREATED,
-					UserInfo:      mustMarshalUserInfo("u1", "", ""),
-					CreatedAt:     today,
-					UpdatedAt:     today,
-				},
-				{
-					TotalAmount:   2000,
-					CurrentStatus: models.ORDER_STATUS_PAID,
-					UserInfo:      mustMarshalUserInfo("u2", "", ""),
-					CreatedAt:     today,
-					UpdatedAt:     today,
-				},
-				{
-					TotalAmount:   3000,
-					CurrentStatus: models.ORDER_STATUS_PAID,
-					UserInfo:      mustMarshalUserInfo("u3", "", ""),
-					CreatedAt:     today,
-					UpdatedAt:     today,
-				},
+			seedOrders: func(t *testing.T) []models.Order {
+				u1 := seedUser(t, "u1", "", "")
+				u2 := seedUser(t, "u2", "", "")
+				u3 := seedUser(t, "u3", "", "")
+				return []models.Order{
+					{UserID: u1.ID, TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_CREATED, CreatedAt: today, UpdatedAt: today},
+					{UserID: u2.ID, TotalAmount: 2000, CurrentStatus: models.ORDER_STATUS_PAID, CreatedAt: today, UpdatedAt: today},
+					{UserID: u3.ID, TotalAmount: 3000, CurrentStatus: models.ORDER_STATUS_PAID, CreatedAt: today, UpdatedAt: today},
+				}
 			},
 			expectedStatus: 200,
 			expectError:    false,
@@ -207,21 +180,13 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 			name:   "filter by date",
 			query:  fmt.Sprintf("/api/v1/orders?date=%s&page=1&limit=10", today.Format("2006-01-02")),
 			apiKey: adminAPIKey,
-			seedOrders: []models.Order{
-				{
-					TotalAmount:   1000,
-					CurrentStatus: models.ORDER_STATUS_CREATED,
-					UserInfo:      mustMarshalUserInfo("today_user", "", ""),
-					CreatedAt:     today,
-					UpdatedAt:     today,
-				},
-				{
-					TotalAmount:   2000,
-					CurrentStatus: models.ORDER_STATUS_CREATED,
-					UserInfo:      mustMarshalUserInfo("yesterday_user", "", ""),
-					CreatedAt:     yesterday,
-					UpdatedAt:     yesterday,
-				},
+			seedOrders: func(t *testing.T) []models.Order {
+				u1 := seedUser(t, "today_user", "", "")
+				u2 := seedUser(t, "yesterday_user", "", "")
+				return []models.Order{
+					{UserID: u1.ID, TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_CREATED, CreatedAt: today, UpdatedAt: today},
+					{UserID: u2.ID, TotalAmount: 2000, CurrentStatus: models.ORDER_STATUS_CREATED, CreatedAt: yesterday, UpdatedAt: yesterday},
+				}
 			},
 			expectedStatus: 200,
 			expectError:    false,
@@ -233,12 +198,19 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 			name:   "pagination",
 			query:  "/api/v1/orders?page=1&limit=2",
 			apiKey: adminAPIKey,
-			seedOrders: []models.Order{
-				{TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_CREATED, UserInfo: mustMarshalUserInfo("u1", "", ""), CreatedAt: today, UpdatedAt: today},
-				{TotalAmount: 2000, CurrentStatus: models.ORDER_STATUS_CREATED, UserInfo: mustMarshalUserInfo("u2", "", ""), CreatedAt: today, UpdatedAt: today},
-				{TotalAmount: 3000, CurrentStatus: models.ORDER_STATUS_CREATED, UserInfo: mustMarshalUserInfo("u3", "", ""), CreatedAt: today, UpdatedAt: today},
-				{TotalAmount: 4000, CurrentStatus: models.ORDER_STATUS_CREATED, UserInfo: mustMarshalUserInfo("u4", "", ""), CreatedAt: today, UpdatedAt: today},
-				{TotalAmount: 5000, CurrentStatus: models.ORDER_STATUS_CREATED, UserInfo: mustMarshalUserInfo("u5", "", ""), CreatedAt: today, UpdatedAt: today},
+			seedOrders: func(t *testing.T) []models.Order {
+				u1 := seedUser(t, "u1", "", "")
+				u2 := seedUser(t, "u2", "", "")
+				u3 := seedUser(t, "u3", "", "")
+				u4 := seedUser(t, "u4", "", "")
+				u5 := seedUser(t, "u5", "", "")
+				return []models.Order{
+					{UserID: u1.ID, TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_CREATED, CreatedAt: today, UpdatedAt: today},
+					{UserID: u2.ID, TotalAmount: 2000, CurrentStatus: models.ORDER_STATUS_CREATED, CreatedAt: today, UpdatedAt: today},
+					{UserID: u3.ID, TotalAmount: 3000, CurrentStatus: models.ORDER_STATUS_CREATED, CreatedAt: today, UpdatedAt: today},
+					{UserID: u4.ID, TotalAmount: 4000, CurrentStatus: models.ORDER_STATUS_CREATED, CreatedAt: today, UpdatedAt: today},
+					{UserID: u5.ID, TotalAmount: 5000, CurrentStatus: models.ORDER_STATUS_CREATED, CreatedAt: today, UpdatedAt: today},
+				}
 			},
 			expectedStatus: 200,
 			expectError:    false,
@@ -255,8 +227,11 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 			name:   "driver access allowed",
 			query:  "/api/v1/orders?page=1&limit=2",
 			apiKey: driverAPIKey,
-			seedOrders: []models.Order{
-				{TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_CREATED, UserInfo: mustMarshalUserInfo("u1", "", ""), CreatedAt: today, UpdatedAt: today},
+			seedOrders: func(t *testing.T) []models.Order {
+				u1 := seedUser(t, "u1", "", "")
+				return []models.Order{
+					{UserID: u1.ID, TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_CREATED, CreatedAt: today, UpdatedAt: today},
+				}
 			},
 			expectedStatus: 200,
 			expectError:    false,
@@ -267,20 +242,19 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cleanOrders()
+			cleanAll()
 
-			if len(tt.seedOrders) > 0 {
-				db.Create(&tt.seedOrders)
+			if tt.seedOrders != nil {
+				orders := tt.seedOrders(t)
+				db.Create(&orders)
 			}
 
 			req := httptest.NewRequest("GET", tt.query, nil)
-
 			if tt.apiKey != "" {
 				req.Header.Set("X-API-Key", tt.apiKey)
 			}
 
 			resp, err := app.Test(req)
-
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
@@ -292,7 +266,6 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 						TotalItems int64 `json:"total_items"`
 					} `json:"pagination"`
 				}
-
 				err = json.NewDecoder(resp.Body).Decode(&body)
 				require.NoError(t, err)
 
@@ -310,7 +283,7 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 func TestIntegrationGetOrderDetail(t *testing.T) {
 	tests := []struct {
 		name           string
-		order          models.Order
+		seedOrder      func(t *testing.T) models.Order
 		orderID        string
 		apiKey         string
 		expectedStatus int
@@ -318,16 +291,15 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 	}{
 		{
 			name: "get order detail success",
-			order: models.Order{
-				TotalAmount:   5000,
-				CurrentStatus: models.ORDER_STATUS_CREATED,
-				UserInfo: mustMarshalUserInfo(
-					"kien",
-					"0901234567",
-					"HCM City",
-				),
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
+			seedOrder: func(t *testing.T) models.Order {
+				u := seedUser(t, "kien", "0901234567", "HCM City")
+				return models.Order{
+					UserID:        u.ID,
+					TotalAmount:   5000,
+					CurrentStatus: models.ORDER_STATUS_CREATED,
+					CreatedAt:     time.Now(),
+					UpdatedAt:     time.Now(),
+				}
 			},
 			orderID:        "1",
 			apiKey:         adminAPIKey,
@@ -356,16 +328,15 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 		},
 		{
 			name: "admin access allowed",
-			order: models.Order{
-				TotalAmount:   5000,
-				CurrentStatus: models.ORDER_STATUS_CREATED,
-				UserInfo: mustMarshalUserInfo(
-					"kien",
-					"0901234567",
-					"HCM City",
-				),
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
+			seedOrder: func(t *testing.T) models.Order {
+				u := seedUser(t, "kien", "0901234567", "HCM City")
+				return models.Order{
+					UserID:        u.ID,
+					TotalAmount:   5000,
+					CurrentStatus: models.ORDER_STATUS_CREATED,
+					CreatedAt:     time.Now(),
+					UpdatedAt:     time.Now(),
+				}
 			},
 			orderID:        "1",
 			apiKey:         adminAPIKey,
@@ -374,16 +345,15 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 		},
 		{
 			name: "driver access allowed",
-			order: models.Order{
-				TotalAmount:   5000,
-				CurrentStatus: models.ORDER_STATUS_CREATED,
-				UserInfo: mustMarshalUserInfo(
-					"kien",
-					"0901234567",
-					"HCM City",
-				),
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
+			seedOrder: func(t *testing.T) models.Order {
+				u := seedUser(t, "kien", "0901234567", "HCM City")
+				return models.Order{
+					UserID:        u.ID,
+					TotalAmount:   5000,
+					CurrentStatus: models.ORDER_STATUS_CREATED,
+					CreatedAt:     time.Now(),
+					UpdatedAt:     time.Now(),
+				}
 			},
 			orderID:        "1",
 			apiKey:         driverAPIKey,
@@ -394,24 +364,19 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cleanOrders()
+			cleanAll()
 
-			if tt.order.TotalAmount != 0 {
-				db.Create(&tt.order)
+			if tt.seedOrder != nil {
+				order := tt.seedOrder(t)
+				db.Create(&order)
 			}
 
-			req := httptest.NewRequest(
-				"GET",
-				"/api/v1/orders/"+tt.orderID,
-				nil,
-			)
-
+			req := httptest.NewRequest("GET", "/api/v1/orders/"+tt.orderID, nil)
 			if tt.apiKey != "" {
 				req.Header.Set("X-API-Key", tt.apiKey)
 			}
 
 			resp, err := app.Test(req)
-
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
@@ -420,7 +385,6 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 					Status int              `json:"status"`
 					Data   dto.OrderReponse `json:"data"`
 				}
-
 				err = json.NewDecoder(resp.Body).Decode(&body)
 				require.NoError(t, err)
 
@@ -436,7 +400,7 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 func TestIntegrationUpdateOrderStatus(t *testing.T) {
 	tests := []struct {
 		name           string
-		order          models.Order
+		seedOrder      func(t *testing.T) models.Order
 		orderID        string
 		body           interface{}
 		apiKey         string
@@ -444,176 +408,118 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 		expectError    bool
 	}{
 		{
-			name: "update status success",
-			order: models.Order{
-				TotalAmount:   1000,
-				CurrentStatus: models.ORDER_STATUS_CREATED,
-				UserInfo:      mustMarshalUserInfo("kien", "", ""),
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
+			name: "update status success - created to paid",
+			seedOrder: func(t *testing.T) models.Order {
+				u := seedUser(t, "kien", "", "")
+				return models.Order{UserID: u.ID, TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_CREATED, CreatedAt: time.Now(), UpdatedAt: time.Now()}
 			},
-			orderID: "1",
-			body: dto.UpdateStatusRequest{
-				Status: models.ORDER_STATUS_PAID,
-			},
+			orderID:        "1",
+			body:           dto.UpdateStatusRequest{Status: models.ORDER_STATUS_PAID},
 			apiKey:         adminAPIKey,
 			expectedStatus: 200,
 			expectError:    false,
 		},
 		{
-			name: "update status packed",
-			order: models.Order{
-				TotalAmount:   1000,
-				CurrentStatus: models.ORDER_STATUS_PAID,
-				UserInfo:      mustMarshalUserInfo("kien", "", ""),
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
+			name: "update status paid to packed",
+			seedOrder: func(t *testing.T) models.Order {
+				u := seedUser(t, "kien", "", "")
+				return models.Order{UserID: u.ID, TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_PAID, CreatedAt: time.Now(), UpdatedAt: time.Now()}
 			},
-			orderID: "1",
-			body: dto.UpdateStatusRequest{
-				Status: models.ORDER_STATUS_PACKED,
-			},
+			orderID:        "1",
+			body:           dto.UpdateStatusRequest{Status: models.ORDER_STATUS_PACKED},
 			apiKey:         adminAPIKey,
 			expectedStatus: 200,
 			expectError:    false,
 		},
 		{
-			name: "update status shipped",
-			order: models.Order{
-				TotalAmount:   1000,
-				CurrentStatus: models.ORDER_STATUS_PACKED,
-				UserInfo:      mustMarshalUserInfo("kien", "", ""),
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
+			name: "update status packed to shipped",
+			seedOrder: func(t *testing.T) models.Order {
+				u := seedUser(t, "kien", "", "")
+				return models.Order{UserID: u.ID, TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_PACKED, CreatedAt: time.Now(), UpdatedAt: time.Now()}
 			},
-			orderID: "1",
-			body: dto.UpdateStatusRequest{
-				Status: models.ORDER_STATUS_SHIPPED,
-			},
+			orderID:        "1",
+			body:           dto.UpdateStatusRequest{Status: models.ORDER_STATUS_SHIPPED},
 			apiKey:         adminAPIKey,
 			expectedStatus: 200,
 			expectError:    false,
 		},
 		{
-			name: "update status delivered",
-			order: models.Order{
-				TotalAmount:   1000,
-				CurrentStatus: models.ORDER_STATUS_SHIPPED,
-				UserInfo:      mustMarshalUserInfo("kien", "", ""),
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
+			name: "update status shipped to delivered",
+			seedOrder: func(t *testing.T) models.Order {
+				u := seedUser(t, "kien", "", "")
+				return models.Order{UserID: u.ID, TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_SHIPPED, CreatedAt: time.Now(), UpdatedAt: time.Now()}
 			},
-			orderID: "1",
-			body: dto.UpdateStatusRequest{
-				Status: models.ORDER_STATUS_DELIVERED,
-			},
+			orderID:        "1",
+			body:           dto.UpdateStatusRequest{Status: models.ORDER_STATUS_DELIVERED},
 			apiKey:         adminAPIKey,
 			expectedStatus: 200,
 			expectError:    false,
 		},
 		{
 			name: "update status cancelled from created",
-			order: models.Order{
-				TotalAmount:   1000,
-				CurrentStatus: models.ORDER_STATUS_CREATED,
-				UserInfo:      mustMarshalUserInfo("kien", "", ""),
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
+			seedOrder: func(t *testing.T) models.Order {
+				u := seedUser(t, "kien", "", "")
+				return models.Order{UserID: u.ID, TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_CREATED, CreatedAt: time.Now(), UpdatedAt: time.Now()}
 			},
-			orderID: "1",
-			body: dto.UpdateStatusRequest{
-				Status: models.ORDER_STATUS_CANCELLED,
-			},
+			orderID:        "1",
+			body:           dto.UpdateStatusRequest{Status: models.ORDER_STATUS_CANCELLED},
 			apiKey:         adminAPIKey,
 			expectedStatus: 200,
 			expectError:    false,
 		},
 		{
-			name: "update status refunded from delivered",
-			order: models.Order{
-				TotalAmount:   1000,
-				CurrentStatus: models.ORDER_STATUS_DELIVERED,
-				UserInfo:      mustMarshalUserInfo("kien", "", ""),
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
+			name: "update status refunded from delivered - invalid transition",
+			seedOrder: func(t *testing.T) models.Order {
+				u := seedUser(t, "kien", "", "")
+				return models.Order{UserID: u.ID, TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_DELIVERED, CreatedAt: time.Now(), UpdatedAt: time.Now()}
 			},
-			orderID: "1",
-			body: dto.UpdateStatusRequest{
-				Status: models.ORDER_STATUS_REFUNDED,
-			},
+			orderID:        "1",
+			body:           dto.UpdateStatusRequest{Status: models.ORDER_STATUS_REFUNDED},
 			apiKey:         adminAPIKey,
-			expectedStatus: 400, // Invalid transition from delivered to refunded (based on models.IsValidTransition)
+			expectedStatus: 400,
 			expectError:    true,
 		},
-		// {
-		// 	name: "wrong role - driver",
-		// 	order: models.Order{
-		// 		TotalAmount:   1000,
-		// 		CurrentStatus: models.ORDER_STATUS_CREATED,
-		// 		UserInfo:      mustMarshalUserInfo("kien", "", ""),
-		// 		CreatedAt:     time.Now(),
-		// 		UpdatedAt:     time.Now(),
-		// 	},
-		// 	orderID: "1",
-		// 	body: dto.UpdateStatusRequest{
-		// 		Status: models.ORDER_STATUS_PAID,
-		// 	},
-		// 	apiKey:         driverAPIKey,
-		// 	expectedStatus: 403,
-		// 	expectError:    true,
-		// },
 		{
 			name: "invalid status transition",
-			order: models.Order{
-				TotalAmount:   1000,
-				CurrentStatus: models.ORDER_STATUS_DELIVERED,
-				UserInfo:      mustMarshalUserInfo("kien", "", ""),
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
+			seedOrder: func(t *testing.T) models.Order {
+				u := seedUser(t, "kien", "", "")
+				return models.Order{UserID: u.ID, TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_DELIVERED, CreatedAt: time.Now(), UpdatedAt: time.Now()}
 			},
-			orderID: "1",
-			body: dto.UpdateStatusRequest{
-				Status: models.ORDER_STATUS_CREATED,
-			},
+			orderID:        "1",
+			body:           dto.UpdateStatusRequest{Status: models.ORDER_STATUS_CREATED},
 			apiKey:         adminAPIKey,
 			expectedStatus: 400,
 			expectError:    true,
 		},
 		{
-			name:    "invalid order id",
-			orderID: "abc",
-			body: dto.UpdateStatusRequest{
-				Status: models.ORDER_STATUS_PAID,
-			},
+			name:           "invalid order id",
+			orderID:        "abc",
+			body:           dto.UpdateStatusRequest{Status: models.ORDER_STATUS_PAID},
 			apiKey:         adminAPIKey,
 			expectedStatus: 400,
 			expectError:    true,
 		},
 		{
-			name:    "empty status",
-			orderID: "1",
-			body:    dto.UpdateStatusRequest{},
-			apiKey:  adminAPIKey,
-
+			name:           "empty status",
+			orderID:        "1",
+			body:           dto.UpdateStatusRequest{},
+			apiKey:         adminAPIKey,
 			expectedStatus: 400,
 			expectError:    true,
 		},
 		{
-			name:    "order not found",
-			orderID: "999",
-			body: dto.UpdateStatusRequest{
-				Status: models.ORDER_STATUS_PAID,
-			},
+			name:           "order not found",
+			orderID:        "999",
+			body:           dto.UpdateStatusRequest{Status: models.ORDER_STATUS_PAID},
 			apiKey:         adminAPIKey,
 			expectedStatus: 404,
 			expectError:    true,
 		},
 		{
-			name:    "invalid json",
-			orderID: "1",
-			body:    "{invalid-json",
-			apiKey:  adminAPIKey,
-
+			name:           "invalid json",
+			orderID:        "1",
+			body:           "{invalid-json",
+			apiKey:         adminAPIKey,
 			expectedStatus: 400,
 			expectError:    true,
 		},
@@ -621,14 +527,14 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cleanOrders()
+			cleanAll()
 
-			if tt.order.TotalAmount != 0 {
-				db.Create(&tt.order)
+			if tt.seedOrder != nil {
+				order := tt.seedOrder(t)
+				db.Create(&order)
 			}
 
 			var bodyBytes []byte
-
 			switch v := tt.body.(type) {
 			case string:
 				bodyBytes = []byte(v)
@@ -636,49 +542,25 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 				bodyBytes, _ = json.Marshal(v)
 			}
 
-			req := httptest.NewRequest(
-				"PATCH",
-				"/api/v1/orders/"+tt.orderID+"/status",
-				bytes.NewBuffer(bodyBytes),
-			)
-
+			req := httptest.NewRequest("PATCH", "/api/v1/orders/"+tt.orderID+"/status", bytes.NewBuffer(bodyBytes))
 			req.Header.Set("Content-Type", "application/json")
-
 			if tt.apiKey != "" {
 				req.Header.Set("X-API-Key", tt.apiKey)
 			}
 
 			resp, err := app.Test(req)
-
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
 			if !tt.expectError {
 				var updatedOrder models.Order
-
 				err = db.First(&updatedOrder, 1).Error
 				require.NoError(t, err)
 
-				var expectedStatus models.OrderStatus
 				if reqBody, ok := tt.body.(dto.UpdateStatusRequest); ok {
-					expectedStatus = reqBody.Status
-				} else {
-					expectedStatus = models.ORDER_STATUS_PAID // Fallback
+					assert.Equal(t, reqBody.Status, updatedOrder.CurrentStatus)
 				}
-
-				assert.Equal(t, expectedStatus, updatedOrder.CurrentStatus)
 			}
 		})
 	}
-}
-
-func mustMarshalUserInfo(username, phone, address string) []byte {
-	info := models.UserInfo{
-		Username:        username,
-		UserPhone:       phone,
-		ShippingAddress: address,
-	}
-
-	b, _ := json.Marshal(info)
-	return b
 }

@@ -1,7 +1,6 @@
 package services_test
 
 import (
-	"encoding/json"
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/services"
@@ -24,26 +23,21 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 		{
 			name: "Success",
 			input: dto.OrderRequest{
-				TotalAmount:     2000,
-				Username:        "testuser",
-				UserPhone:       "0987654321",
-				ShippingAddress: "123 Test Street, HCM City",
+				UserID:      1,
+				TotalAmount: 2000,
 			},
 			setupMock: func(mockRepo *mocks.OrderRepository) {
-				req := dto.OrderRequest{
-					TotalAmount:     2000,
-					Username:        "testuser",
-					UserPhone:       "0987654321",
-					ShippingAddress: "123 Test Street, HCM City",
-				}
-
 				mockRepo.
-					On("CreateOrder", buildExpectedOrder(req)).
-					Return(&models.Order{
-						ID:            1,
+					On("CreateOrder", models.Order{
+						UserID:        1,
 						TotalAmount:   2000,
 						CurrentStatus: models.ORDER_STATUS_CREATED,
-						UserInfo:      marshalUserInfo(req),
+					}).
+					Return(&models.Order{
+						ID:            1,
+						UserID:        1,
+						TotalAmount:   2000,
+						CurrentStatus: models.ORDER_STATUS_CREATED,
 					}, nil).
 					Once()
 			},
@@ -57,17 +51,16 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 		{
 			name: "Create error",
 			input: dto.OrderRequest{
+				UserID:      2,
 				TotalAmount: 1000,
-				Username:    "failuser",
 			},
 			setupMock: func(mockRepo *mocks.OrderRepository) {
-				req := dto.OrderRequest{
-					TotalAmount: 1000,
-					Username:    "failuser",
-				}
-
 				mockRepo.
-					On("CreateOrder", buildExpectedOrder(req)).
+					On("CreateOrder", models.Order{
+						UserID:        2,
+						TotalAmount:   1000,
+						CurrentStatus: models.ORDER_STATUS_CREATED,
+					}).
 					Return(nil, assert.AnError).
 					Once()
 			},
@@ -77,22 +70,21 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 		{
 			name: "Invalid max total amount",
 			input: dto.OrderRequest{
+				UserID:      3,
 				TotalAmount: math.MaxInt64,
-				Username:    "bigspender",
 			},
 			setupMock: func(mockRepo *mocks.OrderRepository) {
-				req := dto.OrderRequest{
-					TotalAmount: math.MaxInt64,
-					Username:    "bigspender",
-				}
-
 				mockRepo.
-					On("CreateOrder", buildExpectedOrder(req)).
-					Return(&models.Order{
-						ID:            4,
+					On("CreateOrder", models.Order{
+						UserID:        3,
 						TotalAmount:   math.MaxInt64,
 						CurrentStatus: models.ORDER_STATUS_CREATED,
-						UserInfo:      marshalUserInfo(req),
+					}).
+					Return(&models.Order{
+						ID:            4,
+						UserID:        3,
+						TotalAmount:   math.MaxInt64,
+						CurrentStatus: models.ORDER_STATUS_CREATED,
 					}, nil).
 					Once()
 			},
@@ -120,7 +112,6 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, result)
-
 				assert.Equal(t, tc.expectedResult.ID, result.ID)
 				assert.Equal(t, tc.expectedResult.TotalAmount, result.TotalAmount)
 				assert.Equal(t, tc.expectedResult.CurrentStatus, result.CurrentStatus)
@@ -147,17 +138,29 @@ func TestOrderServiceGetAllOrder(t *testing.T) {
 				mockOrders := []models.Order{
 					{
 						ID:            1,
+						UserID:        10,
 						TotalAmount:   1500,
 						CurrentStatus: models.ORDER_STATUS_CREATED,
-						UserInfo:      mustMarshalUserInfo("alice", "0900000001", "Addr A"),
-						CreatedAt:     time.Now(),
+						User: &models.User{
+							ID:       10,
+							Username: "alice",
+							Phone:    "0900000001",
+							Address:  "Addr A",
+						},
+						CreatedAt: time.Now(),
 					},
 					{
 						ID:            2,
+						UserID:        11,
 						TotalAmount:   2500,
 						CurrentStatus: models.ORDER_STATUS_PAID,
-						UserInfo:      mustMarshalUserInfo("bob", "0900000002", "Addr B"),
-						CreatedAt:     time.Now(),
+						User: &models.User{
+							ID:       11,
+							Username: "bob",
+							Phone:    "0900000002",
+							Address:  "Addr B",
+						},
+						CreatedAt: time.Now(),
 					},
 				}
 
@@ -169,22 +172,8 @@ func TestOrderServiceGetAllOrder(t *testing.T) {
 			expectError:   false,
 			expectedTotal: 2,
 			expectedOrders: []dto.OrderReponse{
-				{
-					ID:              1,
-					Username:        "alice",
-					UserPhone:       "0900000001",
-					ShippingAddress: "Addr A",
-					TotalAmount:     1500,
-					Status:          models.ORDER_STATUS_CREATED,
-				},
-				{
-					ID:              2,
-					Username:        "bob",
-					UserPhone:       "0900000002",
-					ShippingAddress: "Addr B",
-					TotalAmount:     2500,
-					Status:          models.ORDER_STATUS_PAID,
-				},
+				{ID: 1, UserID: 10, Username: "alice", UserPhone: "0900000001", ShippingAddress: "Addr A", TotalAmount: 1500, Status: models.ORDER_STATUS_CREATED},
+				{ID: 2, UserID: 11, Username: "bob", UserPhone: "0900000002", ShippingAddress: "Addr B", TotalAmount: 2500, Status: models.ORDER_STATUS_PAID},
 			},
 		},
 		{
@@ -196,9 +185,8 @@ func TestOrderServiceGetAllOrder(t *testing.T) {
 					Return(nil, int64(0), assert.AnError).
 					Once()
 			},
-			expectError:    true,
-			expectedOrders: nil,
-			expectedTotal:  0,
+			expectError:   true,
+			expectedTotal: 0,
 		},
 	}
 
@@ -215,10 +203,8 @@ func TestOrderServiceGetAllOrder(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-
 				assert.Equal(t, tc.expectedTotal, total)
 				assert.Len(t, orders, len(tc.expectedOrders))
-
 				for i := range tc.expectedOrders {
 					assert.Equal(t, tc.expectedOrders[i].Username, orders[i].Username)
 					assert.Equal(t, tc.expectedOrders[i].UserPhone, orders[i].UserPhone)
@@ -234,14 +220,6 @@ func TestOrderServiceGetAllOrder(t *testing.T) {
 }
 
 func TestOrderServiceGetOrder(t *testing.T) {
-	userInfo := models.UserInfo{
-		Username:        "testuser",
-		UserPhone:       "0123456789",
-		ShippingAddress: "123 Test Street",
-	}
-
-	userInfoJSON, _ := json.Marshal(userInfo)
-
 	testCases := []struct {
 		name           string
 		orderID        int64
@@ -256,10 +234,16 @@ func TestOrderServiceGetOrder(t *testing.T) {
 				mockRepo.
 					On("GetOrderDetail", int64(123)).
 					Return(&models.Order{
-						ID:            123,
-						TotalAmount:   2500000,
+						ID:          123,
+						UserID:      5,
+						TotalAmount: 2500000,
+						User: &models.User{
+							ID:       5,
+							Username: "testuser",
+							Phone:    "0123456789",
+							Address:  "123 Test Street",
+						},
 						CurrentStatus: models.ORDER_STATUS_CREATED,
-						UserInfo:      userInfoJSON,
 						CreatedAt:     time.Now(),
 					}, nil).
 					Once()
@@ -267,6 +251,7 @@ func TestOrderServiceGetOrder(t *testing.T) {
 			expectError: false,
 			expectedResult: &dto.OrderReponse{
 				ID:              123,
+				UserID:          5,
 				Username:        "testuser",
 				UserPhone:       "0123456789",
 				ShippingAddress: "123 Test Street",
@@ -291,8 +276,8 @@ func TestOrderServiceGetOrder(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, result)
-
 				assert.Equal(t, tc.expectedResult.ID, result.ID)
+				assert.Equal(t, tc.expectedResult.UserID, result.UserID)
 				assert.Equal(t, tc.expectedResult.Username, result.Username)
 				assert.Equal(t, tc.expectedResult.UserPhone, result.UserPhone)
 				assert.Equal(t, tc.expectedResult.ShippingAddress, result.ShippingAddress)
@@ -323,6 +308,7 @@ func TestOrderServiceUpdateOrderStatus(t *testing.T) {
 					On("GetOrderDetail", int64(123)).
 					Return(&models.Order{
 						ID:            123,
+						UserID:        1,
 						CurrentStatus: models.ORDER_STATUS_CREATED,
 					}, nil).
 					Once()
@@ -331,6 +317,7 @@ func TestOrderServiceUpdateOrderStatus(t *testing.T) {
 					On("UpdateOrderStatus", int64(123), "paid").
 					Return(&models.Order{
 						ID:            123,
+						UserID:        1,
 						TotalAmount:   2500000,
 						CurrentStatus: models.ORDER_STATUS_PAID,
 						CreatedAt:     time.Now(),
@@ -352,6 +339,7 @@ func TestOrderServiceUpdateOrderStatus(t *testing.T) {
 					On("GetOrderDetail", int64(888)).
 					Return(&models.Order{
 						ID:            888,
+						UserID:        1,
 						CurrentStatus: models.ORDER_STATUS_CREATED,
 					}, nil).
 					Once()
@@ -376,7 +364,6 @@ func TestOrderServiceUpdateOrderStatus(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, result)
-
 				assert.Equal(t, tc.expectedResult.ID, result.ID)
 				assert.Equal(t, tc.expectedResult.CurrentStatus, result.CurrentStatus)
 			}
@@ -384,39 +371,4 @@ func TestOrderServiceUpdateOrderStatus(t *testing.T) {
 			mockRepo.AssertExpectations(t)
 		})
 	}
-}
-
-func buildExpectedOrder(req dto.OrderRequest) models.Order {
-	userInfo := models.UserInfo{
-		Username:        req.Username,
-		UserPhone:       req.UserPhone,
-		ShippingAddress: req.ShippingAddress,
-	}
-	userInfoJSON, _ := json.Marshal(userInfo)
-
-	return models.Order{
-		UserInfo:      userInfoJSON,
-		TotalAmount:   req.TotalAmount,
-		CurrentStatus: models.ORDER_STATUS_CREATED,
-	}
-}
-
-func marshalUserInfo(req dto.OrderRequest) []byte {
-	userInfo := models.UserInfo{
-		Username:        req.Username,
-		UserPhone:       req.UserPhone,
-		ShippingAddress: req.ShippingAddress,
-	}
-	b, _ := json.Marshal(userInfo)
-	return b
-}
-
-func mustMarshalUserInfo(username, phone, address string) []byte {
-	info := models.UserInfo{
-		Username:        username,
-		UserPhone:       phone,
-		ShippingAddress: address,
-	}
-	b, _ := json.Marshal(info)
-	return b
 }

@@ -15,12 +15,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func seedOrder(t *testing.T, totalAmount int64, status models.OrderStatus) models.Order {
+// seedOrder tạo order với UserID thay vì UserInfo JSON
+func seedOrder(t *testing.T, userID int64, totalAmount int64, status models.OrderStatus) models.Order {
 	t.Helper()
 	order := models.Order{
+		UserID:        userID,
 		TotalAmount:   totalAmount,
 		CurrentStatus: status,
-		UserInfo:      mustMarshalUserInfo("test_user", "0901234567", "123 Test St"),
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}
@@ -40,7 +41,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 		{
 			name: "success - valid transition",
 			seedDB: func(t *testing.T) []dto.ImportOrderEventRequest {
-				order := seedOrder(t, 5000, models.ORDER_STATUS_CREATED)
+				order := seedOrder(t, 1, 5000, models.ORDER_STATUS_CREATED)
 				return []dto.ImportOrderEventRequest{
 					{OrderID: order.ID, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"},
 				}
@@ -71,7 +72,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 		{
 			name: "invalid transition rejected",
 			seedDB: func(t *testing.T) []dto.ImportOrderEventRequest {
-				order := seedOrder(t, 5000, models.ORDER_STATUS_CREATED)
+				order := seedOrder(t, 1, 5000, models.ORDER_STATUS_CREATED)
 				return []dto.ImportOrderEventRequest{
 					{OrderID: order.ID, Status: "delivered", EventAt: time.Now(), UpdatedBy: "admin"},
 				}
@@ -94,7 +95,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 		{
 			name: "duplicate status",
 			seedDB: func(t *testing.T) []dto.ImportOrderEventRequest {
-				order := seedOrder(t, 5000, models.ORDER_STATUS_PAID)
+				order := seedOrder(t, 1, 5000, models.ORDER_STATUS_PAID)
 				return []dto.ImportOrderEventRequest{
 					{OrderID: order.ID, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"},
 				}
@@ -196,7 +197,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 func TestIntegrationImportOrderEventsFullLifecycle(t *testing.T) {
 	cleanAll()
 
-	order := seedOrder(t, 10000, models.ORDER_STATUS_CREATED)
+	order := seedOrder(t, 1, 10000, models.ORDER_STATUS_CREATED)
 
 	transitions := []string{"paid", "packed", "shipped", "delivered"}
 
@@ -218,7 +219,6 @@ func TestIntegrationImportOrderEventsFullLifecycle(t *testing.T) {
 			Data dto.ImportOrderEventsResponse `json:"data"`
 		}
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
-
 		assert.Equal(t, 1, body.Data.Accepted, "expected accepted for transition to %s", status)
 	}
 
@@ -234,9 +234,9 @@ func TestIntegrationImportOrderEventsFullLifecycle(t *testing.T) {
 func TestIntegrationImportOrderEventsMixedBatch(t *testing.T) {
 	cleanAll()
 
-	order1 := seedOrder(t, 1000, models.ORDER_STATUS_CREATED)
-	order2 := seedOrder(t, 2000, models.ORDER_STATUS_PAID)
-	order3 := seedOrder(t, 3000, models.ORDER_STATUS_CREATED)
+	order1 := seedOrder(t, 1, 1000, models.ORDER_STATUS_CREATED)
+	order2 := seedOrder(t, 1, 2000, models.ORDER_STATUS_PAID)
+	order3 := seedOrder(t, 1, 3000, models.ORDER_STATUS_CREATED)
 
 	reqBody := []dto.ImportOrderEventRequest{
 		{OrderID: order1.ID, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"},

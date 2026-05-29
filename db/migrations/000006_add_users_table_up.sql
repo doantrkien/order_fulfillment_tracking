@@ -1,0 +1,22 @@
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS users (
+    id         BIGSERIAL PRIMARY KEY,
+    username   VARCHAR(255) NOT NULL UNIQUE,
+    password   VARCHAR(255) NOT NULL,
+    address    VARCHAR(255) NOT NULL DEFAULT '',
+    phone      VARCHAR(20)  NOT NULL DEFAULT '',
+    role       VARCHAR(50)  NOT NULL DEFAULT 'customer',
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE orders
+    ADD COLUMN IF NOT EXISTS user_id BIGINT REFERENCES users(id) ON DELETE SET NULL;
+
+ALTER TABLE orders
+    DROP COLUMN IF EXISTS user_info;
+
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+
+COMMIT;

@@ -18,10 +18,11 @@ import (
 func TestIntegrationReport(t *testing.T) {
 	cleanOrders()
 
+	// Tạo order với UserID thay vì UserInfo JSON
 	order := models.Order{
+		UserID:        1,
 		TotalAmount:   1000,
 		CurrentStatus: models.ORDER_STATUS_DELIVERED,
-		UserInfo:      mustMarshalUserInfo("report_user", "0900000000", "Report Address"),
 		CreatedAt:     time.Date(2026, time.May, 3, 10, 0, 0, 0, time.UTC),
 		UpdatedAt:     time.Date(2026, time.May, 3, 10, 0, 0, 0, time.UTC),
 	}
@@ -71,7 +72,6 @@ func TestIntegrationReport(t *testing.T) {
 			name:           "get daily report",
 			method:         "GET",
 			path:           "/api/v1/reports/daily?date=2026-05-03",
-			body:           nil,
 			expectedStatus: 200,
 			validate: func(t *testing.T, respBody []byte) {
 				var getBody struct {
@@ -88,14 +88,12 @@ func TestIntegrationReport(t *testing.T) {
 			name:           "get daily report - missing date param",
 			method:         "GET",
 			path:           "/api/v1/reports/daily",
-			body:           nil,
 			expectedStatus: 400,
 		},
 		{
 			name:           "get daily report - invalid date format",
 			method:         "GET",
 			path:           "/api/v1/reports/daily?date=04-05-2026",
-			body:           nil,
 			expectedStatus: 400,
 		},
 		{
@@ -116,14 +114,12 @@ func TestIntegrationReport(t *testing.T) {
 			name:           "get report - date has no report",
 			method:         "GET",
 			path:           "/api/v1/reports/daily?date=2099-01-01",
-			body:           nil,
 			expectedStatus: 404,
 		},
 		{
 			name:           "get daily report - unauthenticated",
 			method:         "GET",
 			path:           "/api/v1/reports/daily?date=2026-05-03",
-			body:           nil,
 			apiKey:         "",
 			expectedStatus: 401,
 		},
@@ -131,7 +127,6 @@ func TestIntegrationReport(t *testing.T) {
 			name:           "get daily report - wrong role customer",
 			method:         "GET",
 			path:           "/api/v1/reports/daily?date=2026-05-03",
-			body:           nil,
 			apiKey:         customerAPIKey,
 			expectedStatus: 403,
 		},
@@ -139,7 +134,6 @@ func TestIntegrationReport(t *testing.T) {
 			name:           "get daily report - wrong role driver",
 			method:         "GET",
 			path:           "/api/v1/reports/daily?date=2026-05-03",
-			body:           nil,
 			apiKey:         driverAPIKey,
 			expectedStatus: 403,
 		},
@@ -167,7 +161,7 @@ func TestIntegrationReport(t *testing.T) {
 			if tc.apiKey != "" {
 				req.Header.Set("X-API-KEY", tc.apiKey)
 			} else if tc.name != "get daily report - unauthenticated" {
-				req.Header.Set("X-API-KEY", adminAPIKey) // fallback to admin for older test cases
+				req.Header.Set("X-API-KEY", adminAPIKey)
 			}
 
 			resp, err := app.Test(req)

@@ -6,10 +6,8 @@ import (
 )
 
 type OrderRequest struct {
-	TotalAmount     int64  `json:"total_amount" validate:"required,gt=0" example:"100000"`
-	Username        string `json:"username" validate:"required" example:"Supper Man"`
-	UserPhone       string `json:"user_phone" validate:"required" example:"10123456789"`
-	ShippingAddress string `json:"shipping_address" validate:"required" example:"Viet Nam"`
+	UserID      int64 `json:"user_id" validate:"required,gt=0"`
+	TotalAmount int64 `json:"total_amount" validate:"required,gt=0"`
 }
 
 type UpdateStatusRequest struct {
@@ -17,13 +15,14 @@ type UpdateStatusRequest struct {
 }
 
 type OrderReponse struct {
-	ID              int64              `json:"id" example:"1"`
-	TotalAmount     int64              `json:"total_amount" example:"100000"`
-	Username        string             `json:"username" example:"Supper Man"`
-	UserPhone       string             `json:"user_phone" example:"0123456789"`
-	ShippingAddress string             `json:"shipping_address" example:"Viet Nam"`
-	Status          models.OrderStatus `json:"status" example:"paid"`
-	Ordered_at      time.Time          `json:"ordered_at" example:"2026-05-01T00:00:00Z"`
+	ID              int64              `json:"id"`
+	UserID          int64              `json:"user_id"`
+	Username        string             `json:"username"`
+	UserPhone       string             `json:"user_phone"`
+	ShippingAddress string             `json:"shipping_address"`
+	TotalAmount     int64              `json:"total_amount"`
+	Status          models.OrderStatus `json:"status"`
+	Ordered_at      time.Time          `json:"ordered_at"`
 }
 
 type OrderQuery struct {

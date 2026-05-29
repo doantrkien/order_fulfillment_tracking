@@ -9,7 +9,7 @@ import (
 	"main/configs"
 	"main/internal/handlers"
 	"main/internal/repositories"
-	routers "main/internal/routers/v1"
+	routers "main/internal/routers/v1" // Lưu ý: Tui thấy đường dẫn của bạn là routers/v1
 	"main/internal/services"
 	"main/pkg/postgresql"
 
@@ -24,9 +24,10 @@ import (
 // @description HTTP API for order fulfillment tracking.
 // @host localhost:5000
 // @BasePath /
-// @securityDefinitions.apikey ApiKeyAuth
+// @securityDefinitions.apikey BearerAuth
 // @in header
-// @name X-API-KEY
+// @name Authorization
+// @description Nhập token theo định dạng: Bearer {token}
 func main() {
 	err := configs.LoadConfig()
 	if err != nil {
@@ -41,6 +42,11 @@ func main() {
 	app := fiber.New(fiber.Config{
 		BodyLimit: 50 * 1024 * 1024,
 	})
+
+	userRepo := repositories.NewUserRepository(db)
+	refreshTokenRepo := repositories.NewRefreshTokenRepository(db)
+	authService := services.NewAuthService(userRepo, refreshTokenRepo)
+	authHandler := handlers.NewAuthHandler(authService)
 
 	orderRepo := repositories.NewOrderRepository(db)
 	orderService := services.NewOrderService(orderRepo)
@@ -60,9 +66,11 @@ func main() {
 
 	services.StartDailyReportScheduler(reportService)
 
+	routers.SetupAuthRouter(app, authHandler)
 	routers.SetupOrderRouter(app, orderHandler)
 	routers.SetupOrderEventRouter(app, orderEventHandler)
 	routers.SetupReportRouter(app, reportHandler)
+
 	app.Get("/docs/swagger/*", swaggo.HandlerDefault)
 
 	log.Fatal(app.Listen(":5000"))

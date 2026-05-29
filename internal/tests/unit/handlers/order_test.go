@@ -32,10 +32,8 @@ func TestOrderHandlerCreateOrder(t *testing.T) {
 		{
 			name: "Success",
 			input: dto.OrderRequest{
-				TotalAmount:     1000,
-				Username:        "testuser",
-				UserPhone:       "0123456789",
-				ShippingAddress: "Test Address",
+				UserID:      1,
+				TotalAmount: 1000,
 			},
 			setupMock: func(m *mocks.OrderRepository) {
 				m.On("CreateOrder", mock.Anything).Return(&models.Order{ID: 1}, nil).Once()
@@ -44,10 +42,8 @@ func TestOrderHandlerCreateOrder(t *testing.T) {
 			expectedResult: &models.Order{ID: 1},
 		},
 		{
-			name: "Invalid JSON",
-			input: dto.OrderRequest{
-				TotalAmount: 1000,
-			},
+			name:        "Invalid JSON",
+			input:       dto.OrderRequest{},
 			setupMock:   nil,
 			expectError: true,
 		},
@@ -60,10 +56,8 @@ func TestOrderHandlerCreateOrder(t *testing.T) {
 		{
 			name: "Service error",
 			input: dto.OrderRequest{
-				TotalAmount:     2000,
-				Username:        "erroruser",
-				UserPhone:       "0123456789",
-				ShippingAddress: "Test Address",
+				UserID:      2,
+				TotalAmount: 2000,
 			},
 			setupMock: func(m *mocks.OrderRepository) {
 				m.On("CreateOrder", mock.Anything).Return(nil, assert.AnError).Once()
@@ -93,11 +87,12 @@ func TestOrderHandlerCreateOrder(t *testing.T) {
 			}
 
 			var reqBody []byte
-			if tc.name == "Invalid JSON" {
+			switch tc.name {
+			case "Invalid JSON":
 				reqBody = []byte("{invalid-json}")
-			} else if tc.name == "Empty body" {
+			case "Empty body":
 				reqBody = []byte("")
-			} else {
+			default:
 				reqBody, _ = json.Marshal(tc.input)
 			}
 
@@ -138,9 +133,10 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 				mockOrders := []models.Order{
 					{
 						ID:            1,
+						UserID:        10,
 						TotalAmount:   1000,
 						CurrentStatus: models.ORDER_STATUS_CREATED,
-						UserInfo:      []byte(`{"username":"testuser"}`),
+						User:          &models.User{ID: 10, Username: "testuser"},
 						CreatedAt:     mockTime,
 					},
 				}
@@ -165,15 +161,16 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 			},
 		},
 		{
-			name:  "Success",
+			name:  "Success with pagination",
 			query: "?page=2&limit=5",
 			setupMock: func(m *mocks.OrderRepository) {
 				mockOrders := []models.Order{
 					{
 						ID:            6,
+						UserID:        11,
 						TotalAmount:   600,
 						CurrentStatus: models.ORDER_STATUS_PAID,
-						UserInfo:      []byte(`{"username":"testuser"}`),
+						User:          &models.User{ID: 11, Username: "testuser"},
 						CreatedAt:     mockTime,
 					},
 				}
@@ -191,7 +188,6 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 				}
 				json.NewDecoder(resp.Body).Decode(&body)
 				assert.Equal(t, 2, body.Pagination.Page)
-				// Calculate total pages: ceil(total_items / limit_items)
 				expectedTotalPages := (int(body.Pagination.TotalItems) + body.Pagination.Limit - 1) / body.Pagination.Limit
 				assert.Equal(t, 2, expectedTotalPages)
 			},
@@ -208,12 +204,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 			name:  "With status filter",
 			query: "?status=paid&page=1&limit=10",
 			setupMock: func(m *mocks.OrderRepository) {
-				mockOrders := []models.Order{
-					{
-						ID:            2,
-						CurrentStatus: models.ORDER_STATUS_PAID,
-					},
-				}
+				mockOrders := []models.Order{{ID: 2, UserID: 1, CurrentStatus: models.ORDER_STATUS_PAID}}
 				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10, Status: "paid"}).
 					Return(mockOrders, int64(1), nil).Once()
 			},
@@ -223,11 +214,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 			name:  "With date filter",
 			query: "?date=2026-05-19&page=1&limit=10",
 			setupMock: func(m *mocks.OrderRepository) {
-				mockOrders := []models.Order{
-					{
-						ID: 3,
-					},
-				}
+				mockOrders := []models.Order{{ID: 3, UserID: 1}}
 				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10, Date: "2026-05-19"}).
 					Return(mockOrders, int64(1), nil).Once()
 			},
@@ -261,22 +248,13 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 func TestOrderHandlerGetOrderDetail(t *testing.T) {
 	tests := []struct {
 		name           string
-		order          models.Order
 		orderID        string
-		apiKey         string
 		expectedStatus int
 		expectError    bool
 		setupMock      func(*mocks.OrderRepository)
 	}{
 		{
-			name: "Success",
-			order: models.Order{
-				ID:            1,
-				TotalAmount:   1000,
-				CurrentStatus: models.ORDER_STATUS_CREATED,
-				UserInfo:      []byte(`{"username":"kien","user_phone":"0123456789","shipping_address":"HCM"}`),
-				CreatedAt:     time.Now(),
-			},
+			name:           "Success",
 			orderID:        "1",
 			expectedStatus: 200,
 			expectError:    false,
@@ -284,10 +262,16 @@ func TestOrderHandlerGetOrderDetail(t *testing.T) {
 				m.On("GetOrderDetail", int64(1)).
 					Return(&models.Order{
 						ID:            1,
+						UserID:        5,
 						TotalAmount:   1000,
 						CurrentStatus: models.ORDER_STATUS_CREATED,
-						UserInfo:      []byte(`{"username":"kien","user_phone":"0123456789","shipping_address":"HCM"}`),
-						CreatedAt:     time.Now(),
+						User: &models.User{
+							ID:       5,
+							Username: "kien",
+							Phone:    "0123456789",
+							Address:  "HCM",
+						},
+						CreatedAt: time.Now(),
 					}, nil).
 					Once()
 			},
@@ -298,17 +282,6 @@ func TestOrderHandlerGetOrderDetail(t *testing.T) {
 			expectedStatus: 400,
 			expectError:    true,
 		},
-		// {
-		// 	name:           "Order not found",
-		// 	orderID:        "999",
-		// 	expectedStatus: 404,
-		// 	expectError:    true,
-		// 	setupMock: func(m *mocks.OrderRepository) {
-		// 		m.On("GetOrderDetail", int64(999)).
-		// 			Return(nil, nil).
-		// 			Once()
-		// 	},
-		// },
 		{
 			name:           "Service error",
 			orderID:        "2",
@@ -325,25 +298,17 @@ func TestOrderHandlerGetOrderDetail(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			app := fiber.New()
-
 			mockRepo := mocks.NewOrderRepository(t)
 			svc := services.NewOrderService(mockRepo)
 			handler := handlers.NewOrderHandler(svc)
-
 			app.Get("/orders/:id", handler.GetOrderDetail)
 
 			if tc.setupMock != nil {
 				tc.setupMock(mockRepo)
 			}
 
-			req := httptest.NewRequest(
-				"GET",
-				"/orders/"+tc.orderID,
-				nil,
-			)
-
+			req := httptest.NewRequest("GET", "/orders/"+tc.orderID, nil)
 			resp, err := app.Test(req)
-
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectedStatus, resp.StatusCode)
 		})
@@ -353,39 +318,24 @@ func TestOrderHandlerGetOrderDetail(t *testing.T) {
 func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 	tests := []struct {
 		name           string
-		order          models.Order
 		orderID        string
-		apiKey         string
 		expectedStatus int
 		expectError    bool
 		body           interface{}
 		setupMock      func(*mocks.OrderRepository)
 	}{
 		{
-			name: "Success",
-			order: models.Order{
-				ID:            1,
-				CurrentStatus: models.ORDER_STATUS_CREATED,
-			},
-			orderID: "1",
-			body: dto.UpdateStatusRequest{
-				Status: "paid",
-			},
+			name:           "Success",
+			orderID:        "1",
+			body:           dto.UpdateStatusRequest{Status: "paid"},
 			expectedStatus: 200,
 			expectError:    false,
 			setupMock: func(m *mocks.OrderRepository) {
 				m.On("GetOrderDetail", int64(1)).
-					Return(&models.Order{
-						ID:            1,
-						CurrentStatus: models.ORDER_STATUS_CREATED,
-					}, nil).
+					Return(&models.Order{ID: 1, UserID: 1, CurrentStatus: models.ORDER_STATUS_CREATED}, nil).
 					Once()
-
 				m.On("UpdateOrderStatus", int64(1), "paid").
-					Return(&models.Order{
-						ID:            1,
-						CurrentStatus: models.ORDER_STATUS_PAID,
-					}, nil).
+					Return(&models.Order{ID: 1, UserID: 1, CurrentStatus: models.ORDER_STATUS_PAID}, nil).
 					Once()
 			},
 		},
@@ -394,9 +344,7 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 			orderID:        "abc",
 			expectedStatus: 400,
 			expectError:    true,
-			body: dto.UpdateStatusRequest{
-				Status: "paid",
-			},
+			body:           dto.UpdateStatusRequest{Status: "paid"},
 		},
 		{
 			name:           "Invalid json",
@@ -410,38 +358,17 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 			orderID:        "1",
 			expectedStatus: 400,
 			expectError:    true,
-			body: dto.UpdateStatusRequest{
-				Status: "",
-			},
+			body:           dto.UpdateStatusRequest{Status: ""},
 		},
-		// {
-		// 	name:           "Order not found",
-		// 	orderID:        "999",
-		// 	expectedStatus: 404,
-		// 	expectError:    true,
-		// 	body: dto.UpdateStatusRequest{
-		// 		Status: "paid",
-		// 	},
-		// 	setupMock: func(m *mocks.OrderRepository) {
-		// 		m.On("GetOrderDetail", int64(999)).
-		// 			Return(nil, nil).
-		// 			Once()
-		// 	},
-		// },
 		{
 			name:           "Invalid transition",
 			orderID:        "1",
 			expectedStatus: 400,
 			expectError:    true,
-			body: dto.UpdateStatusRequest{
-				Status: "delivered",
-			},
+			body:           dto.UpdateStatusRequest{Status: "delivered"},
 			setupMock: func(m *mocks.OrderRepository) {
 				m.On("GetOrderDetail", int64(1)).
-					Return(&models.Order{
-						ID:            1,
-						CurrentStatus: models.ORDER_STATUS_CREATED,
-					}, nil).
+					Return(&models.Order{ID: 1, UserID: 1, CurrentStatus: models.ORDER_STATUS_CREATED}, nil).
 					Once()
 			},
 		},
@@ -450,17 +377,11 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 			orderID:        "1",
 			expectedStatus: 500,
 			expectError:    true,
-			body: dto.UpdateStatusRequest{
-				Status: "paid",
-			},
+			body:           dto.UpdateStatusRequest{Status: "paid"},
 			setupMock: func(m *mocks.OrderRepository) {
 				m.On("GetOrderDetail", int64(1)).
-					Return(&models.Order{
-						ID:            1,
-						CurrentStatus: models.ORDER_STATUS_CREATED,
-					}, nil).
+					Return(&models.Order{ID: 1, UserID: 1, CurrentStatus: models.ORDER_STATUS_CREATED}, nil).
 					Once()
-
 				m.On("UpdateOrderStatus", int64(1), "paid").
 					Return(nil, assert.AnError).
 					Once()
@@ -471,11 +392,9 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			app := fiber.New()
-
 			mockRepo := mocks.NewOrderRepository(t)
 			svc := services.NewOrderService(mockRepo)
 			handler := handlers.NewOrderHandler(svc)
-
 			app.Patch("/orders/:id/status", handler.UpdateOrderStatus)
 
 			if tc.setupMock != nil {
@@ -483,7 +402,6 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 			}
 
 			var bodyBytes []byte
-
 			switch v := tc.body.(type) {
 			case string:
 				bodyBytes = []byte(v)
@@ -491,16 +409,10 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 				bodyBytes, _ = json.Marshal(v)
 			}
 
-			req := httptest.NewRequest(
-				"PATCH",
-				"/orders/"+tc.orderID+"/status",
-				bytes.NewBuffer(bodyBytes),
-			)
-
+			req := httptest.NewRequest("PATCH", "/orders/"+tc.orderID+"/status", bytes.NewBuffer(bodyBytes))
 			req.Header.Set("Content-Type", "application/json")
 
 			resp, err := app.Test(req)
-
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectedStatus, resp.StatusCode)
 		})
