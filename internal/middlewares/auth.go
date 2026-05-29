@@ -1,37 +1,49 @@
 package middlewares
 
 import (
-	"fmt"
 	"main/errs"
 	"main/response"
 	"os"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func Authenticate() fiber.Handler {
 	return func(c fiber.Ctx) error {
-
-		apiKey := c.Get("X-API-KEY")
-		fmt.Printf("Received API Key: %s\n", apiKey) // Debug log for received API key
-
-		if apiKey == "" {
+		authHeader := c.Get("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			return response.ResponseError(c, errs.ERR_UNAUTHENTICATED, nil)
 		}
 
-		switch apiKey {
-		case os.Getenv("CUSTOMER_API_KEY"):
-			c.Locals("role", "customer")
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		secret := os.Getenv("JWT_SECRET")
+		if secret == "" {
+			secret = "default-secret-key-change-in-production"
+		}
 
-		case os.Getenv("DRIVER_API_KEY"):
-			c.Locals("role", "driver")
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, jwt.ErrSignatureInvalid
+			}
+			return []byte(secret), nil
+		})
 
-		case os.Getenv("ADMIN_API_KEY"):
-			c.Locals("role", "admin")
-
-		default:
+		if err != nil || !token.Valid {
 			return response.ResponseError(c, errs.ERR_UNAUTHENTICATED, nil)
 		}
+
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			return response.ResponseError(c, errs.ERR_UNAUTHENTICATED, nil)
+		}
+
+		role, _ := claims["role"].(string)
+		sub, _ := claims["sub"].(float64)
+
+		c.Locals("role", role)
+		c.Locals("user_id", int64(sub))
 
 		return c.Next()
 	}

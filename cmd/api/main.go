@@ -24,9 +24,10 @@ import (
 // @description HTTP API for order fulfillment tracking.
 // @host localhost:5000
 // @BasePath /
-// @securityDefinitions.apikey ApiKeyAuth
+// @securityDefinitions.apikey BearerAuth
 // @in header
-// @name X-API-KEY
+// @name Authorization
+// @description Type "Bearer" followed by a space and the JWT token.
 func main() {
 	err := configs.LoadConfig()
 	if err != nil {
@@ -41,6 +42,10 @@ func main() {
 	app := fiber.New(fiber.Config{
 		BodyLimit: 50 * 1024 * 1024,
 	})
+
+	userRepo := repositories.NewUserRepository(db)
+	authService := services.NewAuthService(userRepo)
+	authHandler := handlers.NewAuthHandler(authService)
 
 	orderRepo := repositories.NewOrderRepository(db)
 	orderService := services.NewOrderService(orderRepo)
@@ -60,6 +65,7 @@ func main() {
 
 	services.StartDailyReportScheduler(reportService)
 
+	routers.SetupAuthRouter(app, authHandler)
 	routers.SetupOrderRouter(app, orderHandler)
 	routers.SetupOrderEventRouter(app, orderEventHandler)
 	routers.SetupReportRouter(app, reportHandler)
