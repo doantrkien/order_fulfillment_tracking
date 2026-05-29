@@ -30,7 +30,7 @@ func NewOrderService(orderRepo repositories.OrderRepository) OrderService {
 func orderToResponse(order models.Order) dto.OrderReponse {
 	resp := dto.OrderReponse{
 		ID:          order.ID,
-		UserID;    order.UserID,
+		UserID:      order.UserID,
 		TotalAmount: order.TotalAmount,
 		Status:      order.CurrentStatus,
 		Ordered_at:  order.CreatedAt.In(loc),

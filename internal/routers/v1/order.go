@@ -2,18 +2,18 @@ package routers
 
 import (
 	"main/internal/handlers"
-	"main/internal/middlewares"
+	middleware "main/internal/middlewares"
 
 	"github.com/gofiber/fiber/v3"
 )
 
 func SetupOrderRouter(app *fiber.App, orderHandler *handlers.OrderHandler) {
-	order := app.Group("api/v1/orders",
-		middlewares.Authenticate(),
-	)
+	// Sửa middlewares thành middleware
+	order := app.Group("api/v1/orders", middleware.Authenticate())
 
-	order.Get("", middlewares.Authorize([]string{"admin", "customer", "driver"}), orderHandler.GetAllOrder)
-	order.Get("/:id", middlewares.Authorize([]string{"admin", "customer", "driver"}), orderHandler.GetOrderDetail)
-	order.Post("", middlewares.Authorize([]string{"customer", "admin"}), orderHandler.CreateOrder)
-	order.Patch("/:id/status", middlewares.Authorize([]string{"admin", "customer", "driver"}), orderHandler.UpdateOrderStatus)
+	// Đã xóa bỏ []string{}, truyền trực tiếp các role cách nhau bằng dấu phẩy
+	order.Get("", middleware.Authorize("admin", "customer", "driver"), orderHandler.GetAllOrder)
+	order.Get("/:id", middleware.Authorize("admin", "customer", "driver"), orderHandler.GetOrderDetail)
+	order.Post("", middleware.Authorize("customer", "admin"), orderHandler.CreateOrder)
+	order.Patch("/:id/status", middleware.Authorize("admin", "customer", "driver"), orderHandler.UpdateOrderStatus)
 }
