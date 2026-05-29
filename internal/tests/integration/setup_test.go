@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/logger"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -25,26 +27,35 @@ import (
 )
 
 var (
-	app            *fiber.App
-	db             *gorm.DB
-	customerAPIKey string
-	adminAPIKey    string
-	driverAPIKey   string
+	app         *fiber.App
+	db          *gorm.DB
+	adminToken  string
+	driverToken string
 )
+
+func generateTestToken(userID int64, role string, email string) string {
+	secret := []byte("test_jwt_secret_key_1234567890123456")
+	claims := jwt.MapClaims{
+		"sub":   strconv.FormatInt(userID, 10),
+		"email": email,
+		"role":  role,
+		"exp":   time.Now().Add(24 * time.Hour).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, _ := token.SignedString(secret)
+	return tokenString
+}
 
 func TestMain(m *testing.M) {
 	_, b, _, _ := runtime.Caller(0)
 	basepath := filepath.Dir(b)
 	os.Chdir(filepath.Join(basepath, "../../.."))
 
-	// Hardcode API keys for testing to avoid depending on .env
-	customerAPIKey = "test_customer_key"
-	adminAPIKey = "test_admin_key"
-	driverAPIKey = "test_driver_key"
+	os.Setenv("JWT_SECRET", "test_jwt_secret_key_1234567890123456")
+	os.Setenv("JWT_EXPIRE_HOURS", "24")
 
-	os.Setenv("CUSTOMER_API_KEY", customerAPIKey)
-	os.Setenv("ADMIN_API_KEY", adminAPIKey)
-	os.Setenv("DRIVER_API_KEY", driverAPIKey)
+	adminToken = generateTestToken(1, "admin", "admin@test.com")
+	driverToken = generateTestToken(2, "driver", "driver@test.com")
 
 	ctx := context.Background()
 
@@ -63,7 +74,6 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to start postgres container: %v", err)
 	}
 
-	// Clean up the container after tests
 	defer func() {
 		if err := postgresContainer.Terminate(ctx); err != nil {
 			log.Fatalf("failed to terminate container: %v", err)
@@ -82,13 +92,18 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Failed to connect to test database: %v", err)
 	}
 
-	if err := db.AutoMigrate(&models.Order{}, &models.OrderEvent{}, &models.Report{}); err != nil {
+	if err := db.AutoMigrate(&models.Account{}, &models.Order{}, &models.OrderEvent{}, &models.Report{}); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
 
 	app = fiber.New()
 	//log response request
 	app.Use(logger.New())
+
+	accountRepo := repositories.NewAccountRepository(db)
+	authService := services.NewAuthService(accountRepo)
+	authHandler := handlers.NewAuthHandler(authService)
+
 	orderRepo := repositories.NewOrderRepository(db)
 	orderService := services.NewOrderService(orderRepo)
 	orderHandler := handlers.NewOrderHandler(orderService)
@@ -97,6 +112,7 @@ func TestMain(m *testing.M) {
 	reportService := services.NewReportService(reportRepo)
 	reportHandler := handlers.NewReportHandler(reportService)
 
+	routers.SetupAuthRouter(app, authHandler)
 	routers.SetupOrderRouter(app, orderHandler)
 	routers.SetupReportRouter(app, reportHandler)
 

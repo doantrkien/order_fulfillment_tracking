@@ -43,8 +43,8 @@ func main() {
 		BodyLimit: 50 * 1024 * 1024,
 	})
 
-	userRepo := repositories.NewUserRepository(db)
-	authService := services.NewAuthService(userRepo)
+	accountRepo := repositories.NewAccountRepository(db)
+	authService := services.NewAuthService(accountRepo)
 	authHandler := handlers.NewAuthHandler(authService)
 
 	orderRepo := repositories.NewOrderRepository(db)

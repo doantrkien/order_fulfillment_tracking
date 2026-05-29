@@ -263,7 +263,7 @@ func TestOrderHandlerGetOrderDetail(t *testing.T) {
 		name           string
 		order          models.Order
 		orderID        string
-		apiKey         string
+		token          string
 		expectedStatus int
 		expectError    bool
 		setupMock      func(*mocks.OrderRepository)
@@ -355,7 +355,7 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 		name           string
 		order          models.Order
 		orderID        string
-		apiKey         string
+		token          string
 		expectedStatus int
 		expectError    bool
 		body           interface{}
