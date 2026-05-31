@@ -1,5 +1,13 @@
 package response
 
+import "main/internal/dto"
+
+type CreateOrderSuccessResponse struct {
+	Status  int                     `json:"status" example:"201"`
+	Data    dto.CreateOrderResponse `json:"data"`
+	Message string                  `json:"message" example:"Success"`
+}
+
 // represents a 400 Bad Request error
 type ErrorBadReqResponse struct {
 	Status  int    `json:"status" example:"400"`

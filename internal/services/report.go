@@ -6,6 +6,7 @@ import (
 	"main/internal/repositories"
 	"time"
 
+	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 )
 
@@ -16,6 +17,7 @@ type ReportService interface {
 
 type reportService struct {
 	reportRepo repositories.ReportRepository
+	sf         singleflight.Group
 }
 
 func NewReportService(reportRepo repositories.ReportRepository) ReportService {
@@ -26,7 +28,14 @@ func (s *reportService) GetDailyReport(date time.Time) (*models.Report, error) {
 	report, err := s.reportRepo.GetDailyReport(date)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return s.CreateDailyReport(date)
+			key := date.Format("2006-01-02")
+			v, err, _ := s.sf.Do(key, func() (interface{}, error) {
+				return s.CreateDailyReport(date)
+			})
+			if err != nil {
+				return nil, err
+			}
+			return v.(*models.Report), nil
 		}
 		return nil, err
 	}

@@ -19,7 +19,7 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 		input          dto.OrderRequest
 		setupMock      func(*mocks.OrderRepository)
 		expectError    bool
-		expectedResult *models.Order
+		expectedResult *dto.CreateOrderResponse
 	}{
 		{
 			name: "Success",
@@ -48,10 +48,10 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 					Once()
 			},
 			expectError: false,
-			expectedResult: &models.Order{
-				ID:            1,
-				TotalAmount:   2000,
-				CurrentStatus: models.ORDER_STATUS_CREATED,
+			expectedResult: &dto.CreateOrderResponse{
+				ID:          1,
+				TotalAmount: 2000,
+				Status:      models.ORDER_STATUS_CREATED,
 			},
 		},
 		{
@@ -97,10 +97,10 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 					Once()
 			},
 			expectError: false,
-			expectedResult: &models.Order{
-				ID:            4,
-				TotalAmount:   math.MaxInt64,
-				CurrentStatus: models.ORDER_STATUS_CREATED,
+			expectedResult: &dto.CreateOrderResponse{
+				ID:          4,
+				TotalAmount: math.MaxInt64,
+				Status:      models.ORDER_STATUS_CREATED,
 			},
 		},
 	}
@@ -123,7 +123,7 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 
 				assert.Equal(t, tc.expectedResult.ID, result.ID)
 				assert.Equal(t, tc.expectedResult.TotalAmount, result.TotalAmount)
-				assert.Equal(t, tc.expectedResult.CurrentStatus, result.CurrentStatus)
+				assert.Equal(t, tc.expectedResult.Status, result.Status)
 			}
 
 			mockRepo.AssertExpectations(t)

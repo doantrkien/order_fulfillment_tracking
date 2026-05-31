@@ -7,6 +7,7 @@ import (
 	"main/internal/models"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type OrderRepository interface {
@@ -82,17 +83,30 @@ func (r *orderRepository) CreateOrder(order models.Order) (*models.Order, error)
 
 func (r *orderRepository) UpdateOrderStatus(id int64, status string) (*models.Order, error) {
 
-	var order models.Order
-	if err := r.db.First(&order, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errs.ERR_NOT_FOUND
+	var updatedOrder models.Order
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		var order models.Order
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&order, id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errs.ERR_NOT_FOUND
+			}
+			return err
 		}
-		return nil, err
-	}
 
-	order.CurrentStatus = models.OrderStatus(status)
-	if err := r.db.Save(&order).Error; err != nil {
+		if !models.IsValidTransition(order.CurrentStatus, models.OrderStatus(status)) {
+			return errs.ERR_INVALID_STATUS
+		}
+
+		order.CurrentStatus = models.OrderStatus(status)
+		if err := tx.Save(&order).Error; err != nil {
+			return err
+		}
+		updatedOrder = order
+		return nil
+	})
+
+	if err != nil {
 		return nil, err
 	}
-	return &order, nil
+	return &updatedOrder, nil
 }

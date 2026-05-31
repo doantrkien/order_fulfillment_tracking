@@ -63,7 +63,6 @@ func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto.Im
 		})
 	}
 
-	
 	batches := splitIntoBatches(orderGroups, s.maxWorkers)
 	if len(batches) == 0 {
 		return resp, nil
@@ -141,8 +140,17 @@ func splitIntoBatches(orderGroups map[int64][]dto.ImportOrderEventRequest, numBa
 
 	batches := make([][]models.OrderEvent, numBatches)
 
+	var orderIDs []int64
+	for id := range orderGroups {
+		orderIDs = append(orderIDs, id)
+	}
+	sort.Slice(orderIDs, func(i, j int) bool {
+		return orderIDs[i] < orderIDs[j]
+	})
+
 	i := 0
-	for _, reqs := range orderGroups {
+	for _, id := range orderIDs {
+		reqs := orderGroups[id]
 		idx := i % numBatches
 		for _, req := range reqs {
 			batches[idx] = append(batches[idx], models.OrderEvent{
@@ -150,6 +158,7 @@ func splitIntoBatches(orderGroups map[int64][]dto.ImportOrderEventRequest, numBa
 				NewStatus: models.OrderStatus(req.Status),
 				UpdatedBy: req.UpdatedBy,
 				EventAt:   req.EventAt,
+				DriverID:  &req.DriverID,
 			})
 		}
 		i++
@@ -170,6 +179,3 @@ func validateBasic(req dto.ImportOrderEventRequest) string {
 	}
 	return ""
 }
-
-
-

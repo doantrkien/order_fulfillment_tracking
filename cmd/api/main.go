@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	_ "time/tzdata"
 
 	"main/configs"
 	"main/internal/handlers"
@@ -62,8 +63,6 @@ func main() {
 	reportRepo := repositories.NewReportRepository(db)
 	reportService := services.NewReportService(reportRepo)
 	reportHandler := handlers.NewReportHandler(reportService)
-
-	services.StartDailyReportScheduler(reportService)
 
 	routers.SetupAuthRouter(app, authHandler)
 	routers.SetupOrderRouter(app, orderHandler)

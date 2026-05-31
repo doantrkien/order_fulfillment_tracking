@@ -1,0 +1,2 @@
+ALTER TABLE order_events DROP COLUMN IF EXISTS driver_id;
+ALTER TABLE orders ADD COLUMN driver_id BIGINT REFERENCES accounts(id) ON DELETE SET NULL;

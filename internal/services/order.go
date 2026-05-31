@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/json"
-	"main/errs"
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/repositories"
@@ -14,7 +13,7 @@ var loc, _ = time.LoadLocation("Asia/Ho_Chi_Minh")
 type OrderService interface {
 	GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, int64, error)
 	GetOrder(id int64) (*dto.OrderReponse, error)
-	CreateOrder(dto.OrderRequest) (*models.Order, error)
+	CreateOrder(dto.OrderRequest) (*dto.CreateOrderResponse, error)
 	UpdateOrderStatus(id int64, status string) (*models.Order, error)
 }
 
@@ -82,7 +81,7 @@ func (s *orderService) GetOrder(id int64) (*dto.OrderReponse, error) {
 	return &response, nil
 }
 
-func (s *orderService) CreateOrder(req dto.OrderRequest) (*models.Order, error) {
+func (s *orderService) CreateOrder(req dto.OrderRequest) (*dto.CreateOrderResponse, error) {
 	userInfo := models.UserInfo{
 		Username:        req.Username,
 		UserPhone:       req.UserPhone,
@@ -97,19 +96,22 @@ func (s *orderService) CreateOrder(req dto.OrderRequest) (*models.Order, error) 
 		CurrentStatus: models.ORDER_STATUS_CREATED,
 	}
 
-	return s.orderRepo.CreateOrder(order)
-}
-
-func (s *orderService) UpdateOrderStatus(id int64, status string) (*models.Order, error) {
-	order, err := s.GetOrder(id)
+	saved, err := s.orderRepo.CreateOrder(order)
 	if err != nil {
 		return nil, err
 	}
 
-	if !models.IsValidTransition(order.Status, models.OrderStatus(status)) {
-		return nil, errs.ERR_INVALID_STATUS
-	}
+	return &dto.CreateOrderResponse{
+		ID:              saved.ID,
+		Status:          saved.CurrentStatus,
+		TotalAmount:     saved.TotalAmount,
+		ShippingAddress: req.ShippingAddress,
+		CreatedAt:       saved.CreatedAt,
+		UpdatedAt:       saved.UpdatedAt,
+	}, nil
+}
 
+func (s *orderService) UpdateOrderStatus(id int64, status string) (*models.Order, error) {
 	newOrder, err := s.orderRepo.UpdateOrderStatus(id, status)
 	if err != nil {
 		return nil, err

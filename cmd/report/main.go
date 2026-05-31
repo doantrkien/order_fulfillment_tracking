@@ -1,65 +1,49 @@
 package main
 
 import (
-	"context"
 	"flag"
-	"fmt"
 	"log"
 	"time"
 
 	"main/configs"
+	"main/internal/repositories"
+	"main/internal/services"
 	"main/pkg/postgresql"
 )
 
 func main() {
-	if err := configs.LoadConfig(); err != nil {
-		log.Printf("warning: load config: %v", err)
-	}
-
-	dateFlag := flag.String("date", "", "Report date in YYYY-MM-DD format")
+	dateStr := flag.String("date", "", "Date for the report in YYYY-MM-DD format (e.g. 2026-05-04)")
 	flag.Parse()
 
-	if *dateFlag == "" {
-		log.Fatal("missing required --date value")
+	if *dateStr == "" {
+		log.Fatal("Please provide a date using --date=YYYY-MM-DD")
 	}
 
-	reportDate, err := time.Parse("2006-01-02", *dateFlag)
+	date, err := time.Parse("2006-01-02", *dateStr)
 	if err != nil {
-		log.Fatalf("invalid date format: %v", err)
+		log.Fatalf("Invalid date format: %v. Please use YYYY-MM-DD.", err)
+	}
+
+	err = configs.LoadConfig()
+	if err != nil {
+		log.Fatalf("Cannot load config: %v", err)
 	}
 
 	db, err := postgresql.ConnectDB()
 	if err != nil {
-		log.Fatalf("cannot connect to database: %v", err)
+		log.Fatalf("Error initializing database: %v", err)
 	}
 
-	sqlDB, err := db.DB()
+	reportRepo := repositories.NewReportRepository(db)
+	reportService := services.NewReportService(reportRepo)
+
+	log.Printf("Starting daily report generation for date: %s", date.Format("2006-01-02"))
+	
+	report, err := reportService.CreateDailyReport(date)
 	if err != nil {
-		log.Fatalf("cannot get sql.DB from gorm: %v", err)
-	}
-	defer sqlDB.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if err := sqlDB.PingContext(ctx); err != nil {
-		log.Fatalf("database ping failed: %v", err)
+		log.Fatalf("Failed to create daily report: %v", err)
 	}
 
-	fmt.Printf("Daily report generated for %s\n", reportDate.Format("2006-01-02"))
-
-	var totalOrders, totalNew, totalDelivered, totalCancelled, totalRefunded int64
-	var totalIncome, avgDeliverTime float64
-	row := sqlDB.QueryRowContext(ctx, `
-		SELECT total_orders, total_new, total_delivered, total_cancelled,
-			total_refunded, total_income, avg_deliver_time
-		FROM reports
-		WHERE date = $1
-	`, reportDate.Format("2006-01-02"))
-	if err := row.Scan(&totalOrders, &totalNew, &totalDelivered, &totalCancelled, &totalRefunded, &totalIncome, &avgDeliverTime); err != nil {
-		log.Fatalf("unable to fetch created report: %v", err)
-	}
-
-	fmt.Printf("report summary: orders=%d, new=%d, delivered=%d, cancelled=%d, refunded=%d, income=%.2f, avg_hours=%.2f\n",
-		totalOrders, totalNew, totalDelivered, totalCancelled, totalRefunded, totalIncome, avgDeliverTime)
+	log.Printf("Successfully generated daily report:\nID=%d\nOrders=%d\nNew=%d\nDelivered=%d\nCancelled=%d\nRefunded=%d\nIncome=%d\nAvg Deliver Time=%.2f hours",
+		report.ID, report.TotalOrders, report.TotalNew, report.TotalDelivered, report.TotalCancelled, report.TotalRefunded, report.TotalIncome, report.AvgDeliverTime)
 }

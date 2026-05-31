@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"main/errs"
 	"main/internal/dto"
 	"main/internal/repositories"
 	"os"
@@ -28,7 +29,7 @@ func NewAuthService(userRepo repositories.AccountRepository) AuthService {
 func (s *authService) Login(email, password string) (*dto.LoginResponse, error) {
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, errs.ERR_NOT_FOUND) || errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUnauthenticated
 		}
 		return nil, err

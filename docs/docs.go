@@ -280,7 +280,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/response.ResponseStruct"
+                            "$ref": "#/definitions/response.CreateOrderSuccessResponse"
                         }
                     },
                     "400": {
@@ -616,6 +616,39 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dto.CreateOrderResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-05-01T00:00:00Z"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "shipping_address": {
+                    "type": "string",
+                    "example": "123 Nguyen Hue"
+                },
+                "status": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.OrderStatus"
+                        }
+                    ],
+                    "example": "created"
+                },
+                "total_amount": {
+                    "type": "integer",
+                    "example": 250000
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-05-01T00:00:00Z"
+                }
+            }
+        },
         "dto.DailyReportResponse": {
             "type": "object",
             "properties": {
@@ -685,6 +718,10 @@ const docTemplate = `{
         "dto.ImportOrderEventRequest": {
             "type": "object",
             "properties": {
+                "driver_id": {
+                    "type": "integer",
+                    "example": 1
+                },
                 "event_at": {
                     "type": "string",
                     "example": "2026-05-17T09:00:00Z"
@@ -699,7 +736,7 @@ const docTemplate = `{
                 },
                 "updated_by": {
                     "type": "string",
-                    "example": "warehouse_staff_01"
+                    "example": "driver_01"
                 }
             }
         },
@@ -735,11 +772,11 @@ const docTemplate = `{
             "properties": {
                 "email": {
                     "type": "string",
-                    "example": "admin@demo.com"
+                    "example": "admin@order.com"
                 },
                 "password": {
                     "type": "string",
-                    "example": "Admin@123"
+                    "example": "12345"
                 }
             }
         },
@@ -750,15 +787,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "expires_in": {
-                    "description": "seconds, e.g. 86400",
                     "type": "integer"
                 },
                 "role": {
-                    "description": "\"admin\" or \"driver\"",
                     "type": "string"
                 },
                 "token_type": {
-                    "description": "\"Bearer\"",
                     "type": "string"
                 }
             }
@@ -776,7 +810,7 @@ const docTemplate = `{
                 },
                 "shipping_address": {
                     "type": "string",
-                    "example": "Viet Nam"
+                    "example": "123 Nguyen Hue"
                 },
                 "status": {
                     "allOf": [
@@ -792,11 +826,11 @@ const docTemplate = `{
                 },
                 "user_phone": {
                     "type": "string",
-                    "example": "0123456789"
+                    "example": "0977605602"
                 },
                 "username": {
                     "type": "string",
-                    "example": "Supper Man"
+                    "example": "Nguyen Tien Khoa"
                 }
             }
         },
@@ -863,6 +897,22 @@ const docTemplate = `{
                 "ORDER_STATUS_CANCELLED",
                 "ORDER_STATUS_REFUNDED"
             ]
+        },
+        "response.CreateOrderSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/dto.CreateOrderResponse"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Success"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 201
+                }
+            }
         },
         "response.ErrorBadReqResponse": {
             "type": "object",

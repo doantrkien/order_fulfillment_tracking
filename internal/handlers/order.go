@@ -112,7 +112,7 @@ func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
 // @Accept json
 // @Produce json
 // @Param request body dto.OrderRequest true "Order details"
-// @Success 201 {object} response.ResponseStruct
+// @Success 201 {object} response.CreateOrderSuccessResponse
 // @Failure 400 {object} response.ErrorBadReqResponse
 // @Failure 401 {object} response.ErrorUnauthenticatedResponse
 // @Failure 403 {object} response.ErrorUnauthorizedResponse
@@ -128,12 +128,12 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 	if err := validator.New().Struct(req); err != nil {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
-	_, err := h.orderService.CreateOrder(req)
+	result, err := h.orderService.CreateOrder(req)
 	if err != nil {
 		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
 
-	return response.ResponseSuccess(c, 201, constant.SUCCESS.Message, nil)
+	return response.ResponseSuccess(c, 201, constant.SUCCESS.Message, result)
 }
 
 // UpdateOrderStatus godoc
