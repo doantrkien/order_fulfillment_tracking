@@ -4,6 +4,7 @@ import (
 	"main/errs"
 	"main/response"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -40,10 +41,22 @@ func Authenticate() fiber.Handler {
 		}
 
 		role, _ := claims["role"].(string)
-		sub, _ := claims["sub"].(float64)
+		email, _ := claims["email"].(string)
+
+		var userID int64
+		switch v := claims["sub"].(type) {
+		case float64:
+			userID = int64(v)
+		case string:
+			t, err := strconv.ParseInt(v, 10, 64)
+			if err == nil {
+				userID = t
+			}
+		}
 
 		c.Locals("role", role)
-		c.Locals("user_id", int64(sub))
+		c.Locals("email", email)
+		c.Locals("user_id", userID)
 
 		return c.Next()
 	}

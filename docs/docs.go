@@ -177,12 +177,6 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Customer Name",
-                        "name": "customer_name",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
                         "description": "Ordered Date",
                         "name": "ordered_at",
                         "in": "query"
@@ -736,7 +730,7 @@ const docTemplate = `{
                 },
                 "updated_by": {
                     "type": "string",
-                    "example": "driver_01"
+                    "example": "admin"
                 }
             }
         },

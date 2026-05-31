@@ -42,8 +42,8 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 
 	resp, err := h.authService.Login(req.Email, req.Password)
 	if err != nil {
-		if errors.Is(err, services.ErrUnauthenticated) {
-			return response.ResponseError(c, errs.ERR_UNAUTHENTICATED, nil)
+		if errors.Is(err, errs.ERR_INVALID_CREDENTAIL) {
+			return response.ResponseError(c, errs.ERR_INVALID_CREDENTAIL, nil)
 		}
 		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}

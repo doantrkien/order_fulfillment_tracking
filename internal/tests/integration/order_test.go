@@ -271,6 +271,17 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 
 			if len(tt.seedOrders) > 0 {
 				db.Create(&tt.seedOrders)
+				if tt.token == driverToken {
+					driverID := int64(2)
+					db.Create(&models.OrderEvent{
+						OrderID:        1,
+						PreviousStatus: models.ORDER_STATUS_CREATED,
+						NewStatus:      models.ORDER_STATUS_CREATED,
+						DriverID:       &driverID,
+						UpdatedBy:      "driver@test.com",
+						EventAt:        time.Now(),
+					})
+				}
 			}
 
 			req := httptest.NewRequest("GET", tt.query, nil)
@@ -313,6 +324,7 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 		order          models.Order
 		orderID        string
 		token          string
+		assignToDriver bool
 		expectedStatus int
 		expectError    bool
 	}{
@@ -387,8 +399,28 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 			},
 			orderID:        "1",
 			token:          driverToken,
+			assignToDriver: true,
 			expectedStatus: 200,
 			expectError:    false,
+		},
+		{
+			name: "driver access denied",
+			order: models.Order{
+				TotalAmount:   5000,
+				CurrentStatus: models.ORDER_STATUS_CREATED,
+				UserInfo: mustMarshalUserInfo(
+					"kien",
+					"0901234567",
+					"HCM City",
+				),
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+			orderID:        "1",
+			token:          driverToken,
+			assignToDriver: false,
+			expectedStatus: 403,
+			expectError:    true,
 		},
 	}
 
@@ -398,6 +430,17 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 
 			if tt.order.TotalAmount != 0 {
 				db.Create(&tt.order)
+				if tt.token == driverToken && tt.assignToDriver {
+					driverID := int64(2)
+					db.Create(&models.OrderEvent{
+						OrderID:        tt.order.ID,
+						PreviousStatus: models.ORDER_STATUS_CREATED,
+						NewStatus:      models.ORDER_STATUS_CREATED,
+						DriverID:       &driverID,
+						UpdatedBy:      "driver@test.com",
+						EventAt:        time.Now(),
+					})
+				}
 			}
 
 			req := httptest.NewRequest(

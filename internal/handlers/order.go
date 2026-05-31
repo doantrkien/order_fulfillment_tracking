@@ -30,7 +30,6 @@ func NewOrderHandler(orderService services.OrderService) *OrderHandler {
 // @Accept json
 // @Produce json
 // @Param status query string false "Order Status"
-// @Param customer_name query string false "Customer Name"
 // @Param ordered_at query string false "Ordered Date"
 // @Param page query int false "Page number"
 // @Param limit query int false "Page size"
@@ -58,7 +57,10 @@ func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
 		query.LimitItems = 100
 	}
 
-	result, totalItems, err := h.orderService.GetAllOrder(query)
+	role, _ := c.Locals("role").(string)
+	userID, _ := c.Locals("user_id").(int64)
+
+	result, totalItems, err := h.orderService.GetAllOrder(query, role, userID)
 	if err != nil {
 		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
@@ -94,10 +96,15 @@ func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 	fmt.Printf("GetOrderDetail: id=%d\n", id)
-	order, err := h.orderService.GetOrder(id)
+	role, _ := c.Locals("role").(string)
+	userID, _ := c.Locals("user_id").(int64)
+	order, err := h.orderService.GetOrder(id, role, userID)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
 			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)
+		}
+		if errors.Is(err, errs.ERR_UNAUTHORIZED) {
+			return response.ResponseError(c, errs.ERR_UNAUTHORIZED, nil)
 		}
 		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
@@ -166,7 +173,9 @@ func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
-	_, err = h.orderService.UpdateOrderStatus(id, string(req.Status))
+	userID, _ := c.Locals("user_id").(int64)
+	updatedBy := strconv.FormatInt(userID, 10)
+	_, err = h.orderService.UpdateOrderStatus(id, string(req.Status), updatedBy)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
 			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)

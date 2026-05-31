@@ -40,8 +40,8 @@ func (_m *OrderRepository) CreateOrder(order models.Order) (*models.Order, error
 	return r0, r1
 }
 
-func (_m *OrderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int64, error) {
-	ret := _m.Called(query)
+func (_m *OrderRepository) GetAllOrder(query dto.OrderQuery, role string, userID int64) ([]models.Order, int64, error) {
+	ret := _m.Called(query, role, userID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAllOrder")
@@ -50,8 +50,8 @@ func (_m *OrderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, in
 	var r0 []models.Order
 	var r1 int64
 	var r2 error
-	if rf, ok := ret.Get(0).(func(dto.OrderQuery) ([]models.Order, int64, error)); ok {
-		return rf(query)
+	if rf, ok := ret.Get(0).(func(dto.OrderQuery, string, int64) ([]models.Order, int64, error)); ok {
+		return rf(query, role, userID)
 	}
 	if rf, ok := ret.Get(0).(func(dto.OrderQuery) []models.Order); ok {
 		r0 = rf(query)
@@ -76,8 +76,8 @@ func (_m *OrderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, in
 	return r0, r1, r2
 }
 
-func (_m *OrderRepository) GetOrderDetail(id int64) (*models.Order, error) {
-	ret := _m.Called(id)
+func (_m *OrderRepository) GetOrderDetail(id int64, role string, userID int64) (*models.Order, error) {
+	ret := _m.Called(id, role, userID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetOrderDetail")
@@ -85,8 +85,8 @@ func (_m *OrderRepository) GetOrderDetail(id int64) (*models.Order, error) {
 
 	var r0 *models.Order
 	var r1 error
-	if rf, ok := ret.Get(0).(func(int64) (*models.Order, error)); ok {
-		return rf(id)
+	if rf, ok := ret.Get(0).(func(int64, string, int64) (*models.Order, error)); ok {
+		return rf(id, role, userID)
 	}
 	if rf, ok := ret.Get(0).(func(int64) *models.Order); ok {
 		r0 = rf(id)
@@ -105,8 +105,8 @@ func (_m *OrderRepository) GetOrderDetail(id int64) (*models.Order, error) {
 	return r0, r1
 }
 
-func (_m *OrderRepository) UpdateOrderStatus(id int64, status string) (*models.Order, error) {
-	ret := _m.Called(id, status)
+func (_m *OrderRepository) UpdateOrderStatus(id int64, status string, updatedBy string) (*models.Order, error) {
+	ret := _m.Called(id, status, updatedBy)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateOrderStatus")

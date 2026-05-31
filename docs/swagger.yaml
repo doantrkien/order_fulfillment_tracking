@@ -84,7 +84,7 @@ definitions:
         example: packed
         type: string
       updated_by:
-        example: driver_01
+        example: admin
         type: string
     type: object
   dto.ImportOrderEventsResponse:
@@ -387,10 +387,6 @@ paths:
       - description: Order Status
         in: query
         name: status
-        type: string
-      - description: Customer Name
-        in: query
-        name: customer_name
         type: string
       - description: Ordered Date
         in: query

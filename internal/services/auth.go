@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"main/errs"
 	"main/internal/dto"
 	"main/internal/repositories"
@@ -30,13 +31,20 @@ func (s *authService) Login(email, password string) (*dto.LoginResponse, error) 
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) || errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUnauthenticated
+			return nil, errs.ERR_INVALID_CREDENTAIL
 		}
 		return nil, err
 	}
 
+	hash, err := bcrypt.GenerateFromPassword([]byte("12345"), bcrypt.DefaultCost)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(string(hash))
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		return nil, ErrUnauthenticated
+		return nil, errs.ERR_INVALID_CREDENTAIL
 	}
 
 	expireHours := 24
@@ -70,5 +78,3 @@ func (s *authService) Login(email, password string) (*dto.LoginResponse, error) 
 		Role:        user.Role,
 	}, nil
 }
-
-var ErrUnauthenticated = errors.New("invalid email or password")
