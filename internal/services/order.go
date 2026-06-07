@@ -11,10 +11,10 @@ import (
 var loc, _ = time.LoadLocation("Asia/Ho_Chi_Minh")
 
 type OrderService interface {
-	GetAllOrder(query dto.OrderQuery, role string, userID int64) ([]dto.OrderReponse, int64, error)
-	GetOrder(id int64, role string, userID int64) (*dto.OrderReponse, error)
-	CreateOrder(dto.OrderRequest) (*dto.CreateOrderResponse, error)
-	UpdateOrderStatus(id int64, status string, updatedBy string) (*models.Order, error)
+	GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, int64, error)
+	GetOrder(id int64) (*dto.OrderReponse, error)
+	CreateOrder(req dto.OrderRequest, updatedBy string) (*dto.CreateOrderResponse, error)
+	UpdateOrderStatus(id int64, status, updatedBy string, driverID *int64) (*models.Order, error)
 }
 
 type orderService struct {
@@ -27,9 +27,9 @@ func NewOrderService(orderRepo repositories.OrderRepository) OrderService {
 	}
 }
 
-func (s *orderService) GetAllOrder(query dto.OrderQuery, role string, userID int64) ([]dto.OrderReponse, int64, error) {
+func (s *orderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, int64, error) {
 
-	orders, total, err := s.orderRepo.GetAllOrder(query, role, userID)
+	orders, total, err := s.orderRepo.GetAllOrder(query)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -55,9 +55,10 @@ func (s *orderService) GetAllOrder(query dto.OrderQuery, role string, userID int
 	return response, total, nil
 }
 
-func (s *orderService) GetOrder(id int64, role string, userID int64) (*dto.OrderReponse, error) {
-	order, err := s.orderRepo.GetOrderDetail(id, role, userID)
+func (s *orderService) GetOrder(id int64) (*dto.OrderReponse, error) {
+	order, err := s.orderRepo.GetOrderDetail(id)
 	if err != nil {
+
 		return nil, err
 	}
 
@@ -80,7 +81,7 @@ func (s *orderService) GetOrder(id int64, role string, userID int64) (*dto.Order
 	return &response, nil
 }
 
-func (s *orderService) CreateOrder(req dto.OrderRequest) (*dto.CreateOrderResponse, error) {
+func (s *orderService) CreateOrder(req dto.OrderRequest, updatedBy string) (*dto.CreateOrderResponse, error) {
 	userInfo := models.UserInfo{
 		Username:        req.Username,
 		UserPhone:       req.UserPhone,
@@ -95,7 +96,7 @@ func (s *orderService) CreateOrder(req dto.OrderRequest) (*dto.CreateOrderRespon
 		CurrentStatus: models.ORDER_STATUS_CREATED,
 	}
 
-	saved, err := s.orderRepo.CreateOrder(order)
+	saved, err := s.orderRepo.CreateOrder(order, updatedBy)
 	if err != nil {
 		return nil, err
 	}
@@ -110,8 +111,8 @@ func (s *orderService) CreateOrder(req dto.OrderRequest) (*dto.CreateOrderRespon
 	}, nil
 }
 
-func (s *orderService) UpdateOrderStatus(id int64, status string, updatedBy string) (*models.Order, error) {
-	newOrder, err := s.orderRepo.UpdateOrderStatus(id, status, updatedBy)
+func (s *orderService) UpdateOrderStatus(id int64, status, updatedBy string, driverID *int64) (*models.Order, error) {
+	newOrder, err := s.orderRepo.UpdateOrderStatus(id, status, updatedBy, driverID)
 	if err != nil {
 		return nil, err
 	}

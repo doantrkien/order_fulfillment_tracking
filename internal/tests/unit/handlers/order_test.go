@@ -9,11 +9,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"main/errs"
 	"main/internal/dto"
 	"main/internal/handlers"
 	"main/internal/models"
 	"main/internal/services"
+	"main/errs"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +39,7 @@ func TestOrderHandlerCreateOrder(t *testing.T) {
 				ShippingAddress: "Test Address",
 			},
 			setupMock: func(m *mocks.OrderRepository) {
-				m.On("CreateOrder", mock.Anything).Return(&models.Order{ID: 1}, nil).Once()
+				m.On("CreateOrder", mock.Anything, mock.Anything).Return(&models.Order{ID: 1}, nil).Once()
 			},
 			expectError:    false,
 			expectedResult: &models.Order{ID: 1},
@@ -67,7 +67,7 @@ func TestOrderHandlerCreateOrder(t *testing.T) {
 				ShippingAddress: "Test Address",
 			},
 			setupMock: func(m *mocks.OrderRepository) {
-				m.On("CreateOrder", mock.Anything).Return(nil, assert.AnError).Once()
+				m.On("CreateOrder", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 			},
 			expectError: true,
 		},
@@ -145,7 +145,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 						CreatedAt:     mockTime,
 					},
 				}
-				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}, "admin", int64(1)).
+				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}).
 					Return(mockOrders, int64(1), nil).Once()
 			},
 			wantCode: 200,
@@ -178,7 +178,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 						CreatedAt:     mockTime,
 					},
 				}
-				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 2, LimitItems: 5}, "admin", int64(1)).
+				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 2, LimitItems: 5}).
 					Return(mockOrders, int64(8), nil).Once()
 			},
 			wantCode: 200,
@@ -201,7 +201,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 			name:  "Service error",
 			query: "",
 			setupMock: func(m *mocks.OrderRepository) {
-				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}, "admin", int64(1)).Return(nil, int64(0), assert.AnError).Once()
+				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}).Return(nil, int64(0), assert.AnError).Once()
 			},
 			wantCode: 500,
 		},
@@ -215,21 +215,21 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 						CurrentStatus: models.ORDER_STATUS_PAID,
 					},
 				}
-				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10, Status: "paid"}, "admin", int64(1)).
+				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10, Status: "paid"}).
 					Return(mockOrders, int64(1), nil).Once()
 			},
 			wantCode: 200,
 		},
 		{
 			name:  "With date filter",
-			query: "?date=2026-05-19&page=1&limit=10",
+			query: "?ordered_at=2026-05-19&page=1&limit=10",
 			setupMock: func(m *mocks.OrderRepository) {
 				mockOrders := []models.Order{
 					{
 						ID: 3,
 					},
 				}
-				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10, Date: "2026-05-19"}, "admin", int64(1)).
+				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10, Date: "2026-05-19"}).
 					Return(mockOrders, int64(1), nil).Once()
 			},
 			wantCode: 200,
@@ -239,11 +239,6 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			app := fiber.New()
-			app.Use(func(c fiber.Ctx) error {
-				c.Locals("role", "admin")
-				c.Locals("user_id", int64(1))
-				return c.Next()
-			})
 			mockRepo := mocks.NewOrderRepository(t)
 			svc := services.NewOrderService(mockRepo)
 			handler := handlers.NewOrderHandler(svc)
@@ -287,7 +282,7 @@ func TestOrderHandlerGetOrderDetail(t *testing.T) {
 			expectedStatus: 200,
 			expectError:    false,
 			setupMock: func(m *mocks.OrderRepository) {
-				m.On("GetOrderDetail", int64(1), "admin", int64(1)).
+				m.On("GetOrderDetail", int64(1)).
 					Return(&models.Order{
 						ID:            1,
 						TotalAmount:   1000,
@@ -321,19 +316,8 @@ func TestOrderHandlerGetOrderDetail(t *testing.T) {
 			expectedStatus: 500,
 			expectError:    true,
 			setupMock: func(m *mocks.OrderRepository) {
-				m.On("GetOrderDetail", int64(2), "admin", int64(1)).
+				m.On("GetOrderDetail", int64(2)).
 					Return(nil, assert.AnError).
-					Once()
-			},
-		},
-		{
-			name:           "Unauthorized access",
-			orderID:        "1",
-			expectedStatus: 403,
-			expectError:    true,
-			setupMock: func(m *mocks.OrderRepository) {
-				m.On("GetOrderDetail", int64(1), "admin", int64(1)).
-					Return(nil, errs.ERR_UNAUTHORIZED).
 					Once()
 			},
 		},
@@ -342,11 +326,6 @@ func TestOrderHandlerGetOrderDetail(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			app := fiber.New()
-			app.Use(func(c fiber.Ctx) error {
-				c.Locals("role", "admin")
-				c.Locals("user_id", int64(1))
-				return c.Next()
-			})
 
 			mockRepo := mocks.NewOrderRepository(t)
 			svc := services.NewOrderService(mockRepo)
@@ -396,8 +375,7 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 			expectedStatus: 200,
 			expectError:    false,
 			setupMock: func(m *mocks.OrderRepository) {
-				// m.On("UpdateOrderStatus", int64(1), "paid", "email").
-				m.On("UpdateOrderStatus", int64(1), "paid", "1").
+				m.On("UpdateOrderStatus", int64(1), "paid", "system", (*int64)(nil)).
 					Return(&models.Order{
 						ID:            1,
 						CurrentStatus: models.ORDER_STATUS_PAID,
@@ -453,7 +431,7 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 				Status: "delivered",
 			},
 			setupMock: func(m *mocks.OrderRepository) {
-				m.On("UpdateOrderStatus", int64(1), "delivered", "1").
+				m.On("UpdateOrderStatus", int64(1), "delivered", "system", (*int64)(nil)).
 					Return(nil, errs.ERR_INVALID_STATUS).
 					Once()
 			},
@@ -467,7 +445,7 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 				Status: "paid",
 			},
 			setupMock: func(m *mocks.OrderRepository) {
-				m.On("UpdateOrderStatus", int64(1), "paid", "1").
+				m.On("UpdateOrderStatus", int64(1), "paid", "system", (*int64)(nil)).
 					Return(nil, assert.AnError).
 					Once()
 			},
@@ -477,12 +455,6 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			app := fiber.New()
-
-			app.Use(func(c fiber.Ctx) error {
-				c.Locals("email", "admin@example.com")
-				c.Locals("user_id", int64(1))
-				return c.Next()
-			})
 
 			mockRepo := mocks.NewOrderRepository(t)
 			svc := services.NewOrderService(mockRepo)

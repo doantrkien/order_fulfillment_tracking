@@ -2,7 +2,6 @@ package services_test
 
 import (
 	"encoding/json"
-	"main/errs"
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/services"
@@ -39,7 +38,7 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 				}
 
 				mockRepo.
-					On("CreateOrder", buildExpectedOrder(req)).
+					On("CreateOrder", buildExpectedOrder(req), "test_admin").
 					Return(&models.Order{
 						ID:            1,
 						TotalAmount:   2000,
@@ -68,7 +67,7 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 				}
 
 				mockRepo.
-					On("CreateOrder", buildExpectedOrder(req)).
+					On("CreateOrder", buildExpectedOrder(req), "test_admin").
 					Return(nil, assert.AnError).
 					Once()
 			},
@@ -88,7 +87,7 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 				}
 
 				mockRepo.
-					On("CreateOrder", buildExpectedOrder(req)).
+					On("CreateOrder", buildExpectedOrder(req), "test_admin").
 					Return(&models.Order{
 						ID:            4,
 						TotalAmount:   math.MaxInt64,
@@ -113,7 +112,7 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 
 			tc.setupMock(mockRepo)
 
-			result, err := service.CreateOrder(tc.input)
+			result, err := service.CreateOrder(tc.input, "test_admin")
 
 			if tc.expectError {
 				assert.Error(t, err)
@@ -163,7 +162,7 @@ func TestOrderServiceGetAllOrder(t *testing.T) {
 				}
 
 				mockRepo.
-					On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}, "admin", int64(0)).
+					On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}).
 					Return(mockOrders, int64(2), nil).
 					Once()
 			},
@@ -193,7 +192,7 @@ func TestOrderServiceGetAllOrder(t *testing.T) {
 			input: dto.OrderQuery{PageNumber: 1, LimitItems: 10},
 			setupMock: func(mockRepo *mocks.OrderRepository) {
 				mockRepo.
-					On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}, "admin", int64(0)).
+					On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}).
 					Return(nil, int64(0), assert.AnError).
 					Once()
 			},
@@ -210,7 +209,7 @@ func TestOrderServiceGetAllOrder(t *testing.T) {
 
 			tc.setupMock(mockRepo)
 
-			orders, total, err := service.GetAllOrder(tc.input, "admin", int64(0))
+			orders, total, err := service.GetAllOrder(tc.input)
 
 			if tc.expectError {
 				assert.Error(t, err)
@@ -255,7 +254,7 @@ func TestOrderServiceGetOrder(t *testing.T) {
 			orderID: 123,
 			setupMock: func(mockRepo *mocks.OrderRepository) {
 				mockRepo.
-					On("GetOrderDetail", int64(123), "admin", int64(0)).
+					On("GetOrderDetail", int64(123)).
 					Return(&models.Order{
 						ID:            123,
 						TotalAmount:   2500000,
@@ -275,18 +274,6 @@ func TestOrderServiceGetOrder(t *testing.T) {
 				Status:          models.ORDER_STATUS_CREATED,
 			},
 		},
-		{
-			name:    "Get detail error",
-			orderID: 456,
-			setupMock: func(mockRepo *mocks.OrderRepository) {
-				mockRepo.
-					On("GetOrderDetail", int64(456), "admin", int64(0)).
-					Return(nil, assert.AnError).
-					Once()
-			},
-			expectError:    true,
-			expectedResult: nil,
-		},
 	}
 
 	for _, tc := range testCases {
@@ -296,7 +283,7 @@ func TestOrderServiceGetOrder(t *testing.T) {
 
 			tc.setupMock(mockRepo)
 
-			result, err := service.GetOrder(tc.orderID, "admin", int64(0))
+			result, err := service.GetOrder(tc.orderID)
 
 			if tc.expectError {
 				assert.Error(t, err)
@@ -333,7 +320,7 @@ func TestOrderServiceUpdateOrderStatus(t *testing.T) {
 			status:  "paid",
 			setupMock: func(mockRepo *mocks.OrderRepository) {
 				mockRepo.
-					On("UpdateOrderStatus", int64(123), "paid", "admin@example.com").
+					On("UpdateOrderStatus", int64(123), "paid", "system", (*int64)(nil)).
 					Return(&models.Order{
 						ID:            123,
 						TotalAmount:   2500000,
@@ -354,8 +341,8 @@ func TestOrderServiceUpdateOrderStatus(t *testing.T) {
 			status:  "shipped",
 			setupMock: func(mockRepo *mocks.OrderRepository) {
 				mockRepo.
-					On("UpdateOrderStatus", int64(888), "shipped", "admin@example.com").
-					Return(nil, errs.ERR_INVALID_STATUS).
+					On("UpdateOrderStatus", int64(888), "shipped", "system", (*int64)(nil)).
+					Return(nil, assert.AnError).
 					Once()
 			},
 			expectError:    true,
@@ -370,7 +357,7 @@ func TestOrderServiceUpdateOrderStatus(t *testing.T) {
 
 			tc.setupMock(mockRepo)
 
-			result, err := service.UpdateOrderStatus(tc.orderID, tc.status, "admin@example.com")
+			result, err := service.UpdateOrderStatus(tc.orderID, tc.status, "system", nil)
 
 			if tc.expectError {
 				assert.Error(t, err)

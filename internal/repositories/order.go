@@ -12,10 +12,10 @@ import (
 )
 
 type OrderRepository interface {
-	GetAllOrder(query dto.OrderQuery, role string, userID int64) ([]models.Order, int64, error)
-	GetOrderDetail(id int64, role string, userID int64) (*models.Order, error)
-	CreateOrder(order models.Order) (*models.Order, error)
-	UpdateOrderStatus(id int64, status string, updatedBy string) (*models.Order, error)
+	GetAllOrder(query dto.OrderQuery) ([]models.Order, int64, error)
+	GetOrderDetail(int64) (*models.Order, error)
+	CreateOrder(order models.Order, updatedBy string) (*models.Order, error)
+	UpdateOrderStatus(id int64, status, updatedBy string, driverID *int64) (*models.Order, error)
 }
 
 type orderRepository struct {
@@ -26,7 +26,7 @@ func NewOrderRepository(db *gorm.DB) *orderRepository {
 	return &orderRepository{db: db}
 }
 
-func (r *orderRepository) GetAllOrder(query dto.OrderQuery, role string, userID int64) ([]models.Order, int64, error) {
+func (r *orderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int64, error) {
 	var (
 		orders []models.Order
 		total  int64
@@ -48,16 +48,6 @@ func (r *orderRepository) GetAllOrder(query dto.OrderQuery, role string, userID 
 	if query.Date != "" {
 		db = db.Where("DATE(created_at) = ?", query.Date)
 	}
-	if role == "driver" {
-		subQuery := r.db.Table("order_events oe").Select("oe.order_id").
-			Joins(`JOIN (
-				SELECT order_id, MAX(event_at) AS max_event_at
-				FROM order_events
-				GROUP BY order_id
-			) latest ON latest.order_id = oe.order_id AND latest.max_event_at = oe.event_at`).
-			Where("oe.driver_id = ?", userID)
-		db = db.Where("id IN (?)", subQuery)
-	}
 
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -69,29 +59,12 @@ func (r *orderRepository) GetAllOrder(query dto.OrderQuery, role string, userID 
 	return orders, total, nil
 }
 
-func (r *orderRepository) GetOrderDetail(id int64, role string, userID int64) (*models.Order, error) {
+func (r *orderRepository) GetOrderDetail(id int64) (*models.Order, error) {
+
 	var order models.Order
 
-	db := r.db.Model(&models.Order{}).Where("id = ?", id)
-	if role == "driver" {
-		subQuery := r.db.Table("order_events oe").Select("oe.order_id").
-			Joins(`JOIN (
-				SELECT order_id, MAX(event_at) AS max_event_at
-				FROM order_events
-				GROUP BY order_id
-			) latest ON latest.order_id = oe.order_id AND latest.max_event_at = oe.event_at`).
-			Where("oe.driver_id = ?", userID)
-		db = db.Where("id IN (?)", subQuery)
-	}
-
-	if err := db.First(&order).Error; err != nil {
+	if err := r.db.First(&order, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			if role == "driver" {
-				var existingOrder models.Order
-				if err2 := r.db.Model(&models.Order{}).Where("id = ?", id).First(&existingOrder).Error; err2 == nil {
-					return nil, errs.ERR_UNAUTHORIZED
-				}
-			}
 			return nil, errs.ERR_NOT_FOUND
 		}
 
@@ -101,64 +74,17 @@ func (r *orderRepository) GetOrderDetail(id int64, role string, userID int64) (*
 	return &order, nil
 }
 
-func (r *orderRepository) CreateOrder(order models.Order) (*models.Order, error) {
-
-	if err := r.db.Create(&order).Error; err != nil {
-		return nil, err
-	}
-	return &order, nil
-}
-
-// func (r *orderRepository) UpdateOrderStatus(id int64, status string) (*models.Order, error) {
-
-// 	var order models.Order
-// 	if err := r.db.First(&order, id).Error; err != nil {
-// 		if errors.Is(err, gorm.ErrRecordNotFound) {
-// 			return nil, errs.ERR_NOT_FOUND
-// 		}
-// 		return nil, err
-// 	}
-
-// 	order.CurrentStatus = models.OrderStatus(status)
-// 	if err := r.db.Save(&order).Error; err != nil {
-// 		return nil, err
-// 	}
-// 	return &order, nil
-// }
-
-func (r *orderRepository) UpdateOrderStatus(
-	id int64,
-	status string,
-	updatedBy string,
-) (*models.Order, error) {
-
-	var order models.Order
+func (r *orderRepository) CreateOrder(order models.Order, updatedBy string) (*models.Order, error) {
 	err := r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&order, id).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return errs.ERR_NOT_FOUND
-			}
-			return err
-		}
-
-		if !models.IsValidTransition(order.CurrentStatus, models.OrderStatus(status)) {
-			return errs.ERR_INVALID_STATUS
-		}
-
-		previousStatus := order.CurrentStatus
-
-		order.CurrentStatus = models.OrderStatus(status)
-
-		if err := tx.Save(&order).Error; err != nil {
+		if err := tx.Create(&order).Error; err != nil {
 			return err
 		}
 
 		event := models.OrderEvent{
-			OrderID:        order.ID,
-			PreviousStatus: previousStatus,
-			NewStatus:      order.CurrentStatus,
-			UpdatedBy:      updatedBy,
-			EventAt:        time.Now(),
+			OrderID:   order.ID,
+			NewStatus: order.CurrentStatus,
+			UpdatedBy: updatedBy,
+			EventAt:   time.Now(),
 		}
 
 		if err := tx.Create(&event).Error; err != nil {
@@ -173,4 +99,48 @@ func (r *orderRepository) UpdateOrderStatus(
 	}
 
 	return &order, nil
+}
+
+func (r *orderRepository) UpdateOrderStatus(id int64, status, updatedBy string, driverID *int64) (*models.Order, error) {
+
+	var updatedOrder models.Order
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		var order models.Order
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&order, id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errs.ERR_NOT_FOUND
+			}
+			return err
+		}
+
+		if !models.IsValidTransition(order.CurrentStatus, models.OrderStatus(status)) {
+			return errs.ERR_INVALID_STATUS
+		}
+
+		previousStatus := order.CurrentStatus
+		order.CurrentStatus = models.OrderStatus(status)
+		if err := tx.Save(&order).Error; err != nil {
+			return err
+		}
+
+		event := models.OrderEvent{
+			OrderID:        order.ID,
+			PreviousStatus: previousStatus,
+			NewStatus:      order.CurrentStatus,
+			UpdatedBy:      updatedBy,
+			EventAt:        time.Now(),
+			DriverID:       driverID,
+		}
+		if err := tx.Create(&event).Error; err != nil {
+			return err
+		}
+
+		updatedOrder = order
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return &updatedOrder, nil
 }

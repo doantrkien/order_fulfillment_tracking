@@ -6,6 +6,7 @@ import (
 	"main/constant"
 	"main/errs"
 	"main/internal/dto"
+	"main/internal/models"
 	"main/internal/services"
 	"main/response"
 	"strconv"
@@ -30,6 +31,7 @@ func NewOrderHandler(orderService services.OrderService) *OrderHandler {
 // @Accept json
 // @Produce json
 // @Param status query string false "Order Status"
+// @Param customer_name query string false "Customer Name"
 // @Param ordered_at query string false "Ordered Date"
 // @Param page query int false "Page number"
 // @Param limit query int false "Page size"
@@ -57,10 +59,7 @@ func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
 		query.LimitItems = 100
 	}
 
-	role, _ := c.Locals("role").(string)
-	userID, _ := c.Locals("user_id").(int64)
-
-	result, totalItems, err := h.orderService.GetAllOrder(query, role, userID)
+	result, totalItems, err := h.orderService.GetAllOrder(query)
 	if err != nil {
 		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
@@ -96,15 +95,10 @@ func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 	fmt.Printf("GetOrderDetail: id=%d\n", id)
-	role, _ := c.Locals("role").(string)
-	userID, _ := c.Locals("user_id").(int64)
-	order, err := h.orderService.GetOrder(id, role, userID)
+	order, err := h.orderService.GetOrder(id)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
 			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)
-		}
-		if errors.Is(err, errs.ERR_UNAUTHORIZED) {
-			return response.ResponseError(c, errs.ERR_UNAUTHORIZED, nil)
 		}
 		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
@@ -135,7 +129,15 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 	if err := validator.New().Struct(req); err != nil {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
-	result, err := h.orderService.CreateOrder(req)
+
+	role, _ := c.Locals("role").(string)
+	userID, _ := c.Locals("user_id").(int64)
+	updatedBy := fmt.Sprintf("%s_%d", role, userID)
+	if role == "" || userID == 0 {
+		updatedBy = "system"
+	}
+
+	result, err := h.orderService.CreateOrder(req, updatedBy)
 	if err != nil {
 		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
 	}
@@ -145,11 +147,14 @@ func (h *OrderHandler) CreateOrder(c fiber.Ctx) error {
 
 // UpdateOrderStatus godoc
 // @Summary Update order status
+// @Description Update the status of an order. Drivers can only set "shipped" or "delivered".
+// @Description The driver_id field is optional and only used by admins to assign a driver.
+// @Description When a driver calls this API, driver_id is automatically set from their token.
 // @Tags Order
 // @Accept json
 // @Produce json
 // @Param id path int true "Order ID"
-// @Param status body dto.UpdateStatusRequest true "New status"
+// @Param status body dto.UpdateStatusRequest true "New status and optional driver_id (admin only)"
 // @Success 200 {object} response.ResponseStruct
 // @Failure 400 {object} response.ErrorBadReqResponse
 // @Failure 401 {object} response.ErrorUnauthenticatedResponse
@@ -173,9 +178,31 @@ func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
+	role, _ := c.Locals("role").(string)
 	userID, _ := c.Locals("user_id").(int64)
-	updatedBy := strconv.FormatInt(userID, 10)
-	_, err = h.orderService.UpdateOrderStatus(id, string(req.Status), updatedBy)
+	updatedBy := fmt.Sprintf("%s_%d", role, userID)
+	if role == "" || userID == 0 {
+		updatedBy = "system"
+	}
+
+	// Layer 2: Role-based status restriction
+	// Drivers can only set delivery-related statuses (shipped, delivered).
+	// Financial statuses (cancelled, refunded) are admin-only.
+	if role == "driver" && !models.IsDriverAllowedStatus(req.Status) {
+		return response.ResponseError(c, errs.ERR_UNAUTHORIZED, nil)
+	}
+
+	// Derive driver_id based on caller role
+	var driverID *int64
+	if role == "driver" {
+		// Driver is updating → they ARE the driver
+		driverID = &userID
+	} else {
+		// Admin is updating → use what they provide (can be nil)
+		driverID = req.DriverID
+	}
+
+	_, err = h.orderService.UpdateOrderStatus(id, string(req.Status), updatedBy, driverID)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
 			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)

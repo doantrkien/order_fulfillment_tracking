@@ -43,7 +43,8 @@ func (s *reportService) GetDailyReport(date time.Time) (*models.Report, error) {
 }
 
 func (s *reportService) CreateDailyReport(date time.Time) (*models.Report, error) {
-	periodStart := time.Date(date.Year(), date.Month(), date.Day(), 3, 0, 0, 0, time.UTC)
+	loc := time.FixedZone("Asia/Ho_Chi_Minh", 7*3600)
+	periodStart := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, loc)
 	periodEnd := periodStart.Add(24 * time.Hour)
 
 	report, err := s.reportRepo.BuildDailyReport(periodStart, periodEnd)

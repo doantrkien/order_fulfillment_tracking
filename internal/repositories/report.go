@@ -33,11 +33,11 @@ func (r *reportRepository) GetDailyReport(date time.Time) (*models.Report, error
 func (r *reportRepository) BuildDailyReport(start, end time.Time) (*models.Report, error) {
 	report := &models.Report{Date: start}
 
+	// ── Query 1: orders created in window ───────────────────────────────────
 	type createdSummary struct {
 		TotalOrders int64
 		TotalNew    int64
 	}
-
 	var created createdSummary
 	err := r.db.Raw(`
 		SELECT
@@ -50,6 +50,7 @@ func (r *reportRepository) BuildDailyReport(start, end time.Time) (*models.Repor
 		return nil, err
 	}
 
+	// ── Query 2: event-based stats (delivered, cancelled, refunded, income) ─
 	type eventSummary struct {
 		TotalDelivered int64
 		TotalCancelled int64
@@ -71,13 +72,20 @@ func (r *reportRepository) BuildDailyReport(start, end time.Time) (*models.Repor
 		return nil, err
 	}
 
+	// ── Query 3: avg delivery time using only order_events ──────────────────
+	// Self-join: match the 'created' event and 'delivered' event per order,
+	// then subtract — no join to orders table needed.
 	var avgSeconds float64
 	err = r.db.Raw(`
-		SELECT COALESCE(AVG(EXTRACT(EPOCH FROM oe.event_at - o.created_at)), 0)
-		FROM orders o
-		JOIN order_events oe ON oe.order_id = o.id
-		WHERE oe.new_status = 'delivered'
-		  AND oe.event_at >= ? AND oe.event_at < ?
+		SELECT COALESCE(
+			AVG(
+				EXTRACT(EPOCH FROM delivered.event_at - created.event_at)
+			), 0)
+		FROM order_events created
+		JOIN order_events delivered ON delivered.order_id = created.order_id
+		WHERE created.new_status  = 'created'
+		  AND delivered.new_status = 'delivered'
+		  AND delivered.event_at >= ? AND delivered.event_at < ?
 	`, start, end).Scan(&avgSeconds).Error
 	if err != nil {
 		return nil, err

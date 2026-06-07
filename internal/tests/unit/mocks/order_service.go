@@ -40,8 +40,8 @@ func (_m *OrderService) CreateOrder(_a0 dto.OrderRequest) (*models.Order, error)
 	return r0, r1
 }
 
-func (_m *OrderService) GetAllOrder(query dto.OrderQuery, role string, userID int64) ([]dto.OrderReponse, int64, error) {
-	ret := _m.Called(query, role, userID)
+func (_m *OrderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, int64, error) {
+	ret := _m.Called(query)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAllOrder")
@@ -50,8 +50,8 @@ func (_m *OrderService) GetAllOrder(query dto.OrderQuery, role string, userID in
 	var r0 []dto.OrderReponse
 	var r1 int64
 	var r2 error
-	if rf, ok := ret.Get(0).(func(dto.OrderQuery, string, int64) ([]dto.OrderReponse, int64, error)); ok {
-		return rf(query, role, userID)
+	if rf, ok := ret.Get(0).(func(dto.OrderQuery) ([]dto.OrderReponse, int64, error)); ok {
+		return rf(query)
 	}
 	if rf, ok := ret.Get(0).(func(dto.OrderQuery) []dto.OrderReponse); ok {
 		r0 = rf(query)
@@ -76,8 +76,8 @@ func (_m *OrderService) GetAllOrder(query dto.OrderQuery, role string, userID in
 	return r0, r1, r2
 }
 
-func (_m *OrderService) GetOrder(id int64, role string, userID int64) (*dto.OrderReponse, error) {
-	ret := _m.Called(id, role, userID)
+func (_m *OrderService) GetOrder(id int64) (*dto.OrderReponse, error) {
+	ret := _m.Called(id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetOrder")
@@ -85,8 +85,8 @@ func (_m *OrderService) GetOrder(id int64, role string, userID int64) (*dto.Orde
 
 	var r0 *dto.OrderReponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(int64, string, int64) (*dto.OrderReponse, error)); ok {
-		return rf(id, role, userID)
+	if rf, ok := ret.Get(0).(func(int64) (*dto.OrderReponse, error)); ok {
+		return rf(id)
 	}
 	if rf, ok := ret.Get(0).(func(int64) *dto.OrderReponse); ok {
 		r0 = rf(id)
@@ -105,8 +105,8 @@ func (_m *OrderService) GetOrder(id int64, role string, userID int64) (*dto.Orde
 	return r0, r1
 }
 
-func (_m *OrderService) UpdateOrderStatus(id int64, status string, updatedBy string) (*models.Order, error) {
-	ret := _m.Called(id, status, updatedBy)
+func (_m *OrderService) UpdateOrderStatus(id int64, status string, updatedBy string, driverID *int64) (*models.Order, error) {
+	ret := _m.Called(id, status, updatedBy, driverID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateOrderStatus")
@@ -114,19 +114,19 @@ func (_m *OrderService) UpdateOrderStatus(id int64, status string, updatedBy str
 
 	var r0 *models.Order
 	var r1 error
-	if rf, ok := ret.Get(0).(func(int64, string, string) (*models.Order, error)); ok {
-		return rf(id, status, updatedBy)
+	if rf, ok := ret.Get(0).(func(int64, string, string, *int64) (*models.Order, error)); ok {
+		return rf(id, status, updatedBy, driverID)
 	}
-	if rf, ok := ret.Get(0).(func(int64, string, string) *models.Order); ok {
-		r0 = rf(id, status, updatedBy)
+	if rf, ok := ret.Get(0).(func(int64, string, string, *int64) *models.Order); ok {
+		r0 = rf(id, status, updatedBy, driverID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.Order)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(int64, string, string) error); ok {
-		r1 = rf(id, status, updatedBy)
+	if rf, ok := ret.Get(1).(func(int64, string, string, *int64) error); ok {
+		r1 = rf(id, status, updatedBy, driverID)
 	} else {
 		r1 = ret.Error(1)
 	}

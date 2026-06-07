@@ -7,6 +7,7 @@ import (
 	"main/internal/repositories"
 	"sort"
 	"sync"
+	"time"
 )
 
 type OrderEventService interface {
@@ -153,11 +154,23 @@ func splitIntoBatches(orderGroups map[int64][]dto.ImportOrderEventRequest, numBa
 		reqs := orderGroups[id]
 		idx := i % numBatches
 		for _, req := range reqs {
+			// If the client sends event_at without a timezone offset (e.g. "2026-05-31T14:55:00"),
+			// Go's JSON decoder parses it as UTC. We re-interpret it as Asia/Ho_Chi_Minh local
+			// time and convert to UTC so the value stored in PostgreSQL is correct.
+			eventAt := req.EventAt
+			if eventAt.Location() == time.UTC {
+				// Treat the wall-clock value as HCM local time, then shift to UTC.
+				eventAt = time.Date(
+					eventAt.Year(), eventAt.Month(), eventAt.Day(),
+					eventAt.Hour(), eventAt.Minute(), eventAt.Second(), eventAt.Nanosecond(),
+					loc,
+				).UTC()
+			}
 			batches[idx] = append(batches[idx], models.OrderEvent{
 				OrderID:   req.OrderID,
 				NewStatus: models.OrderStatus(req.Status),
 				UpdatedBy: req.UpdatedBy,
-				EventAt:   req.EventAt,
+				EventAt:   eventAt,
 				DriverID:  &req.DriverID,
 			})
 		}

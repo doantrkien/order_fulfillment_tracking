@@ -13,7 +13,8 @@ type OrderRequest struct {
 }
 
 type UpdateStatusRequest struct {
-	Status models.OrderStatus `json:"status" validate:"required" example:"delivered"`
+	Status   models.OrderStatus `json:"status" validate:"required" example:"delivered"`
+	DriverID *int64             `json:"driver_id,omitempty" example:"42"`
 }
 
 type OrderReponse struct {
@@ -38,5 +39,5 @@ type OrderQuery struct {
 	PageNumber int    `query:"page"`
 	LimitItems int    `query:"limit"`
 	Status     string `query:"status"`
-	Date       string `query:"date"`
+	Date       string `query:"ordered_at"`
 }

@@ -173,6 +173,9 @@ definitions:
     type: object
   dto.UpdateStatusRequest:
     properties:
+      driver_id:
+        example: 42
+        type: integer
       status:
         allOf:
         - $ref: '#/definitions/models.OrderStatus'
@@ -526,13 +529,17 @@ paths:
     patch:
       consumes:
       - application/json
+      description: |-
+        Update the status of an order. Drivers can only set "shipped" or "delivered".
+        The driver_id field is optional and only used by admins to assign a driver.
+        When a driver calls this API, driver_id is automatically set from their token.
       parameters:
       - description: Order ID
         in: path
         name: id
         required: true
         type: integer
-      - description: New status
+      - description: New status and optional driver_id (admin only)
         in: body
         name: status
         required: true

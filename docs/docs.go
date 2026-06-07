@@ -390,6 +390,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Update the status of an order. Drivers can only set \"shipped\" or \"delivered\".\nThe driver_id field is optional and only used by admins to assign a driver.\nWhen a driver calls this API, driver_id is automatically set from their token.",
                 "consumes": [
                     "application/json"
                 ],
@@ -409,7 +410,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "New status",
+                        "description": "New status and optional driver_id (admin only)",
                         "name": "status",
                         "in": "body",
                         "required": true,
@@ -861,6 +862,10 @@ const docTemplate = `{
                 "status"
             ],
             "properties": {
+                "driver_id": {
+                    "type": "integer",
+                    "example": 42
+                },
                 "status": {
                     "allOf": [
                         {
