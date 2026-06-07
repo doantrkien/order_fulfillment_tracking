@@ -222,7 +222,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 		},
 		{
 			name:  "With date filter",
-			query: "?ordered_at=2026-05-19&page=1&limit=10",
+			query: "?date=2026-05-19&page=1&limit=10",
 			setupMock: func(m *mocks.OrderRepository) {
 				mockOrders := []models.Order{
 					{
