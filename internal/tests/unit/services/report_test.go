@@ -66,6 +66,8 @@ func TestReportServiceGetDailyReport(t *testing.T) {
 func TestReportService_CreateDailyReport(t *testing.T) {
 	t.Parallel()
 
+	loc := time.FixedZone("Asia/Ho_Chi_Minh", 7*3600)
+
 	testCases := []struct {
 		name           string
 		requestDate    time.Time
@@ -77,19 +79,19 @@ func TestReportService_CreateDailyReport(t *testing.T) {
 			name:        "successfully builds and saves report",
 			requestDate: time.Date(2026, 5, 4, 0, 0, 0, 0, time.UTC),
 			setupMock: func(mockRepo *mocks.ReportRepository) {
-				periodStart := time.Date(2026, 5, 4, 3, 0, 0, 0, time.UTC)
+				periodStart := time.Date(2026, 5, 4, 0, 0, 0, 0, loc)
 				periodEnd := periodStart.Add(24 * time.Hour)
 				reportFromBuild := &models.Report{Date: periodStart, TotalOrders: 1}
 				mockRepo.On("BuildDailyReport", periodStart, periodEnd).Return(reportFromBuild, nil).Once()
 				mockRepo.On("SaveReport", reportFromBuild).Return(reportFromBuild, nil).Once()
 			},
-			expectedReport: &models.Report{Date: time.Date(2026, 5, 4, 3, 0, 0, 0, time.UTC), TotalOrders: 1},
+			expectedReport: &models.Report{Date: time.Date(2026, 5, 4, 0, 0, 0, 0, loc), TotalOrders: 1},
 		},
 		{
 			name:        "build report failure",
 			requestDate: time.Date(2026, 5, 4, 0, 0, 0, 0, time.UTC),
 			setupMock: func(mockRepo *mocks.ReportRepository) {
-				periodStart := time.Date(2026, 5, 4, 3, 0, 0, 0, time.UTC)
+				periodStart := time.Date(2026, 5, 4, 0, 0, 0, 0, loc)
 				periodEnd := periodStart.Add(24 * time.Hour)
 				mockRepo.On("BuildDailyReport", periodStart, periodEnd).Return((*models.Report)(nil), assert.AnError).Once()
 			},
@@ -99,7 +101,7 @@ func TestReportService_CreateDailyReport(t *testing.T) {
 			name:        "save report failure",
 			requestDate: time.Date(2026, 5, 4, 0, 0, 0, 0, time.UTC),
 			setupMock: func(mockRepo *mocks.ReportRepository) {
-				periodStart := time.Date(2026, 5, 4, 3, 0, 0, 0, time.UTC)
+				periodStart := time.Date(2026, 5, 4, 0, 0, 0, 0, loc)
 				periodEnd := periodStart.Add(24 * time.Hour)
 				reportFromBuild := &models.Report{Date: periodStart, TotalOrders: 1}
 				mockRepo.On("BuildDailyReport", periodStart, periodEnd).Return(reportFromBuild, nil).Once()
