@@ -14,6 +14,7 @@ import (
 type OrderRepository interface {
 	GetAllOrder(query dto.OrderQuery) ([]models.Order, int64, error)
 	GetOrderDetail(int64) (*models.Order, error)
+	IsDriverAssignedToOrder(orderID int64, driverID int64) (bool, error)
 	CreateOrder(order models.Order, updatedBy string) (*models.Order, error)
 	UpdateOrderStatus(id int64, status, updatedBy string, driverID *int64) (*models.Order, error)
 }
@@ -72,6 +73,17 @@ func (r *orderRepository) GetOrderDetail(id int64) (*models.Order, error) {
 	}
 
 	return &order, nil
+}
+
+func (r *orderRepository) IsDriverAssignedToOrder(orderID int64, driverID int64) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.OrderEvent{}).
+		Where("order_id = ? AND driver_id = ?", orderID, driverID).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func (r *orderRepository) CreateOrder(order models.Order, updatedBy string) (*models.Order, error) {

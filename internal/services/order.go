@@ -13,6 +13,7 @@ var loc, _ = time.LoadLocation("Asia/Ho_Chi_Minh")
 type OrderService interface {
 	GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, int64, error)
 	GetOrder(id int64) (*dto.OrderReponse, error)
+	IsDriverAssignedToOrder(orderID int64, driverID int64) (bool, error)
 	CreateOrder(req dto.OrderRequest, updatedBy string) (*dto.CreateOrderResponse, error)
 	UpdateOrderStatus(id int64, status, updatedBy string, driverID *int64) (*models.Order, error)
 }
@@ -79,6 +80,10 @@ func (s *orderService) GetOrder(id int64) (*dto.OrderReponse, error) {
 	}
 
 	return &response, nil
+}
+
+func (s *orderService) IsDriverAssignedToOrder(orderID int64, driverID int64) (bool, error) {
+	return s.orderRepo.IsDriverAssignedToOrder(orderID, driverID)
 }
 
 func (s *orderService) CreateOrder(req dto.OrderRequest, updatedBy string) (*dto.CreateOrderResponse, error) {

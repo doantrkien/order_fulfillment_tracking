@@ -95,6 +95,20 @@ func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 	fmt.Printf("GetOrderDetail: id=%d\n", id)
+
+	// Check driver authorization: driver can only view orders assigned to them
+	role, _ := c.Locals("role").(string)
+	if role == "driver" {
+		userID, _ := c.Locals("user_id").(int64)
+		assigned, err := h.orderService.IsDriverAssignedToOrder(id, userID)
+		if err != nil {
+			return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
+		}
+		if !assigned {
+			return response.ResponseError(c, errs.ERR_UNAUTHORIZED, nil)
+		}
+	}
+
 	order, err := h.orderService.GetOrder(id)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {

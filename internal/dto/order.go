@@ -39,5 +39,5 @@ type OrderQuery struct {
 	PageNumber int    `query:"page"`
 	LimitItems int    `query:"limit"`
 	Status     string `query:"status"`
-	Date       string `query:"ordered_at"`
+	Date       string `query:"date"`
 }
