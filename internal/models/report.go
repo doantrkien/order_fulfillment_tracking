@@ -13,5 +13,5 @@ type Report struct {
 	TotalIncome    int64     `gorm:"column:total_income;type:bigint;default:0" json:"total_income"`
 	AvgDeliverTime float64   `gorm:"column:avg_deliver_time;type:float;default:0" json:"avg_deliver_time"`
 	CreatedAt      time.Time `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt      time.Time `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP" json:"updated_at"`
+	UpdatedAt      time.Time `gorm:"column:updated_at;not null;autoUpdateTime" json:"updated_at"`
 }

@@ -9,11 +9,69 @@
     "host": "localhost:5000",
     "basePath": "/",
     "paths": {
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "Authenticate with email and password to receive a JWT token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Login to get access token",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ResponseStruct"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.LoginResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/order-events/import": {
             "post": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Process a batch of order status update events concurrently. Each event is validated and processed in its own DB transaction. The response always returns aggregated counts, even on partial failure.",
@@ -63,7 +121,7 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Error400Response"
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "500": {
@@ -71,7 +129,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/response.Error500Response"
+                                    "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
                                 },
                                 {
                                     "type": "object",
@@ -91,7 +149,7 @@
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "consumes": [
@@ -161,25 +219,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Error400Response"
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/response.Error401Response"
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.Error403Response"
+                            "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Error500Response"
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
                         }
                     }
                 }
@@ -187,7 +245,7 @@
             "post": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Create a new order",
@@ -222,25 +280,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Error400Response"
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/response.Error401Response"
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.Error403Response"
+                            "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Error500Response"
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
                         }
                     }
                 }
@@ -250,7 +308,7 @@
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Retrieve detail of an order",
@@ -295,31 +353,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Error400Response"
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/response.Error401Response"
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.Error403Response"
+                            "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/response.Error404Response"
+                            "$ref": "#/definitions/response.ErrorNotFoundResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Error500Response"
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
                         }
                     }
                 }
@@ -329,7 +387,7 @@
             "patch": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "consumes": [
@@ -370,31 +428,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Error400Response"
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/response.Error401Response"
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.Error403Response"
+                            "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/response.Error404Response"
+                            "$ref": "#/definitions/response.ErrorNotFoundResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Error500Response"
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
                         }
                     }
                 }
@@ -404,7 +462,7 @@
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "consumes": [
@@ -448,31 +506,31 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Error400Response"
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/response.Error401Response"
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.Error403Response"
+                            "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/response.Error404Response"
+                            "$ref": "#/definitions/response.ErrorNotFoundResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Error500Response"
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
                         }
                     }
                 }
@@ -480,7 +538,7 @@
             "post": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "consumes": [
@@ -526,25 +584,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Error400Response"
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/response.Error401Response"
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.Error403Response"
+                            "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Error500Response"
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
                         }
                     }
                 }
@@ -662,6 +720,43 @@
                 }
             }
         },
+        "dto.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "admin@demo.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "Admin@123"
+                }
+            }
+        },
+        "dto.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "description": "seconds, e.g. 86400",
+                    "type": "integer"
+                },
+                "role": {
+                    "description": "\"admin\" or \"driver\"",
+                    "type": "string"
+                },
+                "token_type": {
+                    "description": "\"Bearer\"",
+                    "type": "string"
+                }
+            }
+        },
         "dto.OrderReponse": {
             "type": "object",
             "properties": {
@@ -763,7 +858,7 @@
                 "ORDER_STATUS_REFUNDED"
             ]
         },
-        "response.Error400Response": {
+        "response.ErrorBadReqResponse": {
             "type": "object",
             "properties": {
                 "data": {},
@@ -777,35 +872,21 @@
                 }
             }
         },
-        "response.Error401Response": {
+        "response.ErrorInternalServerErrorResponse": {
             "type": "object",
             "properties": {
                 "data": {},
                 "message": {
                     "type": "string",
-                    "example": "Authentication required"
+                    "example": "Internal server error"
                 },
                 "status": {
                     "type": "integer",
-                    "example": 401
+                    "example": 500
                 }
             }
         },
-        "response.Error403Response": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "message": {
-                    "type": "string",
-                    "example": "Permission denied"
-                },
-                "status": {
-                    "type": "integer",
-                    "example": 403
-                }
-            }
-        },
-        "response.Error404Response": {
+        "response.ErrorNotFoundResponse": {
             "type": "object",
             "properties": {
                 "data": {},
@@ -819,17 +900,31 @@
                 }
             }
         },
-        "response.Error500Response": {
+        "response.ErrorUnauthenticatedResponse": {
             "type": "object",
             "properties": {
                 "data": {},
                 "message": {
                     "type": "string",
-                    "example": "Internal server error"
+                    "example": "Authentication required"
                 },
                 "status": {
                     "type": "integer",
-                    "example": 500
+                    "example": 401
+                }
+            }
+        },
+        "response.ErrorUnauthorizedResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string",
+                    "example": "Permission denied"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 403
                 }
             }
         },
@@ -872,20 +967,19 @@
             "properties": {
                 "data": {},
                 "message": {
-                    "type": "string",
-                    "example": "Success"
+                    "type": "string"
                 },
                 "status": {
-                    "type": "integer",
-                    "example": 200
+                    "type": "integer"
                 }
             }
         }
     },
     "securityDefinitions": {
-        "ApiKeyAuth": {
+        "BearerAuth": {
+            "description": "Type \"Bearer\" followed by a space and the JWT token.",
             "type": "apiKey",
-            "name": "X-API-Key",
+            "name": "Authorization",
             "in": "header"
         }
     }

@@ -16,6 +16,8 @@ var (
 
 	NOT_FOUND = MessageInfo{Code: "NOT_FOUND", Message: "Resource not found"}
 
+	INVALID_CREDENTAIL = MessageInfo{Code: "NOT_FOUND", Message: "Invalid email or password"}
+
 	UN_AUTHENTICATED = MessageInfo{Code: "UN_AUTHENTICATED", Message: "Authentication required"}
 
 	UN_AUTHORIZED = MessageInfo{Code: "UN_AUTHORIZED", Message: "Permission denied"}

@@ -42,7 +42,7 @@ func TestIntegrationReport(t *testing.T) {
 		method         string
 		path           string
 		body           []byte
-		apiKey         string
+		token          string
 		expectedStatus int
 		validate       func(t *testing.T, respBody []byte)
 	}{
@@ -124,23 +124,15 @@ func TestIntegrationReport(t *testing.T) {
 			method:         "GET",
 			path:           "/api/v1/reports/daily?date=2026-05-03",
 			body:           nil,
-			apiKey:         "",
+			token:          "",
 			expectedStatus: 401,
-		},
-		{
-			name:           "get daily report - wrong role customer",
-			method:         "GET",
-			path:           "/api/v1/reports/daily?date=2026-05-03",
-			body:           nil,
-			apiKey:         customerAPIKey,
-			expectedStatus: 403,
 		},
 		{
 			name:           "get daily report - wrong role driver",
 			method:         "GET",
 			path:           "/api/v1/reports/daily?date=2026-05-03",
 			body:           nil,
-			apiKey:         driverAPIKey,
+			token:          driverToken,
 			expectedStatus: 403,
 		},
 		{
@@ -148,7 +140,7 @@ func TestIntegrationReport(t *testing.T) {
 			method:         "POST",
 			path:           "/api/v1/reports/daily",
 			body:           []byte(`{invalid json`),
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 400,
 		},
 	}
@@ -164,10 +156,10 @@ func TestIntegrationReport(t *testing.T) {
 				req = httptest.NewRequest(tc.method, tc.path, nil)
 			}
 
-			if tc.apiKey != "" {
-				req.Header.Set("X-API-KEY", tc.apiKey)
+			if tc.token != "" {
+				req.Header.Set("Authorization", "Bearer "+tc.token)
 			} else if tc.name != "get daily report - unauthenticated" {
-				req.Header.Set("X-API-KEY", adminAPIKey) // fallback to admin for older test cases
+				req.Header.Set("Authorization", "Bearer "+adminToken) // fallback to admin for older test cases
 			}
 
 			resp, err := app.Test(req)

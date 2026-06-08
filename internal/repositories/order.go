@@ -5,15 +5,18 @@ import (
 	"main/errs"
 	"main/internal/dto"
 	"main/internal/models"
+	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type OrderRepository interface {
 	GetAllOrder(query dto.OrderQuery) ([]models.Order, int64, error)
 	GetOrderDetail(int64) (*models.Order, error)
-	CreateOrder(order models.Order) (*models.Order, error)
-	UpdateOrderStatus(id int64, status string) (*models.Order, error)
+	IsDriverAssignedToOrder(orderID int64, driverID int64) (bool, error)
+	CreateOrder(order models.Order, updatedBy string) (*models.Order, error)
+	UpdateOrderStatus(id int64, status, updatedBy string, driverID *int64) (*models.Order, error)
 }
 
 type orderRepository struct {
@@ -72,27 +75,84 @@ func (r *orderRepository) GetOrderDetail(id int64) (*models.Order, error) {
 	return &order, nil
 }
 
-func (r *orderRepository) CreateOrder(order models.Order) (*models.Order, error) {
+func (r *orderRepository) IsDriverAssignedToOrder(orderID int64, driverID int64) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.OrderEvent{}).
+		Where("order_id = ? AND driver_id = ?", orderID, driverID).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
 
-	if err := r.db.Create(&order).Error; err != nil {
+func (r *orderRepository) CreateOrder(order models.Order, updatedBy string) (*models.Order, error) {
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&order).Error; err != nil {
+			return err
+		}
+
+		event := models.OrderEvent{
+			OrderID:   order.ID,
+			NewStatus: order.CurrentStatus,
+			UpdatedBy: updatedBy,
+			EventAt:   time.Now(),
+		}
+
+		if err := tx.Create(&event).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
 		return nil, err
 	}
+
 	return &order, nil
 }
 
-func (r *orderRepository) UpdateOrderStatus(id int64, status string) (*models.Order, error) {
+func (r *orderRepository) UpdateOrderStatus(id int64, status, updatedBy string, driverID *int64) (*models.Order, error) {
 
-	var order models.Order
-	if err := r.db.First(&order, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errs.ERR_NOT_FOUND
+	var updatedOrder models.Order
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		var order models.Order
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&order, id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errs.ERR_NOT_FOUND
+			}
+			return err
 		}
-		return nil, err
-	}
 
-	order.CurrentStatus = models.OrderStatus(status)
-	if err := r.db.Save(&order).Error; err != nil {
+		if !models.IsValidTransition(order.CurrentStatus, models.OrderStatus(status)) {
+			return errs.ERR_INVALID_STATUS
+		}
+
+		previousStatus := order.CurrentStatus
+		order.CurrentStatus = models.OrderStatus(status)
+		if err := tx.Save(&order).Error; err != nil {
+			return err
+		}
+
+		event := models.OrderEvent{
+			OrderID:        order.ID,
+			PreviousStatus: previousStatus,
+			NewStatus:      order.CurrentStatus,
+			UpdatedBy:      updatedBy,
+			EventAt:        time.Now(),
+			DriverID:       driverID,
+		}
+		if err := tx.Create(&event).Error; err != nil {
+			return err
+		}
+
+		updatedOrder = order
+		return nil
+	})
+
+	if err != nil {
 		return nil, err
 	}
-	return &order, nil
+	return &updatedOrder, nil
 }

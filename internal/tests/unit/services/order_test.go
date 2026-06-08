@@ -19,7 +19,7 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 		input          dto.OrderRequest
 		setupMock      func(*mocks.OrderRepository)
 		expectError    bool
-		expectedResult *models.Order
+		expectedResult *dto.CreateOrderResponse
 	}{
 		{
 			name: "Success",
@@ -38,7 +38,7 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 				}
 
 				mockRepo.
-					On("CreateOrder", buildExpectedOrder(req)).
+					On("CreateOrder", buildExpectedOrder(req), "test_admin").
 					Return(&models.Order{
 						ID:            1,
 						TotalAmount:   2000,
@@ -48,10 +48,10 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 					Once()
 			},
 			expectError: false,
-			expectedResult: &models.Order{
-				ID:            1,
-				TotalAmount:   2000,
-				CurrentStatus: models.ORDER_STATUS_CREATED,
+			expectedResult: &dto.CreateOrderResponse{
+				ID:          1,
+				TotalAmount: 2000,
+				Status:      models.ORDER_STATUS_CREATED,
 			},
 		},
 		{
@@ -67,7 +67,7 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 				}
 
 				mockRepo.
-					On("CreateOrder", buildExpectedOrder(req)).
+					On("CreateOrder", buildExpectedOrder(req), "test_admin").
 					Return(nil, assert.AnError).
 					Once()
 			},
@@ -87,7 +87,7 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 				}
 
 				mockRepo.
-					On("CreateOrder", buildExpectedOrder(req)).
+					On("CreateOrder", buildExpectedOrder(req), "test_admin").
 					Return(&models.Order{
 						ID:            4,
 						TotalAmount:   math.MaxInt64,
@@ -97,10 +97,10 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 					Once()
 			},
 			expectError: false,
-			expectedResult: &models.Order{
-				ID:            4,
-				TotalAmount:   math.MaxInt64,
-				CurrentStatus: models.ORDER_STATUS_CREATED,
+			expectedResult: &dto.CreateOrderResponse{
+				ID:          4,
+				TotalAmount: math.MaxInt64,
+				Status:      models.ORDER_STATUS_CREATED,
 			},
 		},
 	}
@@ -112,7 +112,7 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 
 			tc.setupMock(mockRepo)
 
-			result, err := service.CreateOrder(tc.input)
+			result, err := service.CreateOrder(tc.input, "test_admin")
 
 			if tc.expectError {
 				assert.Error(t, err)
@@ -123,7 +123,7 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 
 				assert.Equal(t, tc.expectedResult.ID, result.ID)
 				assert.Equal(t, tc.expectedResult.TotalAmount, result.TotalAmount)
-				assert.Equal(t, tc.expectedResult.CurrentStatus, result.CurrentStatus)
+				assert.Equal(t, tc.expectedResult.Status, result.Status)
 			}
 
 			mockRepo.AssertExpectations(t)
@@ -320,15 +320,7 @@ func TestOrderServiceUpdateOrderStatus(t *testing.T) {
 			status:  "paid",
 			setupMock: func(mockRepo *mocks.OrderRepository) {
 				mockRepo.
-					On("GetOrderDetail", int64(123)).
-					Return(&models.Order{
-						ID:            123,
-						CurrentStatus: models.ORDER_STATUS_CREATED,
-					}, nil).
-					Once()
-
-				mockRepo.
-					On("UpdateOrderStatus", int64(123), "paid").
+					On("UpdateOrderStatus", int64(123), "paid", "system", (*int64)(nil)).
 					Return(&models.Order{
 						ID:            123,
 						TotalAmount:   2500000,
@@ -349,11 +341,8 @@ func TestOrderServiceUpdateOrderStatus(t *testing.T) {
 			status:  "shipped",
 			setupMock: func(mockRepo *mocks.OrderRepository) {
 				mockRepo.
-					On("GetOrderDetail", int64(888)).
-					Return(&models.Order{
-						ID:            888,
-						CurrentStatus: models.ORDER_STATUS_CREATED,
-					}, nil).
+					On("UpdateOrderStatus", int64(888), "shipped", "system", (*int64)(nil)).
+					Return(nil, assert.AnError).
 					Once()
 			},
 			expectError:    true,
@@ -368,7 +357,7 @@ func TestOrderServiceUpdateOrderStatus(t *testing.T) {
 
 			tc.setupMock(mockRepo)
 
-			result, err := service.UpdateOrderStatus(tc.orderID, tc.status)
+			result, err := service.UpdateOrderStatus(tc.orderID, tc.status, "system", nil)
 
 			if tc.expectError {
 				assert.Error(t, err)

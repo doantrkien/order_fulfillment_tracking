@@ -15,11 +15,69 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "Authenticate with email and password to receive a JWT token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Login to get access token",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ResponseStruct"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.LoginResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/order-events/import": {
             "post": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Process a batch of order status update events concurrently. Each event is validated and processed in its own DB transaction. The response always returns aggregated counts, even on partial failure.",
@@ -97,7 +155,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "consumes": [
@@ -115,12 +173,6 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Order Status",
                         "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Customer Name",
-                        "name": "customer_name",
                         "in": "query"
                     },
                     {
@@ -193,7 +245,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Create a new order",
@@ -222,7 +274,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/response.ResponseStruct"
+                            "$ref": "#/definitions/response.CreateOrderSuccessResponse"
                         }
                     },
                     "400": {
@@ -256,7 +308,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Retrieve detail of an order",
@@ -335,9 +387,10 @@ const docTemplate = `{
             "patch": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
+                "description": "Update the status of an order. Drivers can only set \"shipped\" or \"delivered\".\nThe driver_id field is optional and only used by admins to assign a driver.\nWhen a driver calls this API, driver_id is automatically set from their token.",
                 "consumes": [
                     "application/json"
                 ],
@@ -357,7 +410,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "New status",
+                        "description": "New status and optional driver_id (admin only)",
                         "name": "status",
                         "in": "body",
                         "required": true,
@@ -410,7 +463,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "consumes": [
@@ -486,7 +539,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "consumes": [
@@ -558,6 +611,39 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dto.CreateOrderResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-05-01T00:00:00Z"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "shipping_address": {
+                    "type": "string",
+                    "example": "123 Nguyen Hue"
+                },
+                "status": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.OrderStatus"
+                        }
+                    ],
+                    "example": "created"
+                },
+                "total_amount": {
+                    "type": "integer",
+                    "example": 250000
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-05-01T00:00:00Z"
+                }
+            }
+        },
         "dto.DailyReportResponse": {
             "type": "object",
             "properties": {
@@ -627,6 +713,10 @@ const docTemplate = `{
         "dto.ImportOrderEventRequest": {
             "type": "object",
             "properties": {
+                "driver_id": {
+                    "type": "integer",
+                    "example": 1
+                },
                 "event_at": {
                     "type": "string",
                     "example": "2026-05-17T09:00:00Z"
@@ -641,7 +731,7 @@ const docTemplate = `{
                 },
                 "updated_by": {
                     "type": "string",
-                    "example": "warehouse_staff_01"
+                    "example": "admin"
                 }
             }
         },
@@ -668,6 +758,40 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "admin@order.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "12345"
+                }
+            }
+        },
+        "dto.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "token_type": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.OrderReponse": {
             "type": "object",
             "properties": {
@@ -681,7 +805,7 @@ const docTemplate = `{
                 },
                 "shipping_address": {
                     "type": "string",
-                    "example": "Viet Nam"
+                    "example": "123 Nguyen Hue"
                 },
                 "status": {
                     "allOf": [
@@ -697,11 +821,11 @@ const docTemplate = `{
                 },
                 "user_phone": {
                     "type": "string",
-                    "example": "0123456789"
+                    "example": "0977605602"
                 },
                 "username": {
                     "type": "string",
-                    "example": "Supper Man"
+                    "example": "Nguyen Tien Khoa"
                 }
             }
         },
@@ -738,6 +862,10 @@ const docTemplate = `{
                 "status"
             ],
             "properties": {
+                "driver_id": {
+                    "type": "integer",
+                    "example": 42
+                },
                 "status": {
                     "allOf": [
                         {
@@ -768,6 +896,22 @@ const docTemplate = `{
                 "ORDER_STATUS_CANCELLED",
                 "ORDER_STATUS_REFUNDED"
             ]
+        },
+        "response.CreateOrderSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/dto.CreateOrderResponse"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Success"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 201
+                }
+            }
         },
         "response.ErrorBadReqResponse": {
             "type": "object",
@@ -887,9 +1031,10 @@ const docTemplate = `{
         }
     },
     "securityDefinitions": {
-        "ApiKeyAuth": {
+        "BearerAuth": {
+            "description": "Type \"Bearer\" followed by a space and the JWT token.",
             "type": "apiKey",
-            "name": "X-API-KEY",
+            "name": "Authorization",
             "in": "header"
         }
     }

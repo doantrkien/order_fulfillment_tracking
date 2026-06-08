@@ -30,7 +30,7 @@ func NewOrderEventHandler(orderEventService services.OrderEventService) *OrderEv
 // @Success 200 {object} response.ResponseStruct{data=dto.ImportOrderEventsResponse}
 // @Failure 400 {object} response.ErrorBadReqResponse
 // @Failure 500 {object} response.ErrorInternalServerErrorResponse{data=dto.ImportOrderEventsResponse}
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Router /api/v1/order-events/import [post]
 func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
 	var req []dto.ImportOrderEventRequest

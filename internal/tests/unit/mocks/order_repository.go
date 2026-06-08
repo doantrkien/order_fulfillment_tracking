@@ -11,8 +11,8 @@ type OrderRepository struct {
 	mock.Mock
 }
 
-func (_m *OrderRepository) CreateOrder(order models.Order) (*models.Order, error) {
-	ret := _m.Called(order)
+func (_m *OrderRepository) CreateOrder(order models.Order, updatedBy string) (*models.Order, error) {
+	ret := _m.Called(order, updatedBy)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateOrder")
@@ -20,19 +20,19 @@ func (_m *OrderRepository) CreateOrder(order models.Order) (*models.Order, error
 
 	var r0 *models.Order
 	var r1 error
-	if rf, ok := ret.Get(0).(func(models.Order) (*models.Order, error)); ok {
-		return rf(order)
+	if rf, ok := ret.Get(0).(func(models.Order, string) (*models.Order, error)); ok {
+		return rf(order, updatedBy)
 	}
-	if rf, ok := ret.Get(0).(func(models.Order) *models.Order); ok {
-		r0 = rf(order)
+	if rf, ok := ret.Get(0).(func(models.Order, string) *models.Order); ok {
+		r0 = rf(order, updatedBy)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.Order)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(models.Order) error); ok {
-		r1 = rf(order)
+	if rf, ok := ret.Get(1).(func(models.Order, string) error); ok {
+		r1 = rf(order, updatedBy)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -105,8 +105,35 @@ func (_m *OrderRepository) GetOrderDetail(id int64) (*models.Order, error) {
 	return r0, r1
 }
 
-func (_m *OrderRepository) UpdateOrderStatus(id int64, status string) (*models.Order, error) {
-	ret := _m.Called(id, status)
+func (_m *OrderRepository) IsDriverAssignedToOrder(orderID int64, driverID int64) (bool, error) {
+	ret := _m.Called(orderID, driverID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsDriverAssignedToOrder")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(int64, int64) (bool, error)); ok {
+		return rf(orderID, driverID)
+	}
+	if rf, ok := ret.Get(0).(func(int64, int64) bool); ok {
+		r0 = rf(orderID, driverID)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(int64, int64) error); ok {
+		r1 = rf(orderID, driverID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+func (_m *OrderRepository) UpdateOrderStatus(id int64, status string, updatedBy string, driverID *int64) (*models.Order, error) {
+	ret := _m.Called(id, status, updatedBy, driverID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateOrderStatus")
@@ -114,19 +141,19 @@ func (_m *OrderRepository) UpdateOrderStatus(id int64, status string) (*models.O
 
 	var r0 *models.Order
 	var r1 error
-	if rf, ok := ret.Get(0).(func(int64, string) (*models.Order, error)); ok {
-		return rf(id, status)
+	if rf, ok := ret.Get(0).(func(int64, string, string, *int64) (*models.Order, error)); ok {
+		return rf(id, status, updatedBy, driverID)
 	}
-	if rf, ok := ret.Get(0).(func(int64, string) *models.Order); ok {
-		r0 = rf(id, status)
+	if rf, ok := ret.Get(0).(func(int64, string, string, *int64) *models.Order); ok {
+		r0 = rf(id, status, updatedBy, driverID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.Order)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(int64, string) error); ok {
-		r1 = rf(id, status)
+	if rf, ok := ret.Get(1).(func(int64, string, string, *int64) error); ok {
+		r1 = rf(id, status, updatedBy, driverID)
 	} else {
 		r1 = ret.Error(1)
 	}

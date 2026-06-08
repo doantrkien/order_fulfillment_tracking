@@ -13,6 +13,7 @@ import (
 	"main/internal/handlers"
 	"main/internal/models"
 	"main/internal/services"
+	"main/errs"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
@@ -38,7 +39,7 @@ func TestOrderHandlerCreateOrder(t *testing.T) {
 				ShippingAddress: "Test Address",
 			},
 			setupMock: func(m *mocks.OrderRepository) {
-				m.On("CreateOrder", mock.Anything).Return(&models.Order{ID: 1}, nil).Once()
+				m.On("CreateOrder", mock.Anything, mock.Anything).Return(&models.Order{ID: 1}, nil).Once()
 			},
 			expectError:    false,
 			expectedResult: &models.Order{ID: 1},
@@ -66,7 +67,7 @@ func TestOrderHandlerCreateOrder(t *testing.T) {
 				ShippingAddress: "Test Address",
 			},
 			setupMock: func(m *mocks.OrderRepository) {
-				m.On("CreateOrder", mock.Anything).Return(nil, assert.AnError).Once()
+				m.On("CreateOrder", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 			},
 			expectError: true,
 		},
@@ -263,7 +264,7 @@ func TestOrderHandlerGetOrderDetail(t *testing.T) {
 		name           string
 		order          models.Order
 		orderID        string
-		apiKey         string
+		token          string
 		expectedStatus int
 		expectError    bool
 		setupMock      func(*mocks.OrderRepository)
@@ -355,7 +356,7 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 		name           string
 		order          models.Order
 		orderID        string
-		apiKey         string
+		token          string
 		expectedStatus int
 		expectError    bool
 		body           interface{}
@@ -374,14 +375,7 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 			expectedStatus: 200,
 			expectError:    false,
 			setupMock: func(m *mocks.OrderRepository) {
-				m.On("GetOrderDetail", int64(1)).
-					Return(&models.Order{
-						ID:            1,
-						CurrentStatus: models.ORDER_STATUS_CREATED,
-					}, nil).
-					Once()
-
-				m.On("UpdateOrderStatus", int64(1), "paid").
+				m.On("UpdateOrderStatus", int64(1), "paid", "system", (*int64)(nil)).
 					Return(&models.Order{
 						ID:            1,
 						CurrentStatus: models.ORDER_STATUS_PAID,
@@ -437,11 +431,8 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 				Status: "delivered",
 			},
 			setupMock: func(m *mocks.OrderRepository) {
-				m.On("GetOrderDetail", int64(1)).
-					Return(&models.Order{
-						ID:            1,
-						CurrentStatus: models.ORDER_STATUS_CREATED,
-					}, nil).
+				m.On("UpdateOrderStatus", int64(1), "delivered", "system", (*int64)(nil)).
+					Return(nil, errs.ERR_INVALID_STATUS).
 					Once()
 			},
 		},
@@ -454,14 +445,7 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 				Status: "paid",
 			},
 			setupMock: func(m *mocks.OrderRepository) {
-				m.On("GetOrderDetail", int64(1)).
-					Return(&models.Order{
-						ID:            1,
-						CurrentStatus: models.ORDER_STATUS_CREATED,
-					}, nil).
-					Once()
-
-				m.On("UpdateOrderStatus", int64(1), "paid").
+				m.On("UpdateOrderStatus", int64(1), "paid", "system", (*int64)(nil)).
 					Return(nil, assert.AnError).
 					Once()
 			},

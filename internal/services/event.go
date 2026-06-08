@@ -7,6 +7,7 @@ import (
 	"main/internal/repositories"
 	"sort"
 	"sync"
+	"time"
 )
 
 type OrderEventService interface {
@@ -63,7 +64,6 @@ func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto.Im
 		})
 	}
 
-	
 	batches := splitIntoBatches(orderGroups, s.maxWorkers)
 	if len(batches) == 0 {
 		return resp, nil
@@ -141,15 +141,37 @@ func splitIntoBatches(orderGroups map[int64][]dto.ImportOrderEventRequest, numBa
 
 	batches := make([][]models.OrderEvent, numBatches)
 
+	var orderIDs []int64
+	for id := range orderGroups {
+		orderIDs = append(orderIDs, id)
+	}
+	sort.Slice(orderIDs, func(i, j int) bool {
+		return orderIDs[i] < orderIDs[j]
+	})
+
 	i := 0
-	for _, reqs := range orderGroups {
+	for _, id := range orderIDs {
+		reqs := orderGroups[id]
 		idx := i % numBatches
 		for _, req := range reqs {
+			// If the client sends event_at without a timezone offset (e.g. "2026-05-31T14:55:00"),
+			// Go's JSON decoder parses it as UTC. We re-interpret it as Asia/Ho_Chi_Minh local
+			// time and convert to UTC so the value stored in PostgreSQL is correct.
+			eventAt := req.EventAt
+			if eventAt.Location() == time.UTC {
+				// Treat the wall-clock value as HCM local time, then shift to UTC.
+				eventAt = time.Date(
+					eventAt.Year(), eventAt.Month(), eventAt.Day(),
+					eventAt.Hour(), eventAt.Minute(), eventAt.Second(), eventAt.Nanosecond(),
+					loc,
+				).UTC()
+			}
 			batches[idx] = append(batches[idx], models.OrderEvent{
 				OrderID:   req.OrderID,
 				NewStatus: models.OrderStatus(req.Status),
 				UpdatedBy: req.UpdatedBy,
-				EventAt:   req.EventAt,
+				EventAt:   eventAt,
+				DriverID:  &req.DriverID,
 			})
 		}
 		i++
@@ -170,6 +192,3 @@ func validateBasic(req dto.ImportOrderEventRequest) string {
 	}
 	return ""
 }
-
-
-

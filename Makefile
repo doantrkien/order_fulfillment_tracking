@@ -3,7 +3,7 @@
 # =========================
 APP_NAME=main
 MAIN_FILE=./cmd/api
-MIGRATION_FILE=./cmd/migration
+MIGRATION_FILE=./cmd/migrate
 
 # =========================
 # GO COMMANDS

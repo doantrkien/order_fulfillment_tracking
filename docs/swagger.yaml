@@ -1,5 +1,27 @@
 basePath: /
 definitions:
+  dto.CreateOrderResponse:
+    properties:
+      created_at:
+        example: "2026-05-01T00:00:00Z"
+        type: string
+      id:
+        example: 1
+        type: integer
+      shipping_address:
+        example: 123 Nguyen Hue
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/models.OrderStatus'
+        example: created
+      total_amount:
+        example: 250000
+        type: integer
+      updated_at:
+        example: "2026-05-01T00:00:00Z"
+        type: string
+    type: object
   dto.DailyReportResponse:
     properties:
       avg_deliver_time:
@@ -49,6 +71,9 @@ definitions:
     type: object
   dto.ImportOrderEventRequest:
     properties:
+      driver_id:
+        example: 1
+        type: integer
       event_at:
         example: "2026-05-17T09:00:00Z"
         type: string
@@ -59,7 +84,7 @@ definitions:
         example: packed
         type: string
       updated_by:
-        example: warehouse_staff_01
+        example: admin
         type: string
     type: object
   dto.ImportOrderEventsResponse:
@@ -78,6 +103,29 @@ definitions:
         example: 1
         type: integer
     type: object
+  dto.LoginRequest:
+    properties:
+      email:
+        example: admin@order.com
+        type: string
+      password:
+        example: "12345"
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      role:
+        type: string
+      token_type:
+        type: string
+    type: object
   dto.OrderReponse:
     properties:
       id:
@@ -87,7 +135,7 @@ definitions:
         example: "2026-05-01T00:00:00Z"
         type: string
       shipping_address:
-        example: Viet Nam
+        example: 123 Nguyen Hue
         type: string
       status:
         allOf:
@@ -97,10 +145,10 @@ definitions:
         example: 100000
         type: integer
       user_phone:
-        example: "0123456789"
+        example: "0977605602"
         type: string
       username:
-        example: Supper Man
+        example: Nguyen Tien Khoa
         type: string
     type: object
   dto.OrderRequest:
@@ -125,6 +173,9 @@ definitions:
     type: object
   dto.UpdateStatusRequest:
     properties:
+      driver_id:
+        example: 42
+        type: integer
       status:
         allOf:
         - $ref: '#/definitions/models.OrderStatus'
@@ -150,6 +201,17 @@ definitions:
     - ORDER_STATUS_DELIVERED
     - ORDER_STATUS_CANCELLED
     - ORDER_STATUS_REFUNDED
+  response.CreateOrderSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/dto.CreateOrderResponse'
+      message:
+        example: Success
+        type: string
+      status:
+        example: 201
+        type: integer
+    type: object
   response.ErrorBadReqResponse:
     properties:
       data: {}
@@ -239,6 +301,41 @@ info:
   title: Order Fulfillment Tracking API
   version: 1.0.0
 paths:
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate with email and password to receive a JWT token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ResponseStruct'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.LoginResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBadReqResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorUnauthenticatedResponse'
+      summary: Login to get access token
+      tags:
+      - Auth
   /api/v1/order-events/import:
     post:
       consumes:
@@ -281,7 +378,7 @@ paths:
                   $ref: '#/definitions/dto.ImportOrderEventsResponse'
               type: object
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Import batch order events
       tags:
       - Order Event
@@ -293,10 +390,6 @@ paths:
       - description: Order Status
         in: query
         name: status
-        type: string
-      - description: Customer Name
-        in: query
-        name: customer_name
         type: string
       - description: Ordered Date
         in: query
@@ -341,7 +434,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Get all orders
       tags:
       - Order
@@ -362,7 +455,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/response.ResponseStruct'
+            $ref: '#/definitions/response.CreateOrderSuccessResponse'
         "400":
           description: Bad Request
           schema:
@@ -380,7 +473,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Create order
       tags:
       - Order
@@ -428,7 +521,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Get order detail
       tags:
       - Order
@@ -436,13 +529,17 @@ paths:
     patch:
       consumes:
       - application/json
+      description: |-
+        Update the status of an order. Drivers can only set "shipped" or "delivered".
+        The driver_id field is optional and only used by admins to assign a driver.
+        When a driver calls this API, driver_id is automatically set from their token.
       parameters:
       - description: Order ID
         in: path
         name: id
         required: true
         type: integer
-      - description: New status
+      - description: New status and optional driver_id (admin only)
         in: body
         name: status
         required: true
@@ -476,7 +573,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Update order status
       tags:
       - Order
@@ -523,7 +620,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Daily order report
       tags:
       - Report
@@ -566,13 +663,14 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - BearerAuth: []
       summary: Create daily report manually
       tags:
       - Report
 securityDefinitions:
-  ApiKeyAuth:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and the JWT token.
     in: header
-    name: X-API-KEY
+    name: Authorization
     type: apiKey
 swagger: "2.0"

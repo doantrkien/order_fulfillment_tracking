@@ -18,7 +18,7 @@ func TestIntegrationCreateOrder(t *testing.T) {
 	tests := []struct {
 		name           string
 		body           interface{}
-		apiKey         string
+		token          string
 		expectedStatus int
 		expectError    bool
 	}{
@@ -30,14 +30,14 @@ func TestIntegrationCreateOrder(t *testing.T) {
 				UserPhone:       "0901234567",
 				ShippingAddress: "123 Test Street, HCM City",
 			},
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 201,
 			expectError:    false,
 		},
 		{
 			name:           "invalid json",
 			body:           "{invalid-json",
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 400,
 			expectError:    true,
 		},
@@ -57,7 +57,7 @@ func TestIntegrationCreateOrder(t *testing.T) {
 				UserPhone:       "0901234567",
 				ShippingAddress: "123 Test Street, HCM City",
 			},
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 400,
 			expectError:    true,
 		},
@@ -66,7 +66,7 @@ func TestIntegrationCreateOrder(t *testing.T) {
 			body: dto.OrderRequest{
 				TotalAmount: 1000,
 			},
-			apiKey:         driverAPIKey,
+			token:          driverToken,
 			expectedStatus: 403,
 			expectError:    true,
 		},
@@ -93,8 +93,8 @@ func TestIntegrationCreateOrder(t *testing.T) {
 
 			req.Header.Set("Content-Type", "application/json")
 
-			if tt.apiKey != "" {
-				req.Header.Set("X-API-Key", tt.apiKey)
+			if tt.token != "" {
+				req.Header.Set("Authorization", "Bearer "+tt.token)
 			}
 
 			resp, err := app.Test(req)
@@ -130,7 +130,7 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 	tests := []struct {
 		name           string
 		query          string
-		apiKey         string
+		token          string
 		seedOrders     []models.Order
 		expectedStatus int
 		expectError    bool
@@ -139,9 +139,9 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 		expectedUser   string
 	}{
 		{
-			name:   "get all orders success",
-			query:  "/api/v1/orders?page=1&limit=10",
-			apiKey: adminAPIKey,
+			name:  "get all orders success",
+			query: "/api/v1/orders?page=1&limit=10",
+			token: adminToken,
 			seedOrders: []models.Order{
 				{
 					TotalAmount:   1000,
@@ -172,9 +172,9 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 			expectedUser:   "carol",
 		},
 		{
-			name:   "filter by status",
-			query:  "/api/v1/orders?status=paid&page=1&limit=10",
-			apiKey: adminAPIKey,
+			name:  "filter by status",
+			query: "/api/v1/orders?status=paid&page=1&limit=10",
+			token: adminToken,
 			seedOrders: []models.Order{
 				{
 					TotalAmount:   1000,
@@ -204,9 +204,9 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 			expectedLength: 2,
 		},
 		{
-			name:   "filter by date",
-			query:  fmt.Sprintf("/api/v1/orders?date=%s&page=1&limit=10", today.Format("2006-01-02")),
-			apiKey: adminAPIKey,
+			name:  "filter by date",
+			query: fmt.Sprintf("/api/v1/orders?date=%s&page=1&limit=10", today.Format("2006-01-02")),
+			token: adminToken,
 			seedOrders: []models.Order{
 				{
 					TotalAmount:   1000,
@@ -230,9 +230,9 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 			expectedUser:   "today_user",
 		},
 		{
-			name:   "pagination",
-			query:  "/api/v1/orders?page=1&limit=2",
-			apiKey: adminAPIKey,
+			name:  "pagination",
+			query: "/api/v1/orders?page=1&limit=2",
+			token: adminToken,
 			seedOrders: []models.Order{
 				{TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_CREATED, UserInfo: mustMarshalUserInfo("u1", "", ""), CreatedAt: today, UpdatedAt: today},
 				{TotalAmount: 2000, CurrentStatus: models.ORDER_STATUS_CREATED, UserInfo: mustMarshalUserInfo("u2", "", ""), CreatedAt: today, UpdatedAt: today},
@@ -252,9 +252,9 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 			expectError:    true,
 		},
 		{
-			name:   "driver access allowed",
-			query:  "/api/v1/orders?page=1&limit=2",
-			apiKey: driverAPIKey,
+			name:  "driver access allowed",
+			query: "/api/v1/orders?page=1&limit=2",
+			token: driverToken,
 			seedOrders: []models.Order{
 				{TotalAmount: 1000, CurrentStatus: models.ORDER_STATUS_CREATED, UserInfo: mustMarshalUserInfo("u1", "", ""), CreatedAt: today, UpdatedAt: today},
 			},
@@ -271,12 +271,23 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 
 			if len(tt.seedOrders) > 0 {
 				db.Create(&tt.seedOrders)
+				if tt.token == driverToken {
+					driverID := int64(2)
+					db.Create(&models.OrderEvent{
+						OrderID:        1,
+						PreviousStatus: models.ORDER_STATUS_CREATED,
+						NewStatus:      models.ORDER_STATUS_CREATED,
+						DriverID:       &driverID,
+						UpdatedBy:      "driver@test.com",
+						EventAt:        time.Now(),
+					})
+				}
 			}
 
 			req := httptest.NewRequest("GET", tt.query, nil)
 
-			if tt.apiKey != "" {
-				req.Header.Set("X-API-Key", tt.apiKey)
+			if tt.token != "" {
+				req.Header.Set("Authorization", "Bearer "+tt.token)
 			}
 
 			resp, err := app.Test(req)
@@ -312,7 +323,8 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 		name           string
 		order          models.Order
 		orderID        string
-		apiKey         string
+		token          string
+		assignToDriver bool
 		expectedStatus int
 		expectError    bool
 	}{
@@ -330,21 +342,21 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 				UpdatedAt: time.Now(),
 			},
 			orderID:        "1",
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 200,
 			expectError:    false,
 		},
 		{
 			name:           "invalid order id",
 			orderID:        "abc",
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 400,
 			expectError:    true,
 		},
 		{
 			name:           "order not found",
 			orderID:        "999",
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 404,
 			expectError:    true,
 		},
@@ -368,7 +380,7 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 				UpdatedAt: time.Now(),
 			},
 			orderID:        "1",
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 200,
 			expectError:    false,
 		},
@@ -386,9 +398,29 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 				UpdatedAt: time.Now(),
 			},
 			orderID:        "1",
-			apiKey:         driverAPIKey,
+			token:          driverToken,
+			assignToDriver: true,
 			expectedStatus: 200,
 			expectError:    false,
+		},
+		{
+			name: "driver access denied",
+			order: models.Order{
+				TotalAmount:   5000,
+				CurrentStatus: models.ORDER_STATUS_CREATED,
+				UserInfo: mustMarshalUserInfo(
+					"kien",
+					"0901234567",
+					"HCM City",
+				),
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+			orderID:        "1",
+			token:          driverToken,
+			assignToDriver: false,
+			expectedStatus: 403,
+			expectError:    true,
 		},
 	}
 
@@ -398,6 +430,17 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 
 			if tt.order.TotalAmount != 0 {
 				db.Create(&tt.order)
+				if tt.token == driverToken && tt.assignToDriver {
+					driverID := int64(2)
+					db.Create(&models.OrderEvent{
+						OrderID:        tt.order.ID,
+						PreviousStatus: models.ORDER_STATUS_CREATED,
+						NewStatus:      models.ORDER_STATUS_CREATED,
+						DriverID:       &driverID,
+						UpdatedBy:      "driver@test.com",
+						EventAt:        time.Now(),
+					})
+				}
 			}
 
 			req := httptest.NewRequest(
@@ -406,8 +449,8 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 				nil,
 			)
 
-			if tt.apiKey != "" {
-				req.Header.Set("X-API-Key", tt.apiKey)
+			if tt.token != "" {
+				req.Header.Set("Authorization", "Bearer "+tt.token)
 			}
 
 			resp, err := app.Test(req)
@@ -439,7 +482,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 		order          models.Order
 		orderID        string
 		body           interface{}
-		apiKey         string
+		token          string
 		expectedStatus int
 		expectError    bool
 	}{
@@ -456,7 +499,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			body: dto.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_PAID,
 			},
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 200,
 			expectError:    false,
 		},
@@ -473,7 +516,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			body: dto.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_PACKED,
 			},
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 200,
 			expectError:    false,
 		},
@@ -490,7 +533,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			body: dto.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_SHIPPED,
 			},
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 200,
 			expectError:    false,
 		},
@@ -507,7 +550,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			body: dto.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_DELIVERED,
 			},
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 200,
 			expectError:    false,
 		},
@@ -524,7 +567,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			body: dto.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_CANCELLED,
 			},
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 200,
 			expectError:    false,
 		},
@@ -541,7 +584,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			body: dto.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_REFUNDED,
 			},
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 400, // Invalid transition from delivered to refunded (based on models.IsValidTransition)
 			expectError:    true,
 		},
@@ -558,7 +601,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 		// 	body: dto.UpdateStatusRequest{
 		// 		Status: models.ORDER_STATUS_PAID,
 		// 	},
-		// 	apiKey:         driverAPIKey,
+		// 	token:          driverToken,
 		// 	expectedStatus: 403,
 		// 	expectError:    true,
 		// },
@@ -575,7 +618,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			body: dto.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_CREATED,
 			},
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 400,
 			expectError:    true,
 		},
@@ -585,7 +628,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			body: dto.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_PAID,
 			},
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 400,
 			expectError:    true,
 		},
@@ -593,7 +636,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			name:    "empty status",
 			orderID: "1",
 			body:    dto.UpdateStatusRequest{},
-			apiKey:  adminAPIKey,
+			token:   adminToken,
 
 			expectedStatus: 400,
 			expectError:    true,
@@ -604,7 +647,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			body: dto.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_PAID,
 			},
-			apiKey:         adminAPIKey,
+			token:          adminToken,
 			expectedStatus: 404,
 			expectError:    true,
 		},
@@ -612,7 +655,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 			name:    "invalid json",
 			orderID: "1",
 			body:    "{invalid-json",
-			apiKey:  adminAPIKey,
+			token:   adminToken,
 
 			expectedStatus: 400,
 			expectError:    true,
@@ -644,8 +687,8 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 
 			req.Header.Set("Content-Type", "application/json")
 
-			if tt.apiKey != "" {
-				req.Header.Set("X-API-Key", tt.apiKey)
+			if tt.token != "" {
+				req.Header.Set("Authorization", "Bearer "+tt.token)
 			}
 
 			resp, err := app.Test(req)
