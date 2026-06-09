@@ -1,8 +1,11 @@
 package handlers
 
 import (
+<<<<<<< HEAD
 	"errors"
 	"main/constant"
+=======
+>>>>>>> 0a54e11 (fix: update validate request input for api analyze exception)
 	"main/errs"
 	"main/internal/dto"
 	"main/internal/services"
@@ -24,6 +27,7 @@ func NewAIHandler(aiService services.AIService) *AIHandler {
 // This endpoint never returns 500 for AI failures — it gracefully
 // falls back to rule-based detection with fallback_used: true.
 func (h *AIHandler) AnalyzeException(c fiber.Ctx) error {
+<<<<<<< HEAD
 	// 1. Parse order ID from path
 	orderID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil || orderID <= 0 {
@@ -46,4 +50,17 @@ func (h *AIHandler) AnalyzeException(c fiber.Ctx) error {
 
 	// 4. Return success — never 500 for AI failures
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, result)
+=======
+	_, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	}
+
+	var req dto.AnalyzeExceptionRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	}
+
+	return nil
+>>>>>>> 0a54e11 (fix: update validate request input for api analyze exception)
 }
