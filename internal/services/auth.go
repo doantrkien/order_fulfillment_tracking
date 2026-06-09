@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"fmt"
 	"main/errs"
 	"main/internal/dto"
 	"main/internal/repositories"
@@ -35,13 +34,6 @@ func (s *authService) Login(email, password string) (*dto.LoginResponse, error) 
 		}
 		return nil, err
 	}
-
-	hash, err := bcrypt.GenerateFromPassword([]byte("12345"), bcrypt.DefaultCost)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(string(hash))
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return nil, errs.ERR_INVALID_CREDENTAIL

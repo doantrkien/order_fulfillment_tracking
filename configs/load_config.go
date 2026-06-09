@@ -33,7 +33,7 @@ func LoadConfig() error {
 	if envFile != "" {
 		candidates = append(candidates, envFile)
 	}
-	candidates = append(candidates, ".env")
+	candidates = append(candidates, ".env.local", ".env")
 
 	fmt.Println(candidates)
 
