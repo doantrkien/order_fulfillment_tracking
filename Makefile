@@ -8,8 +8,9 @@ MIGRATION_FILE=./cmd/migrate
 # =========================
 # GO COMMANDS
 # =========================
+run: export ENV_FILE=.env.local
 run:
-	ENV_FILE=.env.local go run $(MAIN_FILE)
+	go run $(MAIN_FILE)
 
 tidy:
 	go mod tidy
@@ -17,11 +18,15 @@ tidy:
 download:
 	go mod download
 
+migrate: export ENV_FILE=.env.local
 migrate:
-	ENV_FILE=.env.local go run $(MIGRATION_FILE)
+	go run $(MIGRATION_FILE)
 
 migrate-up:
 	docker exec -it order_tracking go run ./cmd/migrate
+
+seed:
+	docker exec -i postgres psql -U postgres -d order_tracking < db/seed.sql
 
 # =========================
 # SWAGGER
