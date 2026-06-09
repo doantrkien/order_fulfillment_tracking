@@ -1,0 +1,564 @@
+openapi: 3.0.3
+info:
+  title: AI Fulfillment Exception and Customer Update Assistant API
+  description: |
+    **Team 2 – Phase 3 AI Delivery Project**
+
+    This API extends the Phase 2 Order Fulfillment Tracking System with an AI-powered
+    exception detection and customer communication assistant.
+
+    ### Architecture
+    The AI workflow follows the pattern:
+    `Controller → Input Validation → Domain Context Builder → AI Adapter →
+    Output Schema Validator → Confidence/Fallback Policy → Audit Log → API Response`
+
+    ### AI Safety Contract
+    - AI **must not** send customer messages automatically.
+    - AI **must not** refund orders or change order status.
+    - All state transitions remain governed by deterministic domain rules.
+    - Customer update drafts are always marked as requiring human approval.
+    - All AI results, prompt versions, and fallback reasons are persisted and logged.
+
+    ### Authentication
+    All endpoints require a Bearer token (reused from Phase 2 auth pattern).
+  version: 1.0.0
+  contact:
+    name: Team 2 – Fulfillment Engineering
+
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Local development
+  - url: https://staging.fulfillment.internal/api/v1
+    description: Staging environment
+
+tags:
+  - name: AI – Exception Analysis
+    description: AI-powered fulfillment exception detection and explanation
+  - name: AI – Customer Updates
+    description: AI-generated draft customer communication (never auto-sent)
+  - name: AI – Evaluations
+    description: AI evaluation runner for quality assurance
+
+paths:
+
+  /ai/orders/{id}/exception-analysis:
+    post:
+      tags: [AI – Exception Analysis]
+      summary: Analyse a single order for fulfillment exceptions
+      description: |
+        Builds context from the order's details, event timeline, and daily report
+        aggregates, then calls the AI adapter to detect and explain any fulfillment
+        exceptions.
+
+        **Guardrails enforced:**
+        - Input size is capped before prompt construction.
+        - Request ID, prompt template version, and duration are logged.
+        - If AI returns invalid JSON or confidence is below threshold, a deterministic
+          rule-based fallback result is returned with `fallback_used: true`.
+        - AI output is validated against the strict response schema before persisting.
+        - Result is stored in `ai_order_exception_results` with full audit trail.
+
+        **AI must not** change order status, trigger refunds, or send any message.
+      operationId: analyseOrderException
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExceptionAnalysisRequest'
+      responses:
+        '200':
+          description: Exception analysis result (may be AI-generated or deterministic fallback)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExceptionAnalysisApiResponse'
+              example:
+                status: SUCCESS
+                message: Exception analysis completed successfully
+                data:
+                    result_id: "res-7a3f"
+                    order_id: "ord-001"
+                    exception_type: "DELAYED_SHIPMENT"
+                    severity: "HIGH"
+                    likely_reason: "No delivery scan recorded within the expected 48-hour window after SHIPPED status. Driver notes indicate two failed delivery attempts."
+                    internal_next_action: "Contact driver team to confirm order location. Escalate to logistics if unresolved within 4 hours."
+                    confidence_score: 0.87
+                    fallback_used: false
+                    prompt_template_version: "v1.2"
+                    evaluated_at: "2026-06-08T12:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/AIServiceUnavailable'
+
+  /ai/orders/{id}/insights/latest:
+
+    get:
+
+      tags: [AI – Exception Analysis]
+
+      summary: Get the latest AI exception analysis result for an order
+
+      description: Returns the most recently persisted AI exception analysis for the given order, without triggering a new AI call.
+
+      operationId: getLatestOrderInsight
+
+      security:
+
+        - BearerAuth: []
+
+      parameters:
+
+        - $ref: '#/components/parameters/OrderId'
+
+      responses:
+
+        '200':
+
+          description: Latest stored exception analysis result
+
+          content:
+
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExceptionAnalysisApiResponse'
+              example:
+                status: SUCCESS
+                message: Exception analysis completed successfully
+                data:
+                    result_id: "res-7a3f"
+                    order_id: "ord-001"
+                    exception_type: "DELAYED_SHIPMENT"
+                    severity: "HIGH"
+                    likely_reason: "No delivery scan recorded within the expected 48-hour window after SHIPPED status. Driver notes indicate two failed delivery attempts."
+                    internal_next_action: "Contact driver team to confirm order location. Escalate to logistics if unresolved within 4 hours."
+                    confidence_score: 0.87
+                    fallback_used: false
+                    prompt_template_version: "v1.2"
+                    evaluated_at: "2026-06-08T12:00:00Z"
+
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/AIServiceUnavailable'
+
+
+  /ai/orders/customer-update-draft:
+    post:
+      tags: [AI – Customer Updates]
+      summary: Generate a draft customer-facing update message
+      description: |
+        Generates a safe, empathetic draft message a customer support agent can
+
+        review and send manually.
+        **Hard constraints on AI output:**
+        - Must not contain promises about specific delivery dates.
+        - Must not reference internal system errors, driver IDs, or technical details.
+        - Must not imply a refund has been issued or will be issued automatically.
+        - Draft is stored in `ai_customer_update_drafts` with `status: DRAFT`.
+        - The draft is **never** sent automatically. Sending requires a separate
+          explicit agent action outside this API.
+        All drafts include a disclaimer field reminding the agent this is AI-generated
+        and requires human review before use.
+      operationId: generateCustomerUpdateDraft
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerUpdateDraftRequest'
+            example:
+              order_id: "ord-001"
+              exception_result_id: "res-7a3f"
+              tone: "EMPATHETIC"
+              channel: "EMAIL"
+      responses:
+        '200':
+          description: Draft customer update message (requires human review before sending)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerUpdateDraftResponse'
+              example:
+                status: SUCCESS
+                message: successfully
+                data:
+                  draft_id: "drft-abc-456"
+                  order_id: "ord-001"
+                  channel: "EMAIL"
+                  subject: "Update on your recent order"
+                  body: "Thank you for your patience. We are aware that your order has experienced a delay and our team is actively working to resolve this. We will provide you with a further update as soon as possible. We apologise for any inconvenience."
+                  tone: "EMPATHETIC"
+                  status: "DRAFT"
+                  ai_disclaimer: "This message was generated by an AI assistant and must be reviewed and approved by a customer support agent before sending."
+                  confidence_score: 0.91
+                  fallback_used: false
+                  prompt_template_version: "v1.1"
+                  generated_at: "2026-06-08T12:05:00Z"
+
+        '400':
+
+          $ref: '#/components/responses/BadRequest'
+
+        '401':
+
+          $ref: '#/components/responses/Unauthorized'
+
+        '404':
+
+          $ref: '#/components/responses/NotFound'
+
+        '503':
+
+          $ref: '#/components/responses/AIServiceUnavailable'
+
+
+  /ai/evaluations/order-exceptions:
+    post:
+      tags: [AI – Evaluations]
+      summary: Run an AI evaluation batch for order exception detection
+      description: |
+        Executes a set of predefined evaluation cases against the live AI adapter
+        and records pass/fail results. Requires at least 20 cases covering:
+        delayed shipment, duplicate event, invalid transition, missing delivery scan,
+        and refund/cancel edge cases.
+
+        Results are stored in `ai_evaluation_runs` and returned in the response.
+        Evaluation runs use the same AI adapter as production (or a configured stub).
+      operationId: runOrderExceptionEvaluation
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvaluationRunRequest'
+            example:
+              dataset_name: "order-exceptions-v1"
+              cases:
+                - case_id: "eval-001"
+                  description: "Order shipped 72 hours ago with no delivery scan"
+                  input:
+                    order_id: "ord-eval-001"
+                    status: "SHIPPED"
+                    shipped_at: "2026-06-05T08:00:00Z"
+                    events: []
+                    expected_delivery_date: "2026-06-07"
+                  expected_exception_type: "DELAYED_SHIPMENT"
+                  expected_severity: "HIGH"
+                - case_id: "eval-002"
+                  description: "Duplicate DELIVERED event submitted"
+                  input:
+                    order_id: "ord-eval-002"
+                    status: "DELIVERED"
+                    events:
+                      - event_type: "DELIVERED"
+                        occurred_at: "2026-06-07T10:00:00Z"
+                      - event_type: "DELIVERED"
+                        occurred_at: "2026-06-07T10:05:00Z"
+                  expected_exception_type: "DUPLICATE_EVENT"
+                  expected_severity: "LOW"
+      responses:
+        '200':
+          description: Evaluation run results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationRunResponse'
+              example:
+                status: SUCCESS
+                message: successfully
+                data:
+                  dataset_name: "order-exceptions-v1"
+                  cases:
+                    - case_id: "eval-001"
+                      description: "Order shipped 72 hours ago with no delivery scan"
+                      input:
+                        order_id: "ord-eval-001"
+                        status: "SHIPPED"
+                        shipped_at: "2026-06-05T08:00:00Z"
+                        events: []
+                        expected_delivery_date: "2026-06-07"
+                      expected_exception_type: "DELAYED_SHIPMENT"
+                      expected_severity: "HIGH"
+                    - case_id: "eval-002"
+                      description: "Duplicate DELIVERED event submitted"
+                      input:
+                        order_id: "ord-eval-002"
+                        status: "DELIVERED"
+                        events:
+                          - event_type: "DELIVERED"
+                            occurred_at: "2026-06-07T10:00:00Z"
+                          - event_type: "DELIVERED"
+                            occurred_at: "2026-06-07T10:05:00Z"
+                      expected_exception_type: "DUPLICATE_EVENT"
+                      expected_severity: "LOW"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/AIServiceUnavailable'
+
+  
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Phase 2 auth endpoint
+
+  parameters:
+    OrderId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Unique order identifier
+      example: "ord-001"
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: ERROR
+            message: "Invalid input"
+            data: null
+            request_id: request_1
+
+    Unauthenticated:
+      description: Unauthenticated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: ERROR
+            message: "Unauthenticated"
+            data: null
+            request_id: request_1
+
+    Unauthorized:
+      description: Permission denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: ERROR
+            message: "Permision denied"
+            data: null
+            request_id: request_1
+
+    NotFound:
+      description: Data not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: ERROR
+            message: "Data not found"
+            data: null
+            request_id: request_1
+
+    AIServiceUnavailable:
+      description: AI Service unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: ERROR
+            message: "AI service unavailable"
+            data: null
+            request_id: request_1
+
+  schemas:
+
+    ExceptionType:
+      type: string
+      enum:
+        - DELAYED_SHIPMENT
+        - MISSING_DELIVERY_SCAN
+        - DUPLICATE_EVENT
+        - INVALID_TRANSITION_ATTEMPT
+        - REFUND_DISCREPANCY
+        - CANCELLED_WITH_ACTIVE_SHIPMENT
+        - PAYMENT_TIMEOUT
+        - NO_EXCEPTION
+
+    
+    ExceptionSeverity:
+      type: string
+      enum: [LOW, MEDIUM, HIGH, CRITICAL]
+
+
+    MessageChannel:
+      type: string
+      enum: [EMAIL, SMS, IN_APP]
+
+    MessageTone:
+      type: string
+      enum: [EMPATHETIC, FORMAL, BRIEF]
+
+    
+    ExceptionAnalysisRequest:
+      type: object
+      properties:
+        notes:
+          type: string
+          maxLength: 500
+          description: Optional operator note to include in context (must not contain real PII)
+    
+    ExceptionAnalysisApiResponse:
+        type: object
+        required:
+            - status
+            - message
+            - data
+        properties:
+            status:
+                type: string
+                enum:
+                    - SUCCESS
+                example: SUCCESS
+            message:
+                type: string
+                example: Exception analysis completed successfully
+            # data:
+            #     $ref: '#/components/schemas/ExceptionAnalysisApiResponse'
+      
+
+    
+    
+    CustomerUpdateDraftRequest:
+      type: object
+      required: [order_id, channel]
+      properties:
+        order_id:
+          type: string
+        exception_result_id:
+          type: string
+          description: ID of the exception analysis result to base the draft on (recommended)
+        tone:
+          $ref: '#/components/schemas/MessageTone'
+        channel:
+          $ref: '#/components/schemas/MessageChannel'
+
+    CustomerUpdateDraftResponse:
+      type: object
+      required:
+        - status
+        - message
+        - data
+      properties:
+            status:
+                type: string
+                enum:
+                    - SUCCESS
+                example: SUCCESS
+            message:
+                type: string
+                example: Exception analysis completed successfully
+
+    EvaluationRunRequest:
+      type: object
+      required: [dataset_name, cases]
+      properties:
+        dataset_name:
+          type: string
+        cases:
+          type: array
+          minItems: 20
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/EvaluationCase'
+
+    EvaluationCase:
+      type: object
+      required: [description, input, expected_exception_type]
+      properties:
+        case_id:
+          type: string
+        description:
+          type: string
+        input:
+          type: object
+          description: Synthetic order context provided to the AI adapter for this case
+          additionalProperties: true
+        expected_exception_type:
+          $ref: '#/components/schemas/ExceptionType'
+        expected_severity:
+          $ref: '#/components/schemas/ExceptionSeverity'
+        expected_fallback:
+          type: boolean
+          default: false
+          description: Set to true for cases specifically testing the fallback path
+
+    EvaluationRunResponse:
+      type: object
+      required:
+        - status
+        - message
+        - data
+      properties:
+            status:
+                type: string
+                enum:
+                    - SUCCESS
+                example: SUCCESS
+            message:
+                type: string
+                example: Exception analysis completed successfully
+
+    ErrorResponse:
+        type: object
+        required:
+            - status
+            - message
+        properties:
+            status:
+                type: string
+                example: ERROR
+                enum:
+                    - ERROR
+            message:
+                type: string
+                example: Order not found
+            request_id:
+                type: string
+                example: request_1
+            data:
+                nullable: true
+                example: null

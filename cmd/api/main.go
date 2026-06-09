@@ -64,10 +64,15 @@ func main() {
 	reportService := services.NewReportService(reportRepo)
 	reportHandler := handlers.NewReportHandler(reportService)
 
+	aiRepo := repositories.NewAIRepository(db)
+	aiService := services.NewAIService(aiRepo)
+	aiHandler := handlers.NewAIHandler(aiService)
+
 	routers.SetupAuthRouter(app, authHandler)
 	routers.SetupOrderRouter(app, orderHandler)
 	routers.SetupOrderEventRouter(app, orderEventHandler)
 	routers.SetupReportRouter(app, reportHandler)
+	routers.SetupAIRouter(app, aiHandler)
 	app.Get("/docs/swagger/*", swaggo.HandlerDefault)
 
 	log.Fatal(app.Listen(":5000"))

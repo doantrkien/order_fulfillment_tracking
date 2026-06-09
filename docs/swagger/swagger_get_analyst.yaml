@@ -1,0 +1,203 @@
+openapi: 3.0.3
+info:
+  title: AI Fulfillment Exception and Customer Update Assistant API
+  description: |
+    **Team 2 – Phase 3 AI Delivery Project**
+
+    This API extends the Phase 2 Order Fulfillment Tracking System with an AI-powered
+    exception detection and customer communication assistant.
+
+    ### Authentication
+    All endpoints require a Bearer token (reused from Phase 2 auth pattern).
+  version: 1.0.0
+  contact:
+    name: Team 2 – Fulfillment Engineering
+
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Local development
+
+tags:
+  - name: AI – Exception Analysis
+    description: AI-powered fulfillment exception detection and explanation
+
+paths:
+
+  /ai/orders/{id}/exception-analysis:
+    post:
+      tags: [AI – Exception Analysis]
+      summary: Analyse a single order for fulfillment exceptions
+      description: |
+        Builds context from the order's details, event timeline, and daily report
+        aggregates, then calls the AI adapter to detect and explain any fulfillment
+        exceptions.
+      operationId: analyseOrderException
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExceptionAnalysisRequest'
+      responses:
+        '200':
+          description: Exception analysis result (may be AI-generated or deterministic fallback)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExceptionAnalysisApiResponse'
+              example:
+                status: SUCCESS
+                message: Exception analysis completed successfully
+                data:
+                    result_id: "res-7a3f"
+                    order_id: "ord-001"
+                    exception_type: "DELAYED_SHIPMENT"
+                    severity: "HIGH"
+                    likely_reason: "No delivery scan recorded within the expected 48-hour window after SHIPPED status. Driver notes indicate two failed delivery attempts."
+                    internal_next_action: "Contact driver team to confirm order location. Escalate to logistics if unresolved within 4 hours."
+                    confidence_score: 0.87
+                    fallback_used: false
+                    prompt_template_version: "v1.2"
+                    evaluated_at: "2026-06-08T12:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/AIServiceUnavailable'
+
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Phase 2 auth endpoint
+
+  parameters:
+    OrderId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Unique order identifier
+      example: 1
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: ERROR
+            message: "Invalid input"
+            data: null
+            request_id: request_1
+
+    Unauthenticated:
+      description: Unauthenticated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: ERROR
+            message: "Unauthenticated"
+            data: null
+            request_id: request_1
+
+    Unauthorized:
+      description: Permission denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: ERROR
+            message: "Permision denied"
+            data: null
+            request_id: request_1
+
+    NotFound:
+      description: Data not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: ERROR
+            message: "Data not found"
+            data: null
+            request_id: request_1
+
+    AIServiceUnavailable:
+      description: AI Service unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: ERROR
+            message: "AI service unavailable"
+            data: null
+            request_id: request_1
+
+  schemas:
+    ExceptionAnalysisRequest:
+      type: object
+      properties:
+        notes:
+          type: string
+          maxLength: 500
+          description: Optional operator note to include in context (must not contain real PII)
+    
+    ExceptionAnalysisApiResponse:
+        type: object
+        required:
+            - status
+            - message
+            - data
+        properties:
+            status:
+                type: string
+                enum:
+                    - SUCCESS
+                example: SUCCESS
+            message:
+                type: string
+                example: Exception analysis completed successfully
+            # data:
+            #     $ref: '#/components/schemas/ExceptionAnalysisApiResponse'
+    ErrorResponse:
+        type: object
+        required:
+            - status
+            - message
+        properties:
+            status:
+                type: string
+                example: ERROR
+                enum:
+                    - ERROR
+            message:
+                type: string
+                example: Order not found
+            request_id:
+                type: string
+                example: request_1
+            data:
+                nullable: true
+                example: null
