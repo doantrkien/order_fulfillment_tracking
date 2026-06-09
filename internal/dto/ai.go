@@ -34,6 +34,14 @@ type ExceptionInput struct {
 	EventHistory    []EventRecord `json:"event_history"`
 }
 
+type ExceptionOutput struct {
+	Severity    string  `json:"severity"`
+	RootCause   string  `json:"root_cause"`
+	Suggestion  string  `json:"suggestion"`
+	ShouldAlert bool    `json:"should_alert"`
+	Confidence  float64 `json:"confidence"`
+}
+
 type ReportSummaryInput struct {
 	Date           string  `json:"date"`
 	TotalOrders    int64   `json:"total_orders"`
