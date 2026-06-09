@@ -273,11 +273,13 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 				db.Create(&tt.seedOrders)
 				if tt.token == driverToken {
 					driverID := int64(2)
+					driverNote := "assigned to driver"
 					db.Create(&models.OrderEvent{
 						OrderID:        1,
 						PreviousStatus: models.ORDER_STATUS_CREATED,
 						NewStatus:      models.ORDER_STATUS_CREATED,
 						DriverID:       &driverID,
+						DriverNote:     &driverNote,
 						UpdatedBy:      "driver@test.com",
 						EventAt:        time.Now(),
 					})
@@ -432,11 +434,13 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 				db.Create(&tt.order)
 				if tt.token == driverToken && tt.assignToDriver {
 					driverID := int64(2)
+					driverNote := "assigned to driver"
 					db.Create(&models.OrderEvent{
 						OrderID:        tt.order.ID,
 						PreviousStatus: models.ORDER_STATUS_CREATED,
 						NewStatus:      models.ORDER_STATUS_CREATED,
 						DriverID:       &driverID,
+						DriverNote:     &driverNote,
 						UpdatedBy:      "driver@test.com",
 						EventAt:        time.Now(),
 					})
