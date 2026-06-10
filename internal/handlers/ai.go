@@ -37,6 +37,10 @@ func NewAIHandler(aiService services.AIService) *AIHandler {
 // @Security BearerAuth
 // @Router /api/v1/ai/orders/{id}/exception-analysis [post]
 func (h *AIHandler) AnalyzeException(c fiber.Ctx) error {
+<<<<<<< HEAD
+=======
+	// 1. Parse order ID from path
+>>>>>>> 1772464 (fix: resolve merge conflicts and clean up AnalyzeException method)
 	orderID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil || orderID <= 0 {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
@@ -55,6 +59,7 @@ func (h *AIHandler) AnalyzeException(c fiber.Ctx) error {
 
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, result)
 }
+<<<<<<< HEAD
 
 func (h *AIHandler) GetLatestAnalysis(c fiber.Ctx) error {
 	orderID, err := strconv.ParseInt(c.Params("id"), 10, 64)
@@ -108,3 +113,5 @@ func (h *AIHandler) UpdateDraf(c fiber.Ctx) error {
 
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, result)
 }
+=======
+>>>>>>> 1772464 (fix: resolve merge conflicts and clean up AnalyzeException method)
