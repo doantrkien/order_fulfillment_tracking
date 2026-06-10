@@ -5,9 +5,11 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"time"
 	_ "time/tzdata"
 
 	"main/configs"
+	"main/internal/ai"
 	"main/internal/handlers"
 	"main/internal/repositories"
 	routers "main/internal/routers/v1"
@@ -65,7 +67,12 @@ func main() {
 	reportHandler := handlers.NewReportHandler(reportService)
 
 	aiRepo := repositories.NewAIRepository(db)
-	aiService := services.NewAIService(aiRepo)
+	aiConfig := configs.LoadAIConfig()
+	analyzer := ai.NewExceptionAnalyzer(nil, ai.ExceptionAnalyzerConfig{
+		AIEnabled: aiConfig.Enabled,
+		AITimeout: time.Duration(aiConfig.TimeoutMs) * time.Millisecond,
+	})
+	aiService := services.NewAIService(aiRepo, analyzer)
 	aiHandler := handlers.NewAIHandler(aiService)
 
 	routers.SetupAuthRouter(app, authHandler)

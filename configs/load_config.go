@@ -4,9 +4,28 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
+
+// AIConfig holds AI-related runtime configuration.
+type AIConfig struct {
+	Enabled   bool // Whether AI is enabled (default: true). Set AI_ENABLED=false to disable.
+	TimeoutMs int  // AI call timeout in milliseconds (default: 10000).
+}
+
+// LoadAIConfig reads AI configuration from environment variables.
+func LoadAIConfig() AIConfig {
+	enabled := os.Getenv("AI_ENABLED") != "false" // default: true
+	timeoutMs := 10000                             // default: 10 seconds
+	if v := os.Getenv("AI_TIMEOUT_MS"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			timeoutMs = parsed
+		}
+	}
+	return AIConfig{Enabled: enabled, TimeoutMs: timeoutMs}
+}
 
 func LoadConfig() error {
 	envFile := os.Getenv("ENV_FILE")
