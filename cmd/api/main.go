@@ -14,6 +14,7 @@ import (
 	"main/internal/repositories"
 	routers "main/internal/routers/v1"
 	"main/internal/services"
+	"main/pkg/gemini"
 	"main/pkg/postgresql"
 
 	_ "main/docs"
@@ -46,6 +47,11 @@ func main() {
 		BodyLimit: 50 * 1024 * 1024,
 	})
 
+	geminiClient, err := gemini.NewClient()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	accountRepo := repositories.NewAccountRepository(db)
 	authService := services.NewAuthService(accountRepo)
 	authHandler := handlers.NewAuthHandler(authService)
@@ -67,11 +73,16 @@ func main() {
 	reportHandler := handlers.NewReportHandler(reportService)
 
 	aiRepo := repositories.NewAIRepository(db)
+
 	aiConfig := configs.LoadAIConfig()
-	analyzer := ai.NewExceptionAnalyzer(nil, ai.ExceptionAnalyzerConfig{
+
+	geminiAdapter := ai.NewGeminiAdapter(geminiClient)
+	
+	analyzer := ai.NewExceptionAnalyzer(geminiAdapter, ai.ExceptionAnalyzerConfig{
 		AIEnabled: aiConfig.Enabled,
 		AITimeout: time.Duration(aiConfig.TimeoutMs) * time.Millisecond,
 	})
+
 	aiService := services.NewAIService(aiRepo, analyzer)
 	aiHandler := handlers.NewAIHandler(aiService)
 

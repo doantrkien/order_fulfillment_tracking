@@ -20,9 +20,6 @@ func NewAIHandler(aiService services.AIService) *AIHandler {
 	return &AIHandler{aiService: aiService}
 }
 
-// AnalyzeException handles POST /ai/orders/:id/exception-analysis.
-// This endpoint never returns 500 for AI failures — it gracefully
-// falls back to rule-based detection with fallback_used: true.
 func (h *AIHandler) AnalyzeException(c fiber.Ctx) error {
 	// 1. Parse order ID from path
 	orderID, err := strconv.ParseInt(c.Params("id"), 10, 64)

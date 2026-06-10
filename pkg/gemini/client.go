@@ -27,7 +27,7 @@ func NewClient() (*Client, error) {
 
 	modelName := os.Getenv("GEMINI_AI_MODEL")
 	if modelName == "" {
-		modelName = "gemini-2.5-flash"
+		modelName = "gemini-3.5-flash"
 	}
 
 	timeout := 10 * time.Second
