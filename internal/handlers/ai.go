@@ -38,6 +38,7 @@ func NewAIHandler(aiService services.AIService) *AIHandler {
 // @Security BearerAuth
 // @Router /api/v1/ai/orders/{id}/exception-analysis [post]
 func (h *AIHandler) AnalyzeException(c fiber.Ctx) error {
+	// 1. Parse order ID from path
 	orderID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil || orderID <= 0 {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
