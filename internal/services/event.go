@@ -166,12 +166,22 @@ func splitIntoBatches(orderGroups map[int64][]dto.ImportOrderEventRequest, numBa
 					loc,
 				).UTC()
 			}
+			var driverIDPtr *int64
+			if req.DriverID != 0 {
+				driverIDPtr = &req.DriverID
+			}
+			var driverNotePtr *string
+			if req.DriverNote != "" {
+				driverNotePtr = &req.DriverNote
+			}
+
 			batches[idx] = append(batches[idx], models.OrderEvent{
-				OrderID:   req.OrderID,
-				NewStatus: models.OrderStatus(req.Status),
-				UpdatedBy: req.UpdatedBy,
-				EventAt:   eventAt,
-				DriverID:  &req.DriverID,
+				OrderID:    req.OrderID,
+				NewStatus:  models.OrderStatus(req.Status),
+				UpdatedBy:  req.UpdatedBy,
+				EventAt:    eventAt,
+				DriverID:   driverIDPtr,
+				DriverNote: driverNotePtr,
 			})
 		}
 		i++
