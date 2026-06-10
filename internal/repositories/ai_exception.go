@@ -2,12 +2,11 @@ package repositories
 
 import (
 	"context"
-	"main/internal/models" // Đường dẫn của bạn
+	"main/internal/models"
 
 	"gorm.io/gorm"
 )
 
-// 1. Định nghĩa Interface (Thêm context và hàm Get)
 type AIRepository interface {
 	Save(ctx context.Context, aiException *models.AIException) error
 	GetLatestByOrderID(ctx context.Context, orderID int64) (*models.AIException, error)
@@ -18,31 +17,20 @@ type aiRepository struct {
 	db *gorm.DB
 }
 
-// 2. Constructor trả về Interface thay vì struct
 func NewAIRepository(db *gorm.DB) AIRepository {
-	return &aiRepository{
-		db: db,
-	}
+	return &aiRepository{db: db}
 }
 
-// 3. Hàm Save có sử dụng context
 func (r *aiRepository) Save(ctx context.Context, aiException *models.AIException) error {
-	// Thêm .WithContext(ctx) vào trước lệnh gọi DB
-	if err := r.db.WithContext(ctx).Create(aiException).Error; err != nil {
-		return err
-	}
-	return nil
+	return r.db.WithContext(ctx).Create(aiException).Error
 }
 
-// 4. Bổ sung hàm lấy kết quả AI mới nhất của một đơn hàng
 func (r *aiRepository) GetLatestByOrderID(ctx context.Context, orderID int64) (*models.AIException, error) {
 	var result models.AIException
-
 	err := r.db.WithContext(ctx).
 		Where("order_id = ?", orderID).
-		Order("evaluated_at DESC"). // Lấy cái mới nhất
+		Order("evaluated_at DESC").
 		First(&result).Error
-
 	if err != nil {
 		return nil, err
 	}
@@ -76,13 +64,13 @@ func (r *aiRepository) GetAIContextByOrderID(ctx context.Context, orderID int64)
 		})
 	}
 
-	ctxObj := &models.AIContext{
+	return &models.AIContext{
 		OrderID:       order.ID,
 		CreatedAt:     order.CreatedAt,
 		CurrentStatus: order.CurrentStatus,
 		TotalAmount:   order.TotalAmount,
+		PaymentStatus: models.DerivePaymentStatus(order.CurrentStatus),
+		RefundStatus:  models.DeriveRefundStatus(order.CurrentStatus),
 		Events:        aiEvents,
-	}
-
-	return ctxObj, nil
+	}, nil
 }
