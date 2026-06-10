@@ -15,6 +15,69 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/ai/orders/customer-update-draft": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate draft message for order exception using AI.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Generate draft message using AI",
+                "parameters": [
+                    {
+                        "description": "Generate draft message",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateDraftAPIRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ResponseStruct"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.UpdateDraftAPIResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ai/orders/{id}/exception-analysis": {
             "post": {
                 "security": [
@@ -999,6 +1062,49 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.UpdateDraftAPIRequest": {
+            "type": "object",
+            "properties": {
+                "channel": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "integer"
+                },
+                "tone": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdateDraftAPIResponse": {
+            "type": "object",
+            "properties": {
+                "confidence_score": {
+                    "type": "number"
+                },
+                "draft_message": {
+                    "type": "string"
+                },
+                "fallback_reason": {
+                    "type": "string"
+                },
+                "fallback_used": {
+                    "type": "boolean"
+                },
+                "generated_at": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "integer"
+                },
+                "prompt_template_version": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.UpdateStatusRequest": {
             "type": "object",
             "required": [
@@ -1138,8 +1244,8 @@ const docTemplate = `{
                     "$ref": "#/definitions/response.Pagination"
                 },
                 "status": {
-                    "type": "integer",
-                    "example": 200
+                    "type": "string",
+                    "example": "SUCCESS"
                 }
             }
         },
@@ -1168,7 +1274,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "type": "integer"
+                    "type": "string"
                 }
             }
         }

@@ -76,6 +76,18 @@ func (h *AIHandler) GetLatestAnalysis(c fiber.Ctx) error {
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, result)
 }
 
+// UpdateDraft godoc
+// @Summary Generate draft message using AI
+// @Description Generate draft message for order exception using AI.
+// @Tags AI
+// @Accept json
+// @Produce json
+// @Param request body dto.UpdateDraftAPIRequest true "Generate draft message"
+// @Success 200 {object} response.ResponseStruct{data=dto.UpdateDraftAPIResponse}
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse
+// @Security BearerAuth
+// @Router /api/v1/ai/orders/customer-update-draft [post]
 func (h *AIHandler) UpdateDraf(c fiber.Ctx) error {
 	var req dto.UpdateDraftAPIRequest
 	if err := c.Bind().Body(&req); err != nil {
@@ -86,13 +98,13 @@ func (h *AIHandler) UpdateDraf(c fiber.Ctx) error {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
-	// result, err := h.aiService.UpdateDraft(c.Context(), req)
-	// if err != nil {
-	// 	if errors.Is(err, errs.ERR_NOT_FOUND) {
-	// 		return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)
-	// 	}
-	// 	return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
-	// }
+	result, err := h.aiService.UpdateDraft(c.Context(), req)
+	if err != nil {
+		if errors.Is(err, errs.ERR_NOT_FOUND) {
+			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)
+		}
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
+	}
 
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, result)
 }

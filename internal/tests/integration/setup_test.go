@@ -141,7 +141,15 @@ func TestMain(m *testing.M) {
 		AIEnabled: true,
 		AITimeout: 5 * time.Second,
 	})
-	aiService := services.NewAIService(aiRepo, aiAnalyzer)
+
+	draftGenerator := ai.NewDraftGenerator(testFakeAIAdapter, ai.DraftGeneratorConfig{
+		AIEnabled: true,
+		AITimeout: 5 * time.Second,
+	})
+
+	aiDraftRepo := repositories.NewAIDraftRepository(db)
+
+	aiService := services.NewAIService(aiRepo, aiAnalyzer, draftGenerator, aiDraftRepo)
 	aiHandler := handlers.NewAIHandler(aiService)
 	routers.SetupAIRouter(app, aiHandler)
 

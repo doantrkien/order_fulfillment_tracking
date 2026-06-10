@@ -48,14 +48,6 @@ type ExceptionOutput struct {
 	Confidence         float64 `json:"confidence"`
 }
 
-type UpdateDraftAIInput struct {
-	OrderID         int64  `json:"order_id"`
-	Tone            string `json:"tone"`
-	Channel         string `json:"channel"`
-	CustomerName    string `json:"customer_name"`
-	ShippingAddress string `json:"shipping_address"`
-}
-
 type UpdateDraftAPIRequest struct {
 	OrderID int64  `json:"order_id"`
 	Tone    string `json:"tone"`
@@ -64,7 +56,7 @@ type UpdateDraftAPIRequest struct {
 
 type UpdateDraftAPIResponse struct {
 	OrderID               int64     `json:"order_id"`
-	DrafMessage           string    `json:"draft_message"`
+	DraftMessage          string    `json:"draft_message"`
 	Tone                  string    `json:"tone"`
 	ConfidenceScore       float64   `json:"confidence_score"`
 	FallbackUsed          bool      `json:"fallback_used"`

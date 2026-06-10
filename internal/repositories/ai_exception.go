@@ -10,7 +10,7 @@ import (
 
 type AIRepository interface {
 	Save(ctx context.Context, aiException *models.AIException) error
-	GetLatestByOrderID(ctx context.Context, orderID int64) (*models.AIException, error)
+	GetLatestAnalysisByOrderID(ctx context.Context, orderID int64) (*models.AIException, error)
 	GetAIContextByOrderID(ctx context.Context, orderID int64) (*models.AIContext, error)
 }
 
@@ -26,7 +26,7 @@ func (r *aiRepository) Save(ctx context.Context, aiException *models.AIException
 	return r.db.WithContext(ctx).Create(aiException).Error
 }
 
-func (r *aiRepository) GetLatestByOrderID(ctx context.Context, orderID int64) (*models.AIException, error) {
+func (r *aiRepository) GetLatestAnalysisByOrderID(ctx context.Context, orderID int64) (*models.AIException, error) {
 	var result models.AIException
 	err := r.db.WithContext(ctx).
 		Where("order_id = ?", orderID).
