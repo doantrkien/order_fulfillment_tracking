@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"main/errs"
@@ -28,6 +29,8 @@ func (g *GeminiAdapter) AnalyzeException(
 	ctx context.Context,
 	input dto.ExceptionInput,
 ) (dto.ExceptionOutput, error) {
+	fmt.Printf("[DEBUG][adapter.AnalyzeException] Called for OrderID: %v, CurrentStatus: %q\n", input.OrderID, input.CurrentStatus)
+
 	timeline := make([]EventTimelineEntry, 0, len(input.EventHistory))
 	for _, e := range input.EventHistory {
 		timeline = append(timeline, EventTimelineEntry{
@@ -47,17 +50,22 @@ func (g *GeminiAdapter) AnalyzeException(
 	SanitizePromptContext(&promptCtx)
 
 	prompt := BuildExceptionAnalysisPrompt(promptCtx)
+	fmt.Printf("[DEBUG][adapter.AnalyzeException] Built prompt (len=%d)\n", len(prompt))
 
 	rawText, err := g.client.GenerateContent(ctx, prompt)
 	if err != nil {
+		fmt.Printf("[DEBUG][adapter.AnalyzeException] GenerateContent error: %v\n", err)
 		return dto.ExceptionOutput{}, errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
 	}
+	fmt.Printf("[DEBUG][adapter.AnalyzeException] Raw AI response (len=%d): %s\n", len(rawText), rawText)
 
 	validated, err := ParseAndValidateAIOutput(rawText)
 	if err != nil {
+		fmt.Printf("[DEBUG][adapter.AnalyzeException] ParseAndValidateAIOutput error: %v\n", err)
 		return dto.ExceptionOutput{}, errs.ERR_AI_RESPONSE_VALIDATION_FAILED
 	}
 
+	fmt.Printf("[DEBUG][adapter.AnalyzeException] Parsed OK — Severity: %q, Confidence: %v\n", validated.Severity, validated.ConfidenceScore)
 	return dto.ExceptionOutput{
 		Severity:   validated.Severity,
 		RootCause:  validated.LikelyReason,
@@ -92,10 +100,13 @@ func (g *GeminiAdapter) SummarizeReport(
 }
 
 func (g *GeminiAdapter) Ping(ctx context.Context) error {
+	fmt.Println("[DEBUG][adapter.Ping] Sending ping to Gemini...")
 	_, err := g.client.GenerateContent(ctx, "ping")
 	if err != nil {
+		fmt.Printf("[DEBUG][adapter.Ping] Ping FAILED: %v\n", err)
 		return errs.ERR_AI_PING_FAILED
 	}
+	fmt.Println("[DEBUG][adapter.Ping] Ping OK")
 	return nil
 }
 
