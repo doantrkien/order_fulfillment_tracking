@@ -14,7 +14,7 @@ import (
 	"main/internal/repositories"
 	routers "main/internal/routers/v1"
 	"main/internal/services"
-	"main/pkg/gemini"
+	"main/pkg/aiclient"
 	"main/pkg/postgresql"
 
 	_ "main/docs"
@@ -47,9 +47,9 @@ func main() {
 		BodyLimit: 50 * 1024 * 1024,
 	})
 
-	geminiClient, err := gemini.NewClient()
+	aiClient, err := aiclient.NewFromEnv()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Cannot initialise AI client: %v", err)
 	}
 
 	accountRepo := repositories.NewAccountRepository(db)
@@ -76,9 +76,9 @@ func main() {
 
 	aiConfig := configs.LoadAIConfig()
 
-	geminiAdapter := ai.NewGeminiAdapter(geminiClient)
-	
-	analyzer := ai.NewExceptionAnalyzer(geminiAdapter, ai.ExceptionAnalyzerConfig{
+	aiAdapter := ai.NewAIAdapter(aiClient)
+
+	analyzer := ai.NewExceptionAnalyzer(aiAdapter, ai.ExceptionAnalyzerConfig{
 		AIEnabled: aiConfig.Enabled,
 		AITimeout: time.Duration(aiConfig.TimeoutMs) * time.Millisecond,
 	})

@@ -8,7 +8,7 @@ import (
 
 	"main/errs"
 	"main/internal/dto"
-	"main/pkg/gemini"
+	"main/pkg/aiclient"
 )
 
 type AIAdapter interface {
@@ -17,15 +17,15 @@ type AIAdapter interface {
 	Ping(ctx context.Context) error
 }
 
-type GeminiAdapter struct {
-	client *gemini.Client
+type aiAdapter struct {
+	client aiclient.AIClient
 }
 
-func NewGeminiAdapter(client *gemini.Client) *GeminiAdapter {
-	return &GeminiAdapter{client: client}
+func NewAIAdapter(client aiclient.AIClient) *aiAdapter {
+	return &aiAdapter{client: client}
 }
 
-func (g *GeminiAdapter) AnalyzeException(
+func (g *aiAdapter) AnalyzeException(
 	ctx context.Context,
 	input dto.ExceptionInput,
 ) (string, error) {
@@ -76,7 +76,7 @@ func (g *GeminiAdapter) AnalyzeException(
 	return rawText, nil
 }
 
-func (g *GeminiAdapter) SummarizeReport(
+func (g *aiAdapter) SummarizeReport(
 	ctx context.Context,
 	input dto.ExceptionOutput,
 ) (dto.ReportSummaryOutput, error) {
@@ -101,7 +101,7 @@ func (g *GeminiAdapter) SummarizeReport(
 	return output, nil
 }
 
-func (g *GeminiAdapter) Ping(ctx context.Context) error {
+func (g *aiAdapter) Ping(ctx context.Context) error {
 	fmt.Println("[DEBUG][adapter.Ping] Sending ping to Gemini...")
 	_, err := g.client.GenerateContent(ctx, "ping")
 	if err != nil {
