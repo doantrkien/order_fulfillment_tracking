@@ -7,10 +7,18 @@ import (
 )
 
 type AIExceptionRawOutput struct {
+	// ExceptionType      string  `json:"exception_type"`
+	// Severity           string  `json:"severity"`
+	// LikelyReason       string  `json:"likely_reason"`
+	// InternalNextAction string  `json:"internal_next_action"`
+	// ShouldAlert        bool    `json:"should_alert"`
+	// ConfidenceScore    float64 `json:"confidence_score"`
 	ExceptionType      string  `json:"exception_type"`
 	Severity           string  `json:"severity"`
 	LikelyReason       string  `json:"likely_reason"`
 	InternalNextAction string  `json:"internal_next_action"`
+	Suggestion         string  `json:"suggestion"`
+	ShouldAlert        bool    `json:"should_alert"`
 	ConfidenceScore    float64 `json:"confidence_score"`
 }
 
@@ -64,17 +72,19 @@ func ParseAndValidateAIOutput(rawResponse string) (*AIExceptionRawOutput, error)
 
 	if output.LikelyReason == "" {
 		violations = append(violations, "likely_reason is required and cannot be empty")
-	} else if len(output.LikelyReason) > 200 {
-		violations = append(violations,
-			fmt.Sprintf("likely_reason exceeds 200 characters (got %d)", len(output.LikelyReason)))
 	}
+	// } else if len(output.LikelyReason) > 200 {
+	// 	violations = append(violations,
+	// 		fmt.Sprintf("likely_reason exceeds 200 characters (got %d)", len(output.LikelyReason)))
+	// }
 
 	if output.InternalNextAction == "" {
 		violations = append(violations, "internal_next_action is required and cannot be empty")
-	} else if len(output.InternalNextAction) > 200 {
-		violations = append(violations,
-			fmt.Sprintf("internal_next_action exceeds 200 characters (got %d)", len(output.InternalNextAction)))
 	}
+	// } else if len(output.InternalNextAction) > 200 {
+	// 	violations = append(violations,
+	// 		fmt.Sprintf("internal_next_action exceeds 200 characters (got %d)", len(output.InternalNextAction)))
+	// }
 
 	if output.ConfidenceScore < 0.0 || output.ConfidenceScore > 1.0 {
 		violations = append(violations,

@@ -72,10 +72,12 @@ func NewClient() (*Client, error) {
 	genaiClient, err := genai.NewClient(ctx, &genai.ClientConfig{
 		APIKey: apiKey,
 	})
+
 	if err != nil {
 		fmt.Printf("[DEBUG][gemini.NewClient] ERROR creating genai client: %v\n", err)
 		return nil, errs.ERR_GEMINI_CLIENT_CREATE_FAILED
 	}
+
 	fmt.Println("[DEBUG][gemini.NewClient] genai client created successfully")
 
 	return &Client{
@@ -106,9 +108,6 @@ func (c *Client) GenerateContent(
 
 	for attempt := 0; attempt <= c.retryLimit; attempt++ {
 		fmt.Printf("[DEBUG][gemini.GenerateContent] Attempt %d/%d, timeout: %v\n", attempt+1, c.retryLimit+1, c.timeout)
-
-		// Use context.Background() as base so a cancelled parent ctx
-		// (e.g. HTTP request timeout) doesn't kill retry attempts.
 		timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 
 		resp, err := c.genaiClient.Models.GenerateContent(

@@ -43,12 +43,15 @@ func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes s
 	if err != nil {
 		return nil, fmt.Errorf("analyzer error: %w", err)
 	}
+	fmt.Printf("[Debug Service] Analyzed exception result: %+v\n", result)
 
 	// 3. Persist the result to the database
 	exception := mapResultToModel(orderID, result)
 	if saveErr := s.aiRepo.Save(ctx, exception); saveErr != nil {
 		return nil, fmt.Errorf("failed to save AI result: %w", saveErr)
 	}
+
+	// fmt.Printf("[Debug Service] Analyzed exception for order %+v\n", exception)
 
 	// 4. Map to response DTO
 	return mapToResponse(exception), nil

@@ -12,7 +12,7 @@ import (
 )
 
 type AIAdapter interface {
-	AnalyzeException(ctx context.Context, input dto.ExceptionInput) (dto.ExceptionOutput, error)
+	AnalyzeException(ctx context.Context, input dto.ExceptionInput) (string, error)
 	SummarizeReport(ctx context.Context, input dto.ExceptionOutput) (dto.ReportSummaryOutput, error)
 	Ping(ctx context.Context) error
 }
@@ -28,9 +28,7 @@ func NewGeminiAdapter(client *gemini.Client) *GeminiAdapter {
 func (g *GeminiAdapter) AnalyzeException(
 	ctx context.Context,
 	input dto.ExceptionInput,
-) (dto.ExceptionOutput, error) {
-	fmt.Printf("[DEBUG][adapter.AnalyzeException] Called for OrderID: %v, CurrentStatus: %q\n", input.OrderID, input.CurrentStatus)
-
+) (string, error) {
 	timeline := make([]EventTimelineEntry, 0, len(input.EventHistory))
 	for _, e := range input.EventHistory {
 		timeline = append(timeline, EventTimelineEntry{
@@ -55,23 +53,27 @@ func (g *GeminiAdapter) AnalyzeException(
 	rawText, err := g.client.GenerateContent(ctx, prompt)
 	if err != nil {
 		fmt.Printf("[DEBUG][adapter.AnalyzeException] GenerateContent error: %v\n", err)
-		return dto.ExceptionOutput{}, errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
+		return "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
 	}
+
 	fmt.Printf("[DEBUG][adapter.AnalyzeException] Raw AI response (len=%d): %s\n", len(rawText), rawText)
 
-	validated, err := ParseAndValidateAIOutput(rawText)
-	if err != nil {
-		fmt.Printf("[DEBUG][adapter.AnalyzeException] ParseAndValidateAIOutput error: %v\n", err)
-		return dto.ExceptionOutput{}, errs.ERR_AI_RESPONSE_VALIDATION_FAILED
-	}
+	// validated, err := ParseAndValidateAIOutput(rawText)
+	// if err != nil {
+	// 	fmt.Printf("[DEBUG][adapter.AnalyzeException] ParseAndValidateAIOutput error: %v\n", err)
+	// 	return "", errs.ERR_AI_RESPONSE_VALIDATION_FAILED
+	// }
 
-	fmt.Printf("[DEBUG][adapter.AnalyzeException] Parsed OK — Severity: %q, Confidence: %v\n", validated.Severity, validated.ConfidenceScore)
-	return dto.ExceptionOutput{
-		Severity:   validated.Severity,
-		RootCause:  validated.LikelyReason,
-		Suggestion: validated.InternalNextAction,
-		Confidence: validated.ConfidenceScore,
-	}, nil
+	// return dto.ExceptionOutput{
+	// 	ExceptionType:      "",
+	// 	Severity:           "",
+	// 	LikelyReason:       "",
+	// 	InternalNextAction: "",
+	// 	Suggestion:         "",
+	// 	Confidence:         0,
+	// }, nil
+
+	return rawText, nil
 }
 
 func (g *GeminiAdapter) SummarizeReport(

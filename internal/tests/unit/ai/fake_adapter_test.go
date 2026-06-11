@@ -14,11 +14,11 @@ import (
 
 func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 	expectedOutput := dto.ExceptionOutput{
-		Severity:    "HIGH",
-		RootCause:   "Traffic congestion in metropolitan area",
-		Suggestion:  "Assign backup driver",
-		ShouldAlert: true,
-		Confidence:  0.95,
+		Severity:     "HIGH",
+		LikelyReason: "Traffic congestion in metropolitan area",
+		Suggestion:   "Assign backup driver",
+		ShouldAlert:  true,
+		Confidence:   0.95,
 	}
 
 	expectedSummary := dto.ReportSummaryOutput{
@@ -52,8 +52,8 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 			assertOut: func(t *testing.T, output dto.ExceptionOutput) {
 				assert.Equal(t, expectedOutput.Severity, output.Severity)
 				assert.Equal(t, expectedOutput.Confidence, output.Confidence)
-				t.Logf("[HAPPY PATH OUTPUT] Severity: %s, RootCause: %s, Suggestion: %s, Confidence: %.2f",
-					output.Severity, output.RootCause, output.Suggestion, output.Confidence)
+				t.Logf("[HAPPY PATH OUTPUT] Severity: %s, LikelyReason: %s, Suggestion: %s, Confidence: %.2f",
+					output.Severity, output.LikelyReason, output.Suggestion, output.Confidence)
 			},
 		},
 		{

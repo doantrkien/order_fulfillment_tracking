@@ -35,11 +35,13 @@ type ExceptionInput struct {
 }
 
 type ExceptionOutput struct {
-	Severity    string  `json:"severity"`
-	RootCause   string  `json:"root_cause"`
-	Suggestion  string  `json:"suggestion"`
-	ShouldAlert bool    `json:"should_alert"`
-	Confidence  float64 `json:"confidence"`
+	ExceptionType      string  `json:"exception_type"`
+	Severity           string  `json:"severity"`
+	LikelyReason       string  `json:"likely_reason"`
+	InternalNextAction string  `json:"internal_next_action"`
+	Suggestion         string  `json:"suggestion"`
+	ShouldAlert        bool    `json:"should_alert"`
+	Confidence         float64 `json:"confidence"`
 }
 
 type ReportSummaryInput struct {

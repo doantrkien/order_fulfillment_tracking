@@ -85,6 +85,7 @@ func AnalyzeByRules(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
 // detectInvalidTransitions checks if any event in the timeline has
 // a from→to transition that is not in the valid transitions map.
 func detectInvalidTransitions(events []models.AIEvent) *RuleBasedResult {
+	fmt.Printf("[DEBUG][detectInvalidTransitions] Checking events for invalid transitions\n", events)
 	for _, e := range events {
 		if !models.IsValidTransition(e.PreviousStatus, e.NewStatus) {
 			return &RuleBasedResult{

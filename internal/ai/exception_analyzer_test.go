@@ -14,11 +14,11 @@ import (
 
 // mockAdapter implements AIAdapter for testing.
 type mockAdapter struct {
-	output dto.ExceptionOutput
+	output string
 	err    error
 }
 
-func (m *mockAdapter) AnalyzeException(_ context.Context, _ dto.ExceptionInput) (dto.ExceptionOutput, error) {
+func (m *mockAdapter) AnalyzeException(_ context.Context, _ dto.ExceptionInput) (string, error) {
 	return m.output, m.err
 }
 
@@ -102,12 +102,12 @@ func TestExceptionAnalyzer_AIReturnsInvalidResponse(t *testing.T) {
 	// The adapter returns data that won't pass schema validation
 	// (missing required fields, invalid exception_type, etc.)
 	adapter := &mockAdapter{
-		output: dto.ExceptionOutput{
-			Severity:   "INVALID_SEVERITY",
-			RootCause:  "",
-			Suggestion: "",
-			Confidence: 0.9,
-		},
+		output: `{
+			"severity": "INVALID_SEVERITY",
+			"likely_reason": "",
+			"suggestion": "",
+			"confidence_score": 0.9
+		}`,
 	}
 	analyzer := NewExceptionAnalyzer(adapter, ExceptionAnalyzerConfig{
 		AIEnabled: true,
@@ -126,12 +126,12 @@ func TestExceptionAnalyzer_AIReturnsInvalidResponse(t *testing.T) {
 func TestExceptionAnalyzer_AIReturnsLowConfidence(t *testing.T) {
 	// Valid schema but confidence below threshold (0.6)
 	adapter := &mockAdapter{
-		output: dto.ExceptionOutput{
-			Severity:   "HIGH",
-			RootCause:  "Some reason that is valid",
-			Suggestion: "Some suggestion that is valid",
-			Confidence: 0.3, // Below threshold
-		},
+		output: `{
+			"severity": "HIGH",
+			"likely_reason": "Some reason that is valid",
+			"suggestion": "Some suggestion that is valid",
+			"confidence_score": 0.3
+		}`,
 	}
 	analyzer := NewExceptionAnalyzer(adapter, ExceptionAnalyzerConfig{
 		AIEnabled: true,
