@@ -60,19 +60,19 @@ var lifecycleOrder = []models.OrderStatus{
 // Returns nil if no exception is detected.
 func AnalyzeByRules(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
 	// Priority 1: Invalid transitions (CRITICAL)
-	if r := detectInvalidTransitions(aiCtx.Events); r != nil {
-		return r
-	}
+	// if r := detectInvalidTransitions(aiCtx.Events); r != nil {
+	// 	return r
+	// }
 
 	// Priority 2: Duplicate events (LOW)
-	if r := detectDuplicateEvents(aiCtx.Events); r != nil {
-		return r
-	}
+	// if r := detectDuplicateEvents(aiCtx.Events); r != nil {
+	// 	return r
+	// }
 
 	// Priority 3: Skipped statuses (HIGH)
-	if r := detectSkippedStatuses(aiCtx.Events); r != nil {
-		return r
-	}
+	// if r := detectSkippedStatuses(aiCtx.Events); r != nil {
+	// 	return r
+	// }
 
 	// Priority 4: Stuck order (severity varies by age)
 	if r := detectStuckOrder(aiCtx, now); r != nil {
@@ -85,8 +85,12 @@ func AnalyzeByRules(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
 // detectInvalidTransitions checks if any event in the timeline has
 // a from→to transition that is not in the valid transitions map.
 func detectInvalidTransitions(events []models.AIEvent) *RuleBasedResult {
-	fmt.Printf("[DEBUG][detectInvalidTransitions] Checking events for invalid transitions\n", events)
+	// fmt.Printf("[DEBUG][detectInvalidTransitions] Checking events for invalid transitions\n", events)
 	for _, e := range events {
+		if e.NewStatus == models.ORDER_STATUS_CREATED {
+			continue
+		}
+		fmt.Printf("[DEBUG][detectInvalidTransitions] Validating event: from '%s' to '%s'\n", e.PreviousStatus, e.NewStatus)
 		if !models.IsValidTransition(e.PreviousStatus, e.NewStatus) {
 			return &RuleBasedResult{
 				ExceptionType:      "INVALID_TRANSITION",

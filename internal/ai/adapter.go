@@ -50,7 +50,7 @@ func (g *aiAdapter) AnalyzeException(
 	SanitizePromptContext(&promptCtx)
 
 	prompt := BuildExceptionAnalysisPrompt(promptCtx)
-	fmt.Printf("[DEBUG][adapter.AnalyzeException] Built prompt (len=%d)\n", len(prompt))
+	// fmt.Printf("[DEBUG][adapter.AnalyzeException] Built prompt (len=%d)\n", len(prompt))
 
 	rawText, err := g.client.GenerateContent(ctx, prompt)
 	if err != nil {
@@ -58,7 +58,7 @@ func (g *aiAdapter) AnalyzeException(
 		return "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
 	}
 
-	fmt.Printf("[DEBUG][adapter.AnalyzeException] Raw AI response (len=%d): %s\n", len(rawText), rawText)
+	// fmt.Printf("[DEBUG][adapter.AnalyzeException] Raw AI response (len=%d): %s\n", len(rawText), rawText)
 
 	// validated, err := ParseAndValidateAIOutput(rawText)
 	// if err != nil {

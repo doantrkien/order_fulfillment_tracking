@@ -66,7 +66,7 @@ func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContex
 
 	// Step 1: Check if AI is disabled
 	if !ea.config.AIEnabled {
-		return ea.fallback(FallbackReasonDisabled, 0, now), nil
+		return ea.fallback(aiCtx, FallbackReasonDisabled, 0, now), nil
 	}
 
 	// Step 2: Build input and call AI adapter with timeout
@@ -79,14 +79,14 @@ func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContex
 	aiOutput, err := ea.adapter.AnalyzeException(aiCtxTimeout, input)
 	durationMs := int(time.Since(start).Milliseconds())
 
-	fmt.Printf("[DEBUG][ExceptionAnalyzer.Analyze] Analyzer result: %+v, error: %v\n", aiOutput, err)
+	// fmt.Printf("[DEBUG][ExceptionAnalyzer.Analyze] Analyzer result: %+v, error: %v\n", aiOutput, err)
 
 	// Step 3: Handle AI call errors (timeout, connection, etc.)
 	if err != nil {
 		fmt.Printf("[DEBUG][ExceptionAnalyzer.Analyze] AI adapter error: %v\n", err)
 		reason := ClassifyError(err)
 		fmt.Printf("[DEBUG][ExceptionAnalyzer.Analyze] Classified error as: %s\n", reason)
-		return ea.fallback(reason, durationMs, now), nil
+		return ea.fallback(aiCtx, reason, durationMs, now), nil
 	}
 
 	// Step 4: Validate response by marshaling back to JSON and running schema validation
@@ -101,13 +101,13 @@ func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContex
 	validated, validationErr := ParseAndValidateAIOutput(rawStr)
 	if validationErr != nil {
 		fmt.Printf("[DEBUG][ExceptionAnalyzer.Analyze] AI output validation error: %v\n", validationErr)
-		return ea.fallback(FallbackReasonInvalidResponse, durationMs, now), nil
+		return ea.fallback(aiCtx, FallbackReasonInvalidResponse, durationMs, now), nil
 	}
 
 	// Step 5: Check confidence threshold
 	if shouldFallback, _ := ShouldFallback(validated); shouldFallback {
 		fmt.Printf("[DEBUG][ExceptionAnalyzer.Analyze] AI output below confidence threshold: %v\n", validationErr)
-		return ea.fallback(FallbackReasonLowConfidence, durationMs, now), nil
+		return ea.fallback(aiCtx, FallbackReasonLowConfidence, durationMs, now), nil
 	}
 
 	// fmt.Printf("[DEBUG][ExceptionAnalyzer.Analyze] AI analysis successful with confidence %.2f\n", validated.ConfidenceScore)
@@ -125,19 +125,19 @@ func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContex
 }
 
 // fallback runs the rule-based analyzer and wraps the result.
-func (ea *ExceptionAnalyzer) fallback(reason string, durationMs int, now time.Time) *AnalysisResult {
-	// return ea.fallbackWithRaw(aiCtx, reason, durationMs, "", now)
-	return &AnalysisResult{
-		ExceptionType:      "OTHER",
-		Severity:           "LOW",
-		LikelyReason:       "No specific exception detected by rule-based analysis",
-		InternalNextAction: "No action required. Monitor the order for further changes.",
-		ConfidenceScore:    1.0,
-		FallbackUsed:       true,
-		FallbackReason:     reason,
-		DurationMs:         durationMs,
-		// RawResponse:        rawResponse,
-	}
+func (ea *ExceptionAnalyzer) fallback(aiCtx *models.AIContext, reason string, durationMs int, now time.Time) *AnalysisResult {
+	return ea.fallbackWithRaw(aiCtx, reason, durationMs, "", now)
+	// return &AnalysisResult{
+	// 	ExceptionType:      "OTHER",
+	// 	Severity:           "LOW",
+	// 	LikelyReason:       "No specific exception detected by rule-based analysis",
+	// 	InternalNextAction: "No action required. Monitor the order for further changes.",
+	// 	ConfidenceScore:    1.0,
+	// 	FallbackUsed:       true,
+	// 	FallbackReason:     reason,
+	// 	DurationMs:         durationMs,
+	// 	// RawResponse:        rawResponse,
+	// }
 }
 
 // fallbackWithRaw runs the rule-based analyzer, preserving the raw AI response for audit.
