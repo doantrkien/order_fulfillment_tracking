@@ -239,8 +239,12 @@ func TestExceptionAnalyzer_NeverReturnsError_ForAIFailures(t *testing.T) {
 func TestBuildExceptionInput(t *testing.T) {
 	now := time.Now()
 	aiCtx := &models.AIContext{
-		OrderID:       42,
-		CurrentStatus: models.ORDER_STATUS_SHIPPED,
+		OrderID:         42,
+		CurrentStatus:   models.ORDER_STATUS_SHIPPED,
+		TotalAmount:     1000,
+		CustomerName:    "Test",
+		ShippingAddress: "123 St",
+		CreatedAt:       now,
 		Events: []models.AIEvent{
 			{
 				EventAt:        now,
@@ -255,6 +259,10 @@ func TestBuildExceptionInput(t *testing.T) {
 
 	assert.Equal(t, int64(42), input.OrderID)
 	assert.Equal(t, "shipped", input.CurrentStatus)
+	assert.Equal(t, int64(1000), input.TotalAmount)
+	assert.Equal(t, "Test", input.CustomerName)
+	assert.Equal(t, "123 St", input.ShippingAddress)
+	assert.Equal(t, now.Format(time.RFC3339), input.CreatedAt)
 	assert.Equal(t, "customer complained", input.ErrorMessage)
 	assert.Len(t, input.EventHistory, 1)
 	assert.Equal(t, "packed", input.EventHistory[0].FromStatus)

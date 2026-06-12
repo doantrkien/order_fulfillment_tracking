@@ -41,11 +41,15 @@ func (g *aiAdapter) AnalyzeException(
 	}
 
 	promptCtx := ExceptionPromptContext{
-		OrderID:       input.OrderID,
-		CurrentStatus: input.CurrentStatus,
-		DriverNotes:   input.ErrorMessage,
-		EventTimeline: timeline,
-		AnalyzedAt:    time.Now().Format(time.RFC3339),
+		OrderID:         input.OrderID,
+		CurrentStatus:   input.CurrentStatus,
+		TotalAmount:     input.TotalAmount,
+		CustomerName:    input.CustomerName,
+		ShippingAddress: input.ShippingAddress,
+		CreatedAt:       input.CreatedAt,
+		DriverNotes:     input.ErrorMessage,
+		EventTimeline:   timeline,
+		AnalyzedAt:      time.Now().Format(time.RFC3339),
 	}
 	SanitizePromptContext(&promptCtx)
 

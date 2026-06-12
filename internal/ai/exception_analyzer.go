@@ -101,7 +101,7 @@ func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContex
 	validated, validationErr := ParseAndValidateAIOutput(rawStr)
 	if validationErr != nil {
 		fmt.Printf("[DEBUG][ExceptionAnalyzer.Analyze] AI output validation error: %v\n", validationErr)
-		return ea.fallback(aiCtx, FallbackReasonInvalidResponse, durationMs, now), nil
+		return ea.fallbackWithRaw(aiCtx, FallbackReasonInvalidResponse, durationMs, rawStr, now), nil
 	}
 
 	// Step 5: Check confidence threshold
@@ -186,10 +186,14 @@ func buildExceptionInput(aiCtx *models.AIContext, notes string) dto.ExceptionInp
 	}
 
 	return dto.ExceptionInput{
-		OrderID:       aiCtx.OrderID,
-		CurrentStatus: string(aiCtx.CurrentStatus),
-		ErrorMessage:  notes,
-		EventHistory:  eventHistory,
+		OrderID:         aiCtx.OrderID,
+		CurrentStatus:   string(aiCtx.CurrentStatus),
+		TotalAmount:     aiCtx.TotalAmount,
+		CustomerName:    aiCtx.CustomerName,
+		ShippingAddress: aiCtx.ShippingAddress,
+		CreatedAt:       aiCtx.CreatedAt.Format(time.RFC3339),
+		ErrorMessage:    notes,
+		EventHistory:    eventHistory,
 	}
 }
 

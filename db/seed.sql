@@ -16,11 +16,11 @@ BEGIN
     
     -- Insert admin_demo
     INSERT INTO accounts (username, email, password, role)
-    VALUES ('admin_demo', 'admin@demo.com', '$2a$10$q.GA5YzP/E..uN5vJQekk.p69YadgIshe5GvvnTr48jVB.oyMSHt2', 'admin');
+    VALUES ('admin_demo', 'admin@demo.com', '$2a$10$w/lW8qT/51/AwaF877oIL.k9wykL.PMMDe1kFQpfmpQeW0I2URgIi', 'admin');
 
     -- Insert driver_demo and get its ID
     INSERT INTO accounts (username, email, password, role)
-    VALUES ('driver_demo', 'driver@demo.com', '$2a$10$SnvlwGCRvI8QuUaps9Z2I.Um3QDNQlU/VvSnG84OqhC5UIwaTdU.C', 'driver')
+    VALUES ('driver_demo', 'driver@demo.com', '$2a$10$w/lW8qT/51/AwaF877oIL.k9wykL.PMMDe1kFQpfmpQeW0I2URgIi', 'driver')
     RETURNING id INTO driver_user_id;
 
     RAISE NOTICE 'Start seed 1,000,000 orders and events...';

@@ -29,7 +29,10 @@ type EventRecord struct {
 type ExceptionInput struct {
 	OrderID         int64         `json:"order_id"`
 	CurrentStatus   string        `json:"current_status"`
-	AttemptedStatus string        `json:"attempted_status"`
+	TotalAmount     int64         `json:"total_amount"`
+	CustomerName    string        `json:"customer_name"`
+	ShippingAddress string        `json:"shipping_address"`
+	CreatedAt       string        `json:"created_at"`
 	ErrorMessage    string        `json:"error_message"`
 	EventHistory    []EventRecord `json:"event_history"`
 }

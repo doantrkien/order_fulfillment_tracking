@@ -30,7 +30,10 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 	input := dto.ExceptionInput{
 		OrderID:         12345,
 		CurrentStatus:   "shipped",
-		AttemptedStatus: "delivered",
+		TotalAmount:     500000,
+		CustomerName:    "John Doe",
+		ShippingAddress: "123 Main St",
+		CreatedAt:       "2023-10-27T10:00:00Z",
 		ErrorMessage:    "Driver got stuck in traffic",
 		EventHistory:    nil,
 	}

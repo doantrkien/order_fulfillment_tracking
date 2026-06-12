@@ -19,10 +19,12 @@ type AIContext struct {
 	OrderID       int64       `json:"order_id"`
 	CreatedAt     time.Time   `json:"created_at"`
 	CurrentStatus OrderStatus `json:"current_status"`
-	TotalAmount   int64       `json:"total_amount"`
-	PaymentStatus string      `json:"payment_status"`          // derived: "paid" | "pending" | "refunded"
-	RefundStatus  *string     `json:"refund_status,omitempty"` // non-nil chỉ khi status = refunded
-	Events        []AIEvent   `json:"events"`
+	TotalAmount     int64       `json:"total_amount"`
+	CustomerName    string      `json:"customer_name"`
+	ShippingAddress string      `json:"shipping_address"`
+	PaymentStatus   string      `json:"payment_status"`          // derived: "paid" | "pending" | "refunded"
+	RefundStatus    *string     `json:"refund_status,omitempty"` // non-nil chỉ khi status = refunded
+	Events          []AIEvent   `json:"events"`
 }
 
 // DerivePaymentStatus suy ra trạng thái thanh toán từ CurrentStatus.
