@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"main/errs"
 	"main/internal/dto"
@@ -44,6 +45,7 @@ func (g *aiAdapter) AnalyzeException(
 		CurrentStatus: input.CurrentStatus,
 		DriverNotes:   input.ErrorMessage,
 		EventTimeline: timeline,
+		AnalyzedAt:    time.Now().Format(time.RFC3339),
 	}
 	SanitizePromptContext(&promptCtx)
 

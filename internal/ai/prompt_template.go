@@ -24,6 +24,7 @@ type ExceptionPromptContext struct {
 	CustomerName    string
 	ShippingAddress string
 	CreatedAt       string
+	AnalyzedAt      string // Current timestamp so LLM can detect stuck orders
 	EventTimeline   []EventTimelineEntry
 	DriverNotes     string
 }
@@ -70,6 +71,7 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext) string {
 	sb.WriteString(fmt.Sprintf("Customer Name: %s\n", ctx.CustomerName))
 	sb.WriteString(fmt.Sprintf("Shipping Address: %s\n", ctx.ShippingAddress))
 	sb.WriteString(fmt.Sprintf("Order Created At: %s\n", ctx.CreatedAt))
+	sb.WriteString(fmt.Sprintf("Analysis Timestamp (now): %s\n", ctx.AnalyzedAt))
 	sb.WriteString("\n")
 
 	// Event timeline
