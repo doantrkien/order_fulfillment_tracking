@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"main/errs"
 	"main/internal/ai"
@@ -75,7 +76,16 @@ func mapResultToModel(orderID int64, result *ai.AnalysisResult) *models.AIExcept
 
 	var rawResponse datatypes.JSON
 	if result.RawResponse != "" {
-		rawResponse = datatypes.JSON(result.RawResponse)
+		// Ensure rawResponse is valid JSON before saving to DB JSONB column
+		var js interface{}
+		if err := json.Unmarshal([]byte(result.RawResponse), &js); err == nil {
+			rawResponse = datatypes.JSON(result.RawResponse)
+		} else {
+			// If not valid JSON, serialize the raw string into a JSON string format
+			if bytes, marshalErr := json.Marshal(result.RawResponse); marshalErr == nil {
+				rawResponse = datatypes.JSON(bytes)
+			}
+		}
 	}
 
 	return &models.AIException{
@@ -96,6 +106,10 @@ func mapResultToModel(orderID int64, result *ai.AnalysisResult) *models.AIExcept
 
 // mapToResponse converts the database model to the API response DTO.
 func mapToResponse(e *models.AIException) *dto.AnalyzeExceptionResponse {
+	fallbackReason := ""
+	if e.FallbackReason != nil {
+		fallbackReason = *e.FallbackReason
+	}
 	return &dto.AnalyzeExceptionResponse{
 		ResultID:              fmt.Sprintf("res-%d", e.ID),
 		OrderID:               fmt.Sprintf("%d", e.OrderID),
@@ -105,6 +119,7 @@ func mapToResponse(e *models.AIException) *dto.AnalyzeExceptionResponse {
 		InternalNextAction:    e.InternalNextAction,
 		ConfidenceScore:       e.ConfidenceScore,
 		FallbackUsed:          e.FallbackUsed,
+		FallbackReason:        fallbackReason,
 		PromptTemplateVersion: e.PromptTemplateVersion,
 		EvaluatedAt:           e.EvaluatedAt,
 	}
