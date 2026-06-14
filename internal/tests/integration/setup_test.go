@@ -26,6 +26,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 	gormpostgres "gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 var (
@@ -89,8 +90,10 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to get connection string: %v", err)
 	}
 
-	// Connect GORM to the test database
-	db, err = gorm.Open(gormpostgres.Open(connStr), &gorm.Config{})
+	// Connect GORM to the test database with silent logger to avoid record not found noise
+	db, err = gorm.Open(gormpostgres.Open(connStr), &gorm.Config{
+		Logger: gormlogger.Default.LogMode(gormlogger.Silent),
+	})
 	if err != nil {
 		log.Fatalf("Failed to connect to test database: %v", err)
 	}

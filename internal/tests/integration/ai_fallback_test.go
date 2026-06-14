@@ -245,6 +245,47 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		assert.Equal(t, "HIGH", apiResp.Data.Severity)
 	})
 
+	t.Run("Fallback Path - AI Disabled Via Adapter", func(t *testing.T) {
+		resetFakeAIAdapter()
+		cleanAll()
+
+		order := seedOrder(t, 15000, models.ORDER_STATUS_PACKED)
+		thirtyHoursAgo := time.Now().Add(-30 * time.Hour)
+		err := db.Model(&order).Updates(map[string]interface{}{
+			"created_at": thirtyHoursAgo,
+			"updated_at": thirtyHoursAgo,
+		}).Error
+		require.NoError(t, err)
+
+		// Setup AI Disabled simulation on the fake adapter
+		testFakeAIAdapter.SimulateAIDisabled = true
+
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString("{}"))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+
+		resp, err := app.Test(req)
+		require.NoError(t, err)
+		assert.Equal(t, 200, resp.StatusCode)
+
+		respBody, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		resp.Body.Close()
+
+		var apiResp struct {
+			Status  int                          `json:"status"`
+			Message string                       `json:"message"`
+			Data    dto.AnalyzeExceptionResponse `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(respBody, &apiResp))
+
+		assert.Equal(t, 200, apiResp.Status)
+		assert.Equal(t, true, apiResp.Data.FallbackUsed)
+		assert.Equal(t, "ai_connection_error", apiResp.Data.FallbackReason) // ErrAIDisabled classified as ai_connection_error by ClassifyError
+		assert.Equal(t, "STUCK_ORDER", apiResp.Data.ExceptionType)
+		assert.Equal(t, "HIGH", apiResp.Data.Severity)
+	})
+
 	t.Run("Error Path - Order Not Found", func(t *testing.T) {
 		resetFakeAIAdapter()
 		cleanAll()
