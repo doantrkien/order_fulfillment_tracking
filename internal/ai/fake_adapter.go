@@ -18,6 +18,7 @@ type FakeAIAdapter struct {
 	SimulateTimeout         bool
 	SimulateInvalidResponse bool
 	SimulateLowConfidence   bool
+	SimulateConnectionError bool
 	ExpectedOutput          dto.ExceptionOutput
 	ExpectedSummary         dto.ReportSummaryOutput
 }
@@ -37,34 +38,82 @@ func NewFakeAIAdapter(
 func (f *FakeAIAdapter) AnalyzeException(
 	ctx context.Context,
 	input dto.ExceptionInput,
-) (dto.ExceptionOutput, error) {
+) (string, error) {
 	if f.SimulateAIDisabled {
-		return dto.ExceptionOutput{}, ErrAIDisabled
+		return "", ErrAIDisabled
+	}
+
+	if f.SimulateConnectionError {
+		return "", errors.New("connection reset by peer")
 	}
 
 	if f.SimulateTimeout {
 		select {
 		case <-ctx.Done():
-			return dto.ExceptionOutput{}, ctx.Err()
+			return "", ctx.Err()
 		case <-time.After(100 * time.Millisecond):
-			return dto.ExceptionOutput{}, context.DeadlineExceeded
+			return "", context.DeadlineExceeded
 		}
 	}
 
 	if f.SimulateInvalidResponse {
-		var out dto.ExceptionOutput
-		// Triggers an unmarshal error to simulate bad/garbage JSON.
-		err := json.Unmarshal([]byte("{invalid-json}"), &out)
-		return dto.ExceptionOutput{}, err
+		return "{invalid-json}", nil
 	}
 
 	if f.SimulateLowConfidence {
-		out := f.ExpectedOutput
-		out.Confidence = 0.3
-		return out, nil
+		// Output structured JSON representing a low confidence score.
+		lowConfJSON := `{
+			"exception_type": "STUCK_ORDER",
+			"severity": "HIGH",
+			"likely_reason": "Order stuck in status packed too long",
+			"internal_next_action": "Contact warehouse manager",
+			"suggestion": "Contact warehouse manager",
+			"should_alert": true,
+			"confidence_score": 0.3
+		}`
+		return lowConfJSON, nil
 	}
 
-	return f.ExpectedOutput, nil
+	// Default: Return the ExpectedOutput marshaled to string (JSON) to pass parsing and validation.
+	type TempOutput struct {
+		ExceptionType      string  `json:"exception_type"`
+		Severity           string  `json:"severity"`
+		LikelyReason       string  `json:"likely_reason"`
+		InternalNextAction string  `json:"internal_next_action"`
+		Suggestion         string  `json:"suggestion"`
+		ShouldAlert        bool    `json:"should_alert"`
+		ConfidenceScore    float64 `json:"confidence_score"`
+	}
+	tOut := TempOutput{
+		ExceptionType:      f.ExpectedOutput.ExceptionType,
+		Severity:           f.ExpectedOutput.Severity,
+		LikelyReason:       f.ExpectedOutput.LikelyReason,
+		InternalNextAction: f.ExpectedOutput.InternalNextAction,
+		Suggestion:         f.ExpectedOutput.Suggestion,
+		ShouldAlert:        f.ExpectedOutput.ShouldAlert,
+		ConfidenceScore:    f.ExpectedOutput.Confidence,
+	}
+	if tOut.ConfidenceScore == 0 {
+		tOut.ConfidenceScore = 0.95 // Default high confidence if not set
+	}
+	if tOut.ExceptionType == "" {
+		tOut.ExceptionType = "STUCK_ORDER"
+	}
+	if tOut.Severity == "" {
+		tOut.Severity = "HIGH"
+	}
+	if tOut.LikelyReason == "" {
+		tOut.LikelyReason = "Default reason"
+	}
+	if tOut.InternalNextAction == "" {
+		tOut.InternalNextAction = "Default next action"
+	}
+
+	data, err := json.Marshal(tOut)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 // SummarizeReport simulates AI report summarization.
