@@ -60,19 +60,19 @@ var lifecycleOrder = []models.OrderStatus{
 // Returns nil if no exception is detected.
 func AnalyzeByRules(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
 	// Priority 1: Invalid transitions (CRITICAL)
-	if r := detectInvalidTransitions(aiCtx.Events); r != nil {
-		return r
-	}
+	// if r := detectInvalidTransitions(aiCtx.Events); r != nil {
+	// 	return r
+	// }
 
 	// Priority 2: Duplicate events (LOW)
-	if r := detectDuplicateEvents(aiCtx.Events); r != nil {
-		return r
-	}
+	// if r := detectDuplicateEvents(aiCtx.Events); r != nil {
+	// 	return r
+	// }
 
 	// Priority 3: Skipped statuses (HIGH)
-	if r := detectSkippedStatuses(aiCtx.Events); r != nil {
-		return r
-	}
+	// if r := detectSkippedStatuses(aiCtx.Events); r != nil {
+	// 	return r
+	// }
 
 	// Priority 4: Stuck order (severity varies by age)
 	if r := detectStuckOrder(aiCtx, now); r != nil {
