@@ -20,6 +20,22 @@ func NewAIHandler(aiService services.AIService) *AIHandler {
 	return &AIHandler{aiService: aiService}
 }
 
+// AnalyzeException godoc
+// @Summary Analyze order exception using AI
+// @Description Analyze order exceptions and provide actionable insights. Uses rule-based fallback if AI is unavailable.
+// @Tags AI
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID"
+// @Param request body dto.AnalyzeExceptionRequest false "Optional analysis context notes"
+// @Success 200 {object} response.ResponseStruct{data=dto.AnalyzeExceptionResponse}
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 401 {object} response.ErrorUnauthenticatedResponse
+// @Failure 403 {object} response.ErrorUnauthorizedResponse
+// @Failure 404 {object} response.ErrorNotFoundResponse
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse
+// @Security BearerAuth
+// @Router /api/v1/ai/orders/{id}/exception-analysis [post]
 func (h *AIHandler) AnalyzeException(c fiber.Ctx) error {
 	orderID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil || orderID <= 0 {

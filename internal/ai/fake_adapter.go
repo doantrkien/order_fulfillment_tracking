@@ -116,6 +116,48 @@ func (f *FakeAIAdapter) AnalyzeException(
 	return string(data), nil
 }
 
+// DraftCustomerUpdate simulates AI drafting a customer update message.
+func (f *FakeAIAdapter) DraftCustomerUpdate(
+	ctx context.Context,
+	input dto.CustomerUpdateDraftInput,
+) (string, error) {
+	if f.SimulateAIDisabled {
+		return "", ErrAIDisabled
+	}
+
+	if f.SimulateConnectionError {
+		return "", errors.New("connection reset by peer")
+	}
+
+	if f.SimulateTimeout {
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-time.After(100 * time.Millisecond):
+			return "", context.DeadlineExceeded
+		}
+	}
+
+	if f.SimulateInvalidResponse {
+		return "{invalid-json}", nil
+	}
+
+	if f.SimulateLowConfidence {
+		lowConfJSON := `{
+			"customer_update_draft": "We are looking into your order.",
+			"confidence_score": 0.3
+		}`
+		return lowConfJSON, nil
+	}
+
+	// Default success
+	successJSON := `{
+		"customer_update_draft": "Your order is currently delayed due to weather conditions. We apologize for the inconvenience and will update you soon.",
+		"confidence_score": 0.95
+	}`
+	return successJSON, nil
+}
+
 // SummarizeReport simulates AI report summarization.
 func (f *FakeAIAdapter) SummarizeReport(
 	ctx context.Context,

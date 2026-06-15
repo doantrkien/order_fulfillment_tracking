@@ -3,7 +3,6 @@ package ai
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 type AIAdapter interface {
 	AnalyzeException(ctx context.Context, input dto.ExceptionInput) (string, error)
 	SummarizeReport(ctx context.Context, input dto.ExceptionOutput) (dto.ReportSummaryOutput, error)
+	DraftCustomerUpdate(ctx context.Context, input dto.CustomerUpdateDraftInput) (string, error)
 	Ping(ctx context.Context) error
 }
 
@@ -54,30 +54,25 @@ func (g *aiAdapter) AnalyzeException(
 	SanitizePromptContext(&promptCtx)
 
 	prompt := BuildExceptionAnalysisPrompt(promptCtx)
-	// fmt.Printf("[DEBUG][adapter.AnalyzeException] Built prompt (len=%d)\n", len(prompt))
 
 	rawText, err := g.client.GenerateContent(ctx, prompt)
 	if err != nil {
-		fmt.Printf("[DEBUG][adapter.AnalyzeException] GenerateContent error: %v\n", err)
 		return "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
 	}
 
-	// fmt.Printf("[DEBUG][adapter.AnalyzeException] Raw AI response (len=%d): %s\n", len(rawText), rawText)
+	return rawText, nil
+}
 
-	// validated, err := ParseAndValidateAIOutput(rawText)
-	// if err != nil {
-	// 	fmt.Printf("[DEBUG][adapter.AnalyzeException] ParseAndValidateAIOutput error: %v\n", err)
-	// 	return "", errs.ERR_AI_RESPONSE_VALIDATION_FAILED
-	// }
+func (g *aiAdapter) DraftCustomerUpdate(
+	ctx context.Context,
+	input dto.CustomerUpdateDraftInput,
+) (string, error) {
+	prompt := BuildCustomerUpdateDraftPrompt(input)
 
-	// return dto.ExceptionOutput{
-	// 	ExceptionType:      "",
-	// 	Severity:           "",
-	// 	LikelyReason:       "",
-	// 	InternalNextAction: "",
-	// 	Suggestion:         "",
-	// 	Confidence:         0,
-	// }, nil
+	rawText, err := g.client.GenerateContent(ctx, prompt)
+	if err != nil {
+		return "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
+	}
 
 	return rawText, nil
 }
@@ -108,13 +103,10 @@ func (g *aiAdapter) SummarizeReport(
 }
 
 func (g *aiAdapter) Ping(ctx context.Context) error {
-	fmt.Println("[DEBUG][adapter.Ping] Sending ping to Gemini...")
 	_, err := g.client.GenerateContent(ctx, "ping")
 	if err != nil {
-		fmt.Printf("[DEBUG][adapter.Ping] Ping FAILED: %v\n", err)
 		return errs.ERR_AI_PING_FAILED
 	}
-	fmt.Println("[DEBUG][adapter.Ping] Ping OK")
 	return nil
 }
 
