@@ -67,6 +67,7 @@ func (g *aiAdapter) DraftCustomerUpdate(
 	ctx context.Context,
 	input dto.CustomerUpdateDraftInput,
 ) (string, error) {
+	SanitizeCustomerUpdateDraftInput(&input)
 	prompt := BuildCustomerUpdateDraftPrompt(input)
 
 	rawText, err := g.client.GenerateContent(ctx, prompt)
