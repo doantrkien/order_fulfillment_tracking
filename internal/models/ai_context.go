@@ -16,9 +16,9 @@ type AIEvent struct {
 // PaymentStatus và RefundStatus được derive từ CurrentStatus (Order model không có
 // field riêng) để cung cấp ngữ cảnh rõ ràng hơn cho prompt.
 type AIContext struct {
-	OrderID       int64       `json:"order_id"`
-	CreatedAt     time.Time   `json:"created_at"`
-	CurrentStatus OrderStatus `json:"current_status"`
+	OrderID         int64       `json:"order_id"`
+	CreatedAt       time.Time   `json:"created_at"`
+	CurrentStatus   OrderStatus `json:"current_status"`
 	TotalAmount     int64       `json:"total_amount"`
 	CustomerName    string      `json:"customer_name"`
 	ShippingAddress string      `json:"shipping_address"`
