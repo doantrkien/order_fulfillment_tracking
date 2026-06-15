@@ -3,6 +3,8 @@ package ai
 import (
 	"fmt"
 	"strings"
+
+	"main/internal/dto"
 )
 
 // PromptTemplateVersion tracks the current version of the exception analysis prompt.
@@ -134,6 +136,50 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext) string {
 	sb.WriteString("4. Your role is ANALYSIS ONLY — observe, diagnose, and recommend internal actions.\n")
 	sb.WriteString("5. If you cannot determine the exception with reasonable confidence, set confidence_score below 0.5.\n")
 	sb.WriteString("6. Do NOT output anything other than the JSON object. No markdown fences, no explanations.\n")
+
+	return sb.String()
+}
+
+func BuildCustomerUpdateDraftPrompt(input dto.CustomerUpdateDraftInput) string {
+	var sb strings.Builder
+
+	// ── [SYSTEM] ──────────────────────────────────────────────────────────────
+	sb.WriteString("[SYSTEM]\n")
+	sb.WriteString("You are a Customer Support Agent for a fulfillment tracking system.\n")
+	sb.WriteString("Your job is to draft a customer-facing update message regarding an order exception.\n")
+	sb.WriteString("You MUST avoid making unsupported promises (like guaranteed delivery times) and MUST NOT leak internal technical details.\n")
+	sb.WriteString("You MUST respond ONLY with a single valid JSON object. No explanations, no markdown, no extra text.\n\n")
+
+	// ── [CONTEXT] ─────────────────────────────────────────────────────────────
+	sb.WriteString("[CONTEXT]\n")
+	sb.WriteString(fmt.Sprintf("Order ID: %d\n", input.OrderID))
+	sb.WriteString(fmt.Sprintf("Customer Name: %s\n", input.CustomerName))
+	sb.WriteString(fmt.Sprintf("Shipping Address: %s\n", input.ShippingAddress))
+	sb.WriteString(fmt.Sprintf("Current Status: %s\n", input.CurrentStatus))
+	sb.WriteString(fmt.Sprintf("Exception Type: %s\n", input.ExceptionType))
+	sb.WriteString(fmt.Sprintf("Likely Reason: %s\n", input.LikelyReason))
+	sb.WriteString(fmt.Sprintf("Requested Tone: %s\n", input.Tone))
+	sb.WriteString(fmt.Sprintf("Communication Channel: %s\n", input.Channel))
+	sb.WriteString("\n")
+
+	// ── [TASK] ────────────────────────────────────────────────────────────────
+	sb.WriteString("[TASK]\n")
+	sb.WriteString("Draft a message to the customer explaining the situation politely, using the requested tone and appropriate length for the channel.\n")
+	sb.WriteString("Reassure them that we are handling it, but do not promise refunds or exact resolution times unless explicitly supported by standard policy.\n\n")
+
+	// ── [OUTPUT FORMAT] ───────────────────────────────────────────────────────
+	sb.WriteString("[OUTPUT FORMAT]\n")
+	sb.WriteString("Respond with EXACTLY this JSON structure:\n")
+	sb.WriteString("{\n")
+	sb.WriteString("  \"customer_update_draft\": \"<string: the drafted message for the customer>\",\n")
+	sb.WriteString("  \"confidence_score\": <float: 0.0 to 1.0, your confidence in the appropriateness of this draft>\n")
+	sb.WriteString("}\n\n")
+
+	// ── [CONSTRAINTS] ─────────────────────────────────────────────────────────
+	sb.WriteString("[CONSTRAINTS]\n")
+	sb.WriteString("1. NO internal technical jargon.\n")
+	sb.WriteString("2. NO false promises.\n")
+	sb.WriteString("3. DO NOT output anything other than the JSON object.\n")
 
 	return sb.String()
 }

@@ -30,6 +30,10 @@ func (m *mockAdapter) Ping(_ context.Context) error {
 	return nil
 }
 
+func (m *mockAdapter) DraftCustomerUpdate(_ context.Context, _ dto.CustomerUpdateDraftInput) (string, error) {
+	return m.output, m.err
+}
+
 func newTestAIContext() *models.AIContext {
 	now := time.Now()
 	return &models.AIContext{
