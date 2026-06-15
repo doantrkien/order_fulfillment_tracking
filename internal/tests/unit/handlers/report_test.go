@@ -46,11 +46,11 @@ func TestReportHandlerGetDailyReport(t *testing.T) {
 			expectedStatus: 200,
 			validate: func(t *testing.T, respBody []byte) {
 				var resp struct {
-					Status int           `json:"status"`
+					Status string        `json:"status"`
 					Data   models.Report `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &resp))
-				assert.Equal(t, 200, resp.Status)
+				assert.Equal(t, "success", resp.Status)
 				assert.Equal(t, int64(1), resp.Data.ID)
 			},
 		},
@@ -121,11 +121,11 @@ func TestReportHandlerCreateDailyReport(t *testing.T) {
 			expectedStatus: 201,
 			validate: func(t *testing.T, respBody []byte) {
 				var resp struct {
-					Status int           `json:"status"`
+					Status string        `json:"status"`
 					Data   models.Report `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &resp))
-				assert.Equal(t, 201, resp.Status)
+				assert.Equal(t, "success", resp.Status)
 				assert.Equal(t, int64(2), resp.Data.ID)
 			},
 		},
