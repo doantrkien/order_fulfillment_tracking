@@ -65,6 +65,9 @@ test-integration:
 docker-up:
 	docker compose up -d
 
+docker-up-infra:
+	docker compose up -d postgres adminer grafana
+
 docker-down:
 	docker compose down
 

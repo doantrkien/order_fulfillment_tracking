@@ -15,6 +15,93 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/ai/orders/{id}/exception-analysis": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Analyze order exceptions and provide actionable insights. Uses rule-based fallback if AI is unavailable.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Analyze order exception using AI",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Order ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Optional analysis context notes",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AnalyzeExceptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ResponseStruct"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.AnalyzeExceptionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorUnauthenticatedResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorNotFoundResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/login": {
             "post": {
                 "description": "Authenticate with email and password to receive a JWT token",
@@ -173,6 +260,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Order Status",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Customer Name",
+                        "name": "customer_name",
                         "in": "query"
                     },
                     {
@@ -611,6 +704,52 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dto.AnalyzeExceptionRequest": {
+            "type": "object",
+            "properties": {
+                "note": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AnalyzeExceptionResponse": {
+            "type": "object",
+            "properties": {
+                "confidence_score": {
+                    "type": "number"
+                },
+                "evaluated_at": {
+                    "type": "string"
+                },
+                "exception_type": {
+                    "type": "string"
+                },
+                "fallback_reason": {
+                    "type": "string"
+                },
+                "fallback_used": {
+                    "type": "boolean"
+                },
+                "internal_next_action": {
+                    "type": "string"
+                },
+                "likely_reason": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "string"
+                },
+                "prompt_template_version": {
+                    "type": "string"
+                },
+                "result_id": {
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.CreateOrderResponse": {
             "type": "object",
             "properties": {
@@ -716,6 +855,10 @@ const docTemplate = `{
                 "driver_id": {
                     "type": "integer",
                     "example": 1
+                },
+                "driver_note": {
+                    "type": "string",
+                    "example": "Left at door"
                 },
                 "event_at": {
                     "type": "string",
