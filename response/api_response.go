@@ -8,14 +8,14 @@ import (
 )
 
 type ResponseStruct struct {
-	Status  int         `json:"status"`
+	Status  string      `json:"status"`
 	Data    interface{} `json:"data"`
 	Message string      `json:"message"`
 }
 
 func ResponseSuccess(c fiber.Ctx, status int, message string, data interface{}) error {
 	return c.Status(status).JSON(ResponseStruct{
-		Status:  status,
+		Status:  "SUCCESS",
 		Message: message,
 		Data:    data,
 	})
@@ -28,7 +28,7 @@ type Pagination struct {
 }
 
 type PaginatedResponse struct {
-	Status     int        `json:"status" example:"200"`
+	Status     string     `json:"status" example:"SUCCESS"`
 	Message    string     `json:"message" example:"Success"`
 	Pagination Pagination `json:"pagination"`
 	Data       any        `json:"data"`
@@ -36,7 +36,7 @@ type PaginatedResponse struct {
 
 func PaginatedSuccess(c fiber.Ctx, message string, data any, currentPage, limitItems int, totalItems int64) error {
 	return c.Status(200).JSON(PaginatedResponse{
-		Status:  200,
+		Status:  "SUCCESS",
 		Message: message,
 		Pagination: Pagination{
 			CurrentPage: currentPage,
@@ -52,14 +52,14 @@ func ResponseError(c fiber.Ctx, err error, data interface{}) error {
 
 	if errors.As(err, &appErr) {
 		return c.Status(appErr.StatusCode).JSON(ResponseStruct{
-			Status:  appErr.StatusCode,
+			Status:  "ERROR",
 			Data:    data,
 			Message: appErr.Err.Message,
 		})
 	}
 
 	return c.Status(500).JSON(ResponseStruct{
-		Status:  500,
+		Status:  "ERROR",
 		Data:    data,
 		Message: errs.ERR_INTERNAL_SERVER.Err.Message,
 	})

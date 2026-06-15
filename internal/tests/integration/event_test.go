@@ -48,7 +48,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 			expectedStatus: 200,
 			validate: func(t *testing.T, respBody []byte) {
 				var body struct {
-					Status  int                           `json:"status"`
+					Status  string                        `json:"status"`
 					Message string                        `json:"message"`
 					Data    dto.ImportOrderEventsResponse `json:"data"`
 				}
@@ -154,7 +154,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 			expectedStatus: 400,
 			validate: func(t *testing.T, respBody []byte) {
 				var body struct {
-					Status  int    `json:"status"`
+					Status  string `json:"status"`
 					Message string `json:"message"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &body))

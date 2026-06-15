@@ -17,6 +17,7 @@ import (
 // AIService defines the business-level interface for AI exception analysis.
 type AIService interface {
 	AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
+	GetLatestAnalysis(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
 }
 
 type aiService struct {
@@ -55,6 +56,15 @@ func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes s
 	// fmt.Printf("[Debug Service] Analyzed exception for order %+v\n", exception)
 
 	// 4. Map to response DTO
+	return mapToResponse(exception), nil
+}
+
+func (s *aiService) GetLatestAnalysis(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error) {
+	exception, err := s.aiRepo.GetLatestByOrderID(ctx, orderID)
+	if err != nil {
+		return nil, errs.ERR_NOT_FOUND
+	}
+
 	return mapToResponse(exception), nil
 }
 

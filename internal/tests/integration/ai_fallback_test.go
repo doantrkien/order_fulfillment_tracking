@@ -63,13 +63,14 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resp.Body.Close()
 
 		var apiResp struct {
-			Status  int                          `json:"status"`
+			Status  string                       `json:"status"`
 			Message string                       `json:"message"`
 			Data    dto.AnalyzeExceptionResponse `json:"data"`
 		}
 		require.NoError(t, json.Unmarshal(respBody, &apiResp), "Response was: %s", string(respBody))
 
-		assert.Equal(t, 200, apiResp.Status)
+		// assert.Equal(t, 200, apiResp.Status)
+		assert.Equal(t, "SUCCESS", apiResp.Status)
 		assert.Equal(t, false, apiResp.Data.FallbackUsed)
 		assert.Empty(t, apiResp.Data.FallbackReason)
 		assert.Equal(t, "STUCK_ORDER", apiResp.Data.ExceptionType)
@@ -108,13 +109,14 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resp.Body.Close()
 
 		var apiResp struct {
-			Status  int                          `json:"status"`
+			Status  string                       `json:"status"`
 			Message string                       `json:"message"`
 			Data    dto.AnalyzeExceptionResponse `json:"data"`
 		}
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 
-		assert.Equal(t, 200, apiResp.Status)
+		// assert.Equal(t, 200, apiResp.Status)
+		assert.Equal(t, "SUCCESS", apiResp.Status)
 		assert.Equal(t, true, apiResp.Data.FallbackUsed)
 		assert.Equal(t, "ai_connection_error", apiResp.Data.FallbackReason)
 		assert.Equal(t, "STUCK_ORDER", apiResp.Data.ExceptionType)
@@ -150,13 +152,14 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resp.Body.Close()
 
 		var apiResp struct {
-			Status  int                          `json:"status"`
+			Status  string                       `json:"status"`
 			Message string                       `json:"message"`
 			Data    dto.AnalyzeExceptionResponse `json:"data"`
 		}
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 
-		assert.Equal(t, 200, apiResp.Status)
+		// assert.Equal(t, 200, apiResp.Status)
+		assert.Equal(t, "SUCCESS", apiResp.Status)
 		assert.Equal(t, true, apiResp.Data.FallbackUsed)
 		assert.Equal(t, "ai_timeout", apiResp.Data.FallbackReason)
 		assert.Equal(t, "STUCK_ORDER", apiResp.Data.ExceptionType)
@@ -191,13 +194,14 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resp.Body.Close()
 
 		var apiResp struct {
-			Status  int                          `json:"status"`
+			Status  string                       `json:"status"`
 			Message string                       `json:"message"`
 			Data    dto.AnalyzeExceptionResponse `json:"data"`
 		}
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 
-		assert.Equal(t, 200, apiResp.Status)
+		// assert.Equal(t, 200, apiResp.Status)
+		assert.Equal(t, "SUCCESS", apiResp.Status)
 		assert.Equal(t, true, apiResp.Data.FallbackUsed)
 		assert.Equal(t, "ai_invalid_response", apiResp.Data.FallbackReason)
 		assert.Equal(t, "STUCK_ORDER", apiResp.Data.ExceptionType)
@@ -232,13 +236,14 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resp.Body.Close()
 
 		var apiResp struct {
-			Status  int                          `json:"status"`
+			Status  string                       `json:"status"`
 			Message string                       `json:"message"`
 			Data    dto.AnalyzeExceptionResponse `json:"data"`
 		}
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 
-		assert.Equal(t, 200, apiResp.Status)
+		// assert.Equal(t, 200, apiResp.Status)
+		assert.Equal(t, "SUCCESS", apiResp.Status)
 		assert.Equal(t, true, apiResp.Data.FallbackUsed)
 		assert.Equal(t, "ai_confidence_below_threshold", apiResp.Data.FallbackReason)
 		assert.Equal(t, "STUCK_ORDER", apiResp.Data.ExceptionType)
@@ -273,13 +278,14 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resp.Body.Close()
 
 		var apiResp struct {
-			Status  int                          `json:"status"`
+			Status  string                       `json:"status"`
 			Message string                       `json:"message"`
 			Data    dto.AnalyzeExceptionResponse `json:"data"`
 		}
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 
-		assert.Equal(t, 200, apiResp.Status)
+		// assert.Equal(t, 200, apiResp.Status)
+		assert.Equal(t, "SUCCESS", apiResp.Status)
 		assert.Equal(t, true, apiResp.Data.FallbackUsed)
 		assert.Equal(t, "ai_connection_error", apiResp.Data.FallbackReason) // ErrAIDisabled classified as ai_connection_error by ClassifyError
 		assert.Equal(t, "STUCK_ORDER", apiResp.Data.ExceptionType)
