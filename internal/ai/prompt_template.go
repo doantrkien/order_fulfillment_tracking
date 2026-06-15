@@ -140,6 +140,15 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext) string {
 	return sb.String()
 }
 
+func SanitizeCustomerUpdateDraftInput(input *dto.CustomerUpdateDraftInput) {
+	if input.CustomerName != "" {
+		input.CustomerName = "[REDACTED_CUSTOMER_NAME]"
+	}
+	if input.ShippingAddress != "" {
+		input.ShippingAddress = "[REDACTED_SHIPPING_ADDRESS]"
+	}
+}
+
 func BuildCustomerUpdateDraftPrompt(input dto.CustomerUpdateDraftInput) string {
 	var sb strings.Builder
 

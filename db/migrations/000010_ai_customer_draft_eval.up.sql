@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS ai_customer_update_drafts (
     draft_message           TEXT            NOT NULL,
     tone                    VARCHAR(20)     NOT NULL DEFAULT 'neutral'
                                 CHECK (tone IN ('neutral', 'apologetic', 'informative', 'proactive')),
+    channel                 VARCHAR(50)     NOT NULL DEFAULT 'email'
+                                CHECK (channel IN ('email', 'sms', 'push_notification')),
 
     -- Human Review State — AI không được tự chuyển sang SENT (No auto-critical actions)
     review_status           VARCHAR(20)     NOT NULL DEFAULT 'PENDING'
@@ -32,9 +34,11 @@ CREATE TABLE IF NOT EXISTS ai_customer_update_drafts (
     input_size_bytes        INTEGER         NOT NULL DEFAULT 0,
     duration_ms             INTEGER,
     request_id              VARCHAR(100),                        -- liên kết với exception analysis request
+    raw_response            JSONB,                               -- lưu full response AI để debug
 
     -- Timestamps
-    created_at              TIMESTAMPTZ     NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at              TIMESTAMPTZ     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMPTZ     NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Indexes
