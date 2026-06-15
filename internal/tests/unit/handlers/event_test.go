@@ -57,14 +57,15 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 				).Once()
 			},
 			expectedStatus: 200,
+			// expectedStatus: "SUCCESS",
 			validate: func(t *testing.T, respBody []byte) {
 				var resp struct {
-					Status  int                           `json:"status"`
+					Status  string                        `json:"status"`
 					Message string                        `json:"message"`
 					Data    dto.ImportOrderEventsResponse `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &resp))
-				assert.Equal(t, 200, resp.Status)
+				assert.Equal(t, "SUCCESS", resp.Status)
 				assert.Equal(t, constant.SUCCESS.Message, resp.Message)
 				assert.Equal(t, 2, resp.Data.Accepted)
 			},
@@ -74,13 +75,14 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 			body:           nil,
 			setupMock:      func(mockService *mocks.OrderEventService) {},
 			expectedStatus: 400,
+			// expectedStatus: "ERROR",
 			validate: func(t *testing.T, respBody []byte) {
 				var resp struct {
-					Status  int    `json:"status"`
+					Status  string `json:"status"`
 					Message string `json:"message"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &resp))
-				assert.Equal(t, 400, resp.Status)
+				assert.Equal(t, "ERROR", resp.Status)
 				assert.Equal(t, constant.INVALID_INPUT.Message, resp.Message)
 			},
 		},
@@ -100,14 +102,15 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 				).Once()
 			},
 			expectedStatus: 500,
+			// expectedStatus: "ERROR",
 			validate: func(t *testing.T, respBody []byte) {
 				var resp struct {
-					Status  int                           `json:"status"`
+					Status  string                        `json:"status"`
 					Message string                        `json:"message"`
 					Data    dto.ImportOrderEventsResponse `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &resp))
-				assert.Equal(t, 500, resp.Status)
+				assert.Equal(t, "ERROR", resp.Status)
 				assert.Equal(t, 1, resp.Data.Rejected)
 			},
 		},
@@ -132,6 +135,7 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 				).Once()
 			},
 			expectedStatus: 200,
+			// expectedStatus: "SUCCESS",
 			validate: func(t *testing.T, respBody []byte) {
 				var resp struct {
 					Data dto.ImportOrderEventsResponse `json:"data"`
@@ -157,6 +161,7 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 				).Once()
 			},
 			expectedStatus: 200,
+			// expectedStatus: "SUCCESS",
 			validate: func(t *testing.T, respBody []byte) {
 				var resp struct {
 					Data dto.ImportOrderEventsResponse `json:"data"`
