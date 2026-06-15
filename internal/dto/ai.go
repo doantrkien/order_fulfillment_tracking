@@ -15,6 +15,7 @@ type AnalyzeExceptionResponse struct {
 	InternalNextAction    string    `json:"internal_next_action"`
 	ConfidenceScore       float64   `json:"confidence_score"`
 	FallbackUsed          bool      `json:"fallback_used"`
+	FallbackReason        string    `json:"fallback_reason,omitempty"`
 	PromptTemplateVersion string    `json:"prompt_template_version"`
 	EvaluatedAt           time.Time `json:"evaluated_at"`
 }
@@ -29,17 +30,22 @@ type EventRecord struct {
 type ExceptionInput struct {
 	OrderID         int64         `json:"order_id"`
 	CurrentStatus   string        `json:"current_status"`
-	AttemptedStatus string        `json:"attempted_status"`
+	TotalAmount     int64         `json:"total_amount"`
+	CustomerName    string        `json:"customer_name"`
+	ShippingAddress string        `json:"shipping_address"`
+	CreatedAt       string        `json:"created_at"`
 	ErrorMessage    string        `json:"error_message"`
 	EventHistory    []EventRecord `json:"event_history"`
 }
 
 type ExceptionOutput struct {
-	Severity    string  `json:"severity"`
-	RootCause   string  `json:"root_cause"`
-	Suggestion  string  `json:"suggestion"`
-	ShouldAlert bool    `json:"should_alert"`
-	Confidence  float64 `json:"confidence"`
+	ExceptionType      string  `json:"exception_type"`
+	Severity           string  `json:"severity"`
+	LikelyReason       string  `json:"likely_reason"`
+	InternalNextAction string  `json:"internal_next_action"`
+	Suggestion         string  `json:"suggestion"`
+	ShouldAlert        bool    `json:"should_alert"`
+	Confidence         float64 `json:"confidence"`
 }
 
 type ReportSummaryInput struct {

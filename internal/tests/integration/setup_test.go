@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"main/internal/ai"
+	"main/internal/dto"
 	"main/internal/handlers"
 	"main/internal/models"
 	"main/internal/repositories"
@@ -24,13 +26,15 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 	gormpostgres "gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 var (
-	app         *fiber.App
-	db          *gorm.DB
-	adminToken  string
-	driverToken string
+	app               *fiber.App
+	db                *gorm.DB
+	adminToken        string
+	driverToken       string
+	testFakeAIAdapter *ai.FakeAIAdapter
 )
 
 func generateTestToken(userID int64, role string, email string) string {
@@ -86,8 +90,10 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to get connection string: %v", err)
 	}
 
-	// Connect GORM to the test database
-	db, err = gorm.Open(gormpostgres.Open(connStr), &gorm.Config{})
+	// Connect GORM to the test database with silent logger to avoid record not found noise
+	db, err = gorm.Open(gormpostgres.Open(connStr), &gorm.Config{
+		Logger: gormlogger.Default.LogMode(gormlogger.Silent),
+	})
 	if err != nil {
 		log.Fatalf("Failed to connect to test database: %v", err)
 	}
@@ -120,6 +126,24 @@ func TestMain(m *testing.M) {
 	orderEventService := services.NewOrderEventService(orderEventRepo, 4)
 	orderEventHandler := handlers.NewOrderEventHandler(orderEventService)
 	routers.SetupOrderEventRouter(app, orderEventHandler)
+
+	// AI registration
+	if err := db.AutoMigrate(&models.AIException{}); err != nil {
+		log.Fatalf("Failed to auto-migrate AIException: %v", err)
+	}
+
+	aiRepo := repositories.NewAIRepository(db)
+	expectedOutput := dto.ExceptionOutput{}
+	expectedSummary := dto.ReportSummaryOutput{}
+	testFakeAIAdapter = ai.NewFakeAIAdapter(expectedOutput, expectedSummary)
+
+	aiAnalyzer := ai.NewExceptionAnalyzer(testFakeAIAdapter, ai.ExceptionAnalyzerConfig{
+		AIEnabled: true,
+		AITimeout: 5 * time.Second,
+	})
+	aiService := services.NewAIService(aiRepo, aiAnalyzer)
+	aiHandler := handlers.NewAIHandler(aiService)
+	routers.SetupAIRouter(app, aiHandler)
 
 	code := m.Run()
 

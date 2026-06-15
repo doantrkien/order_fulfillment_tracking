@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 	"main/internal/models"
 
 	"gorm.io/gorm"
@@ -47,7 +48,7 @@ func (r *aiRepository) GetAIContextByOrderID(ctx context.Context, orderID int64)
 	var events []models.OrderEvent
 	if err := r.db.WithContext(ctx).
 		Where("order_id = ?", orderID).
-		Order("event_at ASC").
+		Order("event_at DESC").
 		Find(&events).Error; err != nil {
 		return nil, err
 	}
@@ -64,13 +65,18 @@ func (r *aiRepository) GetAIContextByOrderID(ctx context.Context, orderID int64)
 		})
 	}
 
+	var userInfo models.UserInfo
+	_ = json.Unmarshal(order.UserInfo, &userInfo)
+
 	return &models.AIContext{
-		OrderID:       order.ID,
-		CreatedAt:     order.CreatedAt,
-		CurrentStatus: order.CurrentStatus,
-		TotalAmount:   order.TotalAmount,
-		PaymentStatus: models.DerivePaymentStatus(order.CurrentStatus),
-		RefundStatus:  models.DeriveRefundStatus(order.CurrentStatus),
-		Events:        aiEvents,
+		OrderID:         order.ID,
+		CreatedAt:       order.CreatedAt,
+		CurrentStatus:   order.CurrentStatus,
+		TotalAmount:     order.TotalAmount,
+		CustomerName:    userInfo.Username,
+		ShippingAddress: userInfo.ShippingAddress,
+		PaymentStatus:   models.DerivePaymentStatus(order.CurrentStatus),
+		RefundStatus:    models.DeriveRefundStatus(order.CurrentStatus),
+		Events:          aiEvents,
 	}, nil
 }

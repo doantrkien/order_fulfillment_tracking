@@ -5,13 +5,16 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"time"
 	_ "time/tzdata"
 
 	"main/configs"
+	"main/internal/ai"
 	"main/internal/handlers"
 	"main/internal/repositories"
 	routers "main/internal/routers/v1"
 	"main/internal/services"
+	"main/pkg/aiclient"
 	"main/pkg/postgresql"
 
 	_ "main/docs"
@@ -44,6 +47,11 @@ func main() {
 		BodyLimit: 50 * 1024 * 1024,
 	})
 
+	aiClient, err := aiclient.NewFromEnv()
+	if err != nil {
+		log.Fatalf("Cannot initialise AI client: %v", err)
+	}
+
 	accountRepo := repositories.NewAccountRepository(db)
 	authService := services.NewAuthService(accountRepo)
 	authHandler := handlers.NewAuthHandler(authService)
@@ -65,7 +73,17 @@ func main() {
 	reportHandler := handlers.NewReportHandler(reportService)
 
 	aiRepo := repositories.NewAIRepository(db)
-	aiService := services.NewAIService(aiRepo)
+
+	aiConfig := configs.LoadAIConfig()
+
+	aiAdapter := ai.NewAIAdapter(aiClient)
+
+	analyzer := ai.NewExceptionAnalyzer(aiAdapter, ai.ExceptionAnalyzerConfig{
+		AIEnabled: aiConfig.Enabled,
+		AITimeout: time.Duration(aiConfig.TimeoutMs) * time.Millisecond,
+	})
+
+	aiService := services.NewAIService(aiRepo, analyzer)
 	aiHandler := handlers.NewAIHandler(aiService)
 
 	routers.SetupAuthRouter(app, authHandler)

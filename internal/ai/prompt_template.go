@@ -24,6 +24,7 @@ type ExceptionPromptContext struct {
 	CustomerName    string
 	ShippingAddress string
 	CreatedAt       string
+	AnalyzedAt      string // Current timestamp so LLM can detect stuck orders
 	EventTimeline   []EventTimelineEntry
 	DriverNotes     string
 }
@@ -70,6 +71,7 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext) string {
 	sb.WriteString(fmt.Sprintf("Customer Name: %s\n", ctx.CustomerName))
 	sb.WriteString(fmt.Sprintf("Shipping Address: %s\n", ctx.ShippingAddress))
 	sb.WriteString(fmt.Sprintf("Order Created At: %s\n", ctx.CreatedAt))
+	sb.WriteString(fmt.Sprintf("Analysis Timestamp (now): %s\n", ctx.AnalyzedAt))
 	sb.WriteString("\n")
 
 	// Event timeline
@@ -118,6 +120,9 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext) string {
 	sb.WriteString("  \"severity\": \"<string: one of LOW | MEDIUM | HIGH | CRITICAL>\",\n")
 	sb.WriteString("  \"likely_reason\": \"<string: concise root cause explanation in English, max 200 chars>\",\n")
 	sb.WriteString("  \"internal_next_action\": \"<string: recommended internal action for the fulfillment team, max 200 chars>\",\n")
+
+	sb.WriteString("  \"should_alert\": <boolean: true if the exception warrants an alert, false otherwise>\n")
+
 	sb.WriteString("  \"confidence_score\": <float: 0.0 to 1.0, your confidence in this analysis>\n")
 	sb.WriteString("}\n\n")
 

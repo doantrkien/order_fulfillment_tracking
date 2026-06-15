@@ -14,11 +14,11 @@ import (
 
 func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 	expectedOutput := dto.ExceptionOutput{
-		Severity:    "HIGH",
-		RootCause:   "Traffic congestion in metropolitan area",
-		Suggestion:  "Assign backup driver",
-		ShouldAlert: true,
-		Confidence:  0.95,
+		Severity:     "HIGH",
+		LikelyReason: "Traffic congestion in metropolitan area",
+		Suggestion:   "Assign backup driver",
+		ShouldAlert:  true,
+		Confidence:   0.95,
 	}
 
 	expectedSummary := dto.ReportSummaryOutput{
@@ -30,7 +30,10 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 	input := dto.ExceptionInput{
 		OrderID:         12345,
 		CurrentStatus:   "shipped",
-		AttemptedStatus: "delivered",
+		TotalAmount:     500000,
+		CustomerName:    "John Doe",
+		ShippingAddress: "123 Main St",
+		CreatedAt:       "2023-10-27T10:00:00Z",
 		ErrorMessage:    "Driver got stuck in traffic",
 		EventHistory:    nil,
 	}
@@ -39,7 +42,7 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 		name      string
 		setup     func(f *ai.FakeAIAdapter)
 		assertErr func(t *testing.T, err error)
-		assertOut func(t *testing.T, output dto.ExceptionOutput)
+		assertOut func(t *testing.T, output string)
 	}{
 		{
 			name: "Happy Path - Normal AI response",
@@ -49,11 +52,9 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 			assertErr: func(t *testing.T, err error) {
 				assert.NoError(t, err)
 			},
-			assertOut: func(t *testing.T, output dto.ExceptionOutput) {
-				assert.Equal(t, expectedOutput.Severity, output.Severity)
-				assert.Equal(t, expectedOutput.Confidence, output.Confidence)
-				t.Logf("[HAPPY PATH OUTPUT] Severity: %s, RootCause: %s, Suggestion: %s, Confidence: %.2f",
-					output.Severity, output.RootCause, output.Suggestion, output.Confidence)
+			assertOut: func(t *testing.T, output string) {
+				assert.Contains(t, output, expectedOutput.Severity)
+				t.Logf("[HAPPY PATH OUTPUT] Raw JSON Output: %s", output)
 			},
 		},
 		{
@@ -66,7 +67,7 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 				assert.Equal(t, ai.ErrAIDisabled, err)
 				t.Logf("[AI DISABLED ERROR] Gặp lỗi giả lập khi AI disabled: %v", err)
 			},
-			assertOut: func(t *testing.T, output dto.ExceptionOutput) {
+			assertOut: func(t *testing.T, output string) {
 				assert.Empty(t, output)
 			},
 		},
@@ -80,7 +81,7 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 				assert.True(t, errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled))
 				t.Logf("[TIMEOUT ERROR] Gặp lỗi giả lập AI Timeout: %v", err)
 			},
-			assertOut: func(t *testing.T, output dto.ExceptionOutput) {
+			assertOut: func(t *testing.T, output string) {
 				assert.Empty(t, output)
 			},
 		},
@@ -90,12 +91,11 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 				f.SimulateInvalidResponse = true
 			},
 			assertErr: func(t *testing.T, err error) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "invalid character")
-				t.Logf("[INVALID RESPONSE ERROR] Gặp lỗi giả lập Unmarshal JSON không hợp lệ: %v", err)
+				assert.NoError(t, err) // in the new FakeAIAdapter, invalid response does not return an error immediately, it returns invalid JSON string
 			},
-			assertOut: func(t *testing.T, output dto.ExceptionOutput) {
-				assert.Empty(t, output)
+			assertOut: func(t *testing.T, output string) {
+				assert.Equal(t, "{invalid-json}", output)
+				t.Logf("[INVALID RESPONSE OUTPUT] Gặp chuỗi JSON không hợp lệ: %s", output)
 			},
 		},
 		{
@@ -106,11 +106,24 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 			assertErr: func(t *testing.T, err error) {
 				assert.NoError(t, err)
 			},
-			assertOut: func(t *testing.T, output dto.ExceptionOutput) {
-				assert.True(t, output.Confidence < 0.5)
-				assert.Equal(t, 0.3, output.Confidence)
-				t.Logf("[LOW CONFIDENCE OUTPUT] Điểm tin cậy thấp dưới ngưỡng: %.2f (Ngưỡng thông thường >= 0.5)", output.Confidence)
+			assertOut: func(t *testing.T, output string) {
+				assert.Contains(t, output, `"confidence_score": 0.3`)
+				t.Logf("[LOW CONFIDENCE OUTPUT] JSON với điểm tin cậy thấp: %s", output)
 			},
+		},
+		{
+			name: "Failure Path - Connection error",
+			setup: func(f *ai.FakeAIAdapter) {
+				f.SimulateConnectionError = true
+			},
+			assertErr: func(t *testing.T, err error) {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "connection reset by peer")
+				t.Logf("[CONNECTION ERROR] Gặp lỗi mất kết nối mạng: %v", err)
+			},
+			assertOut: func(t *testing.T, output string) {
+                assert.Empty(t, output)
+            },
 		},
 	}
 

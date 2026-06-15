@@ -7,10 +7,18 @@ import (
 )
 
 type AIExceptionRawOutput struct {
+	// ExceptionType      string  `json:"exception_type"`
+	// Severity           string  `json:"severity"`
+	// LikelyReason       string  `json:"likely_reason"`
+	// InternalNextAction string  `json:"internal_next_action"`
+	// ShouldAlert        bool    `json:"should_alert"`
+	// ConfidenceScore    float64 `json:"confidence_score"`
 	ExceptionType      string  `json:"exception_type"`
 	Severity           string  `json:"severity"`
 	LikelyReason       string  `json:"likely_reason"`
 	InternalNextAction string  `json:"internal_next_action"`
+	Suggestion         string  `json:"suggestion"`
+	ShouldAlert        bool    `json:"should_alert"`
 	ConfidenceScore    float64 `json:"confidence_score"`
 }
 
