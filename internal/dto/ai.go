@@ -97,3 +97,39 @@ type CustomerUpdateDraftOutput struct {
 	CustomerUpdateDraft string  `json:"customer_update_draft"`
 	ConfidenceScore     float64 `json:"confidence_score"`
 }
+
+type EvaluationCase struct {
+	CaseID                string          `json:"case_id"`
+	OrderID               int64           `json:"order_id,omitempty"`
+	SyntheticInput        *ExceptionInput `json:"synthetic_input,omitempty"`
+	ExpectedSeverity      string          `json:"expected_severity"`
+	ExpectedExceptionType string          `json:"expected_exception_type"`
+}
+
+type EvaluationRequest struct {
+	RunBy       string           `json:"run_by"`
+	Environment string           `json:"environment,omitempty"`
+	Cases       []EvaluationCase `json:"cases"`
+}
+
+type EvaluationCaseResult struct {
+	CaseID              string  `json:"case_id"`
+	Passed              bool    `json:"passed"`
+	FallbackUsed        bool    `json:"fallback_used"`
+	ActualSeverity      string  `json:"actual_severity"`
+	ActualExceptionType string  `json:"actual_exception_type"`
+	ConfidenceScore     float64 `json:"confidence_score"`
+	FailReason          string  `json:"fail_reason,omitempty"`
+}
+
+type EvaluationResponse struct {
+	WorkflowName  string                 `json:"workflow_name"`
+	TotalCases    int                    `json:"total_cases"`
+	PassedCases   int                    `json:"passed_cases"`
+	FailedCases   int                    `json:"failed_cases"`
+	FallbackCases int                    `json:"fallback_cases"`
+	PassRate      float64                `json:"pass_rate"`
+	AvgConfidence float64                `json:"avg_confidence"`
+	Results       []EvaluationCaseResult `json:"results"`
+	RunAt         time.Time              `json:"run_at"`
+}
