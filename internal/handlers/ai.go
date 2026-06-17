@@ -56,16 +56,25 @@ func (h *AIHandler) AnalyzeException(c fiber.Ctx) error {
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, result)
 }
 
+// GetLatestAnalysis godoc
+// @Summary Get latest AI exception analysis for an order
+// @Description Retrieve the most recent AI-generated exception insights for a specific order, including customer update draft.
+// @Tags AI
+// @Produce json
+// @Param id path int true "Order ID"
+// @Success 200 {object} response.ResponseStruct{data=dto.AnalyzeExceptionResponse}
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 404 {object} response.ErrorNotFoundResponse
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse
+// @Security BearerAuth
+// @Router /api/v1/ai/orders/{id}/insights/latest [get]
 func (h *AIHandler) GetLatestAnalysis(c fiber.Ctx) error {
 	orderID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil || orderID <= 0 {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
-	var req dto.AnalyzeExceptionRequest
-	_ = c.Bind().Body(&req)
-
-	result, err := h.aiService.GetLatestAnalysis(c.Context(), orderID, req.Note)
+	result, err := h.aiService.GetLatestAnalysis(c.Context(), orderID)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
 			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)

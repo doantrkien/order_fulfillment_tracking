@@ -19,7 +19,7 @@ import (
 // AIService defines the business-level interface for AI features.
 type AIService interface {
 	AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
-	GetLatestAnalysis(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
+	GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error)
 	UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIRequest) (*dto.UpdateDraftAPIResponse, error)
 	RunEvaluation(ctx context.Context, req dto.EvaluationRequest) (*dto.EvaluationResponse, error)
 }
@@ -66,13 +66,21 @@ func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes s
 	return mapToResponse(exception), nil
 }
 
-func (s *aiService) GetLatestAnalysis(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error) {
+func (s *aiService) GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error) {
 	exception, err := s.aiRepo.GetLatestAnalysisByOrderID(ctx, orderID)
 	if err != nil {
 		return nil, errs.ERR_NOT_FOUND
 	}
 
-	return mapToResponse(exception), nil
+	resp := mapToResponse(exception)
+
+	// Fetch latest customer update draft for this order (best-effort, not required)
+	draft, draftErr := s.aiDraftRepo.GetLatestByOrderID(ctx, orderID)
+	if draftErr == nil && draft != nil {
+		resp.CustomerUpdateDraft = draft.DraftMessage
+	}
+
+	return resp, nil
 }
 
 func (s *aiService) UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIRequest) (*dto.UpdateDraftAPIResponse, error) {
