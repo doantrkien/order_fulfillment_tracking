@@ -103,7 +103,7 @@ func (dg *DraftGenerator) Generate(ctx context.Context, input dto.CustomerUpdate
 
 // fallback generates a safe template-based draft message when AI is unavailable.
 // It preserves the raw AI response (if any) for audit purposes.
-func (dg *DraftGenerator) fallback(input dto.CustomerUpdateDraftInput, reason string, durationMs int, rawResponse string) *DraftResult {
+func (dg *DraftGenerator) fallback(input dto.CustomerUpdateDraftInput, reason string, durationMs int, _ string) *DraftResult {
 	message := buildFallbackDraftMessage(input)
 	return &DraftResult{
 		CustomerUpdateDraft: message,
@@ -117,42 +117,16 @@ func (dg *DraftGenerator) fallback(input dto.CustomerUpdateDraftInput, reason st
 
 // buildFallbackDraftMessage generates a safe, generic customer update message
 // using a template populated with order context. Adapts tone when possible.
+//
+// In Phase 3 (AI integration), we pivot to static baseline templates in Vietnamese
+// which leverage server-side/client-side placeholders [REDACTED_CUSTOMER_NAME] and
+// [REDACTED_SHIPPING_ADDRESS] to support PII masking rules.
 func buildFallbackDraftMessage(input dto.CustomerUpdateDraftInput) string {
-	customerName := input.CustomerName
-	if customerName == "" {
-		customerName = "Valued Customer"
-	}
-
-	switch strings.ToLower(input.Tone) {
-	case "apologetic":
-		return fmt.Sprintf(
-			"Dear %s, we sincerely apologize for the inconvenience with your order #%d. "+
-				"We are currently looking into the issue and will keep you updated as soon as possible. "+
-				"Thank you for your patience.",
-			customerName, input.OrderID,
-		)
-	case "informative":
-		return fmt.Sprintf(
-			"Hello %s, this is an update regarding your order #%d. "+
-				"We have identified an issue and our team is actively working to resolve it. "+
-				"We will notify you once the matter has been addressed.",
-			customerName, input.OrderID,
-		)
-	case "proactive":
-		return fmt.Sprintf(
-			"Hi %s! We wanted to proactively reach out about your order #%d. "+
-				"Our team has spotted an issue and is already working on a resolution. "+
-				"We appreciate your patience and will update you shortly.",
-			customerName, input.OrderID,
-		)
-	default: // neutral
-		return fmt.Sprintf(
-			"Hello %s, we are writing to inform you about your order #%d. "+
-				"Our team is currently reviewing the situation and will provide an update as soon as possible. "+
-				"We apologize for any inconvenience this may cause.",
-			customerName, input.OrderID,
-		)
-	}
+	// 1. Retrieve the appropriate Vietnamese fallback template from our map using ExceptionType.
+	// 2. We do not do inline replacement (hydration) of [REDACTED_CUSTOMER_NAME] and
+	//    [REDACTED_SHIPPING_ADDRESS] here, as they serve as PII-safe placeholders
+	//    that must be preserved for client/server compliance contract.
+	return GetFallbackTemplate(input.ExceptionType)
 }
 
 // FormatDraftFallbackReason returns a human-readable description of the fallback reason.
