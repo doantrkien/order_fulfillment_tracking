@@ -32,7 +32,7 @@ seed:
 # SWAGGER
 # =========================
 swagger:
-	swag init -g $(MAIN_FILE)/main.go
+	$(shell go env GOPATH)/bin/swag init -g $(MAIN_FILE)/main.go
 
 # =========================
 # TEST

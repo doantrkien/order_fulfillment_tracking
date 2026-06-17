@@ -57,11 +57,12 @@ func TestIntegrationReport(t *testing.T) {
 			expectedStatus: 201,
 			validate: func(t *testing.T, respBody []byte) {
 				var postBody struct {
-					Status int           `json:"status"`
+					Status string        `json:"status"`
 					Data   models.Report `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &postBody))
-				assert.Equal(t, 201, postBody.Status)
+				// assert.Equal(t, 201, postBody.Status)
+				assert.Equal(t, "SUCCESS", postBody.Status)
 				assert.Equal(t, int64(1), postBody.Data.TotalOrders)
 				assert.Equal(t, int64(1), postBody.Data.TotalDelivered)
 				assert.Equal(t, int64(1000), postBody.Data.TotalIncome)
@@ -75,11 +76,12 @@ func TestIntegrationReport(t *testing.T) {
 			expectedStatus: 200,
 			validate: func(t *testing.T, respBody []byte) {
 				var getBody struct {
-					Status int           `json:"status"`
+					Status string        `json:"status"`
 					Data   models.Report `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &getBody))
-				assert.Equal(t, 200, getBody.Status)
+				// assert.Equal(t, 200, getBody.Status)
+				assert.Equal(t, "SUCCESS", getBody.Status)
 				assert.Equal(t, int64(1), getBody.Data.TotalOrders)
 				assert.Equal(t, int64(1), getBody.Data.TotalDelivered)
 			},

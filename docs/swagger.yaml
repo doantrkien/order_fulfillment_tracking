@@ -204,6 +204,34 @@ definitions:
     - user_phone
     - username
     type: object
+  dto.UpdateDraftAPIRequest:
+    properties:
+      channel:
+        type: string
+      order_id:
+        type: integer
+      tone:
+        type: string
+    type: object
+  dto.UpdateDraftAPIResponse:
+    properties:
+      confidence_score:
+        type: number
+      draft_message:
+        type: string
+      fallback_reason:
+        type: string
+      fallback_used:
+        type: boolean
+      generated_at:
+        type: string
+      order_id:
+        type: integer
+      prompt_template_version:
+        type: string
+      tone:
+        type: string
+    type: object
   dto.UpdateStatusRequest:
     properties:
       driver_id:
@@ -304,8 +332,8 @@ definitions:
       pagination:
         $ref: '#/definitions/response.Pagination'
       status:
-        example: 200
-        type: integer
+        example: SUCCESS
+        type: string
     type: object
   response.Pagination:
     properties:
@@ -325,7 +353,7 @@ definitions:
       message:
         type: string
       status:
-        type: integer
+        type: string
     type: object
 host: localhost:5000
 info:
@@ -386,6 +414,43 @@ paths:
       security:
       - BearerAuth: []
       summary: Analyze order exception using AI
+      tags:
+      - AI
+  /api/v1/ai/orders/customer-update-draft:
+    post:
+      consumes:
+      - application/json
+      description: Generate draft message for order exception using AI.
+      parameters:
+      - description: Generate draft message
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateDraftAPIRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ResponseStruct'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UpdateDraftAPIResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBadReqResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Generate draft message using AI
       tags:
       - AI
   /api/v1/auth/login:

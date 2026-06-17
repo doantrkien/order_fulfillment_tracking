@@ -90,7 +90,14 @@ func main() {
 		AITimeout: time.Duration(aiConfig.TimeoutMs) * time.Millisecond,
 	})
 
-	aiService := services.NewAIService(aiRepo, analyzer)
+	draftGenerator := ai.NewDraftGenerator(aiAdapter, ai.DraftGeneratorConfig{
+		AIEnabled: aiConfig.Enabled,
+		AITimeout: time.Duration(aiConfig.TimeoutMs) * time.Millisecond,
+	})
+
+	aiDraftRepo := repositories.NewAIDraftRepository(db)
+
+	aiService := services.NewAIService(aiRepo, analyzer, draftGenerator, aiDraftRepo)
 	aiHandler := handlers.NewAIHandler(aiService)
 
 	routers.SetupAuthRouter(app, authHandler)

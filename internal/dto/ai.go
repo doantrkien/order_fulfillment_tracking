@@ -48,6 +48,23 @@ type ExceptionOutput struct {
 	Confidence         float64 `json:"confidence"`
 }
 
+type UpdateDraftAPIRequest struct {
+	OrderID int64  `json:"order_id"`
+	Tone    string `json:"tone"`
+	Channel string `json:"channel"`
+}
+
+type UpdateDraftAPIResponse struct {
+	OrderID               int64     `json:"order_id"`
+	DraftMessage          string    `json:"draft_message"`
+	Tone                  string    `json:"tone"`
+	ConfidenceScore       float64   `json:"confidence_score"`
+	FallbackUsed          bool      `json:"fallback_used"`
+	FallbackReason        string    `json:"fallback_reason,omitempty"`
+	PromptTemplateVersion string    `json:"prompt_template_version"`
+	GeneratedAt           time.Time `json:"generated_at"`
+}
+
 type ReportSummaryInput struct {
 	Date           string  `json:"date"`
 	TotalOrders    int64   `json:"total_orders"`

@@ -4,31 +4,39 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"time"
+
 	"main/errs"
 	"main/internal/ai"
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/repositories"
-	"time"
 
 	"gorm.io/datatypes"
 )
 
-// AIService defines the business-level interface for AI exception analysis.
+// AIService defines the business-level interface for AI features.
 type AIService interface {
 	AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
+	GetLatestAnalysis(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
+	UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIRequest) (*dto.UpdateDraftAPIResponse, error)
 }
 
 type aiService struct {
-	aiRepo   repositories.AIRepository
-	analyzer *ai.ExceptionAnalyzer
+	aiRepo         repositories.AIRepository
+	analyzer       *ai.ExceptionAnalyzer
+	draftGenerator *ai.DraftGenerator
+	aiDraftRepo    repositories.AIDraftRepository
 }
 
 // NewAIService creates the AI service wired to the repository and analyzer.
-func NewAIService(aiRepo repositories.AIRepository, analyzer *ai.ExceptionAnalyzer) AIService {
+func NewAIService(aiRepo repositories.AIRepository, analyzer *ai.ExceptionAnalyzer, draftGenerator *ai.DraftGenerator, aiDraftRepo repositories.AIDraftRepository) AIService {
 	return &aiService{
-		aiRepo:   aiRepo,
-		analyzer: analyzer,
+		aiRepo:         aiRepo,
+		analyzer:       analyzer,
+		draftGenerator: draftGenerator,
+		aiDraftRepo:    aiDraftRepo,
 	}
 }
 
@@ -44,7 +52,6 @@ func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes s
 	if err != nil {
 		return nil, fmt.Errorf("analyzer error: %w", err)
 	}
-	fmt.Printf("[Debug Service] Analyzed exception result: %+v\n", result)
 
 	// 3. Persist the result to the database
 	exception := mapResultToModel(orderID, result)
@@ -52,10 +59,89 @@ func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes s
 		return nil, fmt.Errorf("failed to save AI result: %w", saveErr)
 	}
 
-	// fmt.Printf("[Debug Service] Analyzed exception for order %+v\n", exception)
-
 	// 4. Map to response DTO
 	return mapToResponse(exception), nil
+}
+
+func (s *aiService) GetLatestAnalysis(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error) {
+	exception, err := s.aiRepo.GetLatestAnalysisByOrderID(ctx, orderID)
+	if err != nil {
+		return nil, errs.ERR_NOT_FOUND
+	}
+
+	return mapToResponse(exception), nil
+}
+
+func (s *aiService) UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIRequest) (*dto.UpdateDraftAPIResponse, error) {
+	// 1. Fetch order context to enrich the AI input with customer info
+	aiCtx, err := s.aiRepo.GetAIContextByOrderID(ctx, req.OrderID)
+	if err != nil {
+		return nil, errs.ERR_NOT_FOUND
+	}
+
+	lastestException, err := s.aiRepo.GetLatestAnalysisByOrderID(ctx, req.OrderID)
+	if err != nil {
+		return nil, errs.ERR_NOT_FOUND
+	}
+
+	// 2. Build adapter input
+	adapterInput := dto.CustomerUpdateDraftInput{
+		OrderID:         req.OrderID,
+		CustomerName:    aiCtx.CustomerName,
+		ShippingAddress: aiCtx.ShippingAddress,
+		CurrentStatus:   (string)(aiCtx.CurrentStatus),
+		LikelyReason:    lastestException.LikelyReason,
+		ExceptionType:   lastestException.ExceptionType,
+		Tone:            req.Tone,
+		Channel:         req.Channel,
+	}
+
+	// 3. Generate draft — DraftGenerator handles AI call, JSON parsing, and fallback internally
+	result, err := s.draftGenerator.Generate(ctx, adapterInput)
+	if err != nil {
+		return nil, errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
+	}
+
+	// 4. Persist draft to DB
+	confidence := result.ConfidenceScore
+	draft := &models.AICustomerUpdateDraft{
+		OrderID:               req.OrderID,
+		DraftMessage:          result.CustomerUpdateDraft,
+		Tone:                  req.Tone,
+		ConfidenceScore:       &confidence,
+		FallbackUsed:          result.FallbackUsed,
+		PromptTemplateVersion: ai.PromptTemplateVersion,
+		ReviewStatus:          models.DraftReviewStatusPending,
+	}
+	if saveErr := s.aiDraftRepo.Save(ctx, draft); saveErr != nil {
+		return nil, errs.ERR_INTERNAL_SERVER
+	}
+
+	// 5. Build and return response DTO
+	return &dto.UpdateDraftAPIResponse{
+		OrderID:               req.OrderID,
+		DraftMessage:          result.CustomerUpdateDraft,
+		Tone:                  req.Tone,
+		ConfidenceScore:       result.ConfidenceScore,
+		FallbackUsed:          result.FallbackUsed,
+		PromptTemplateVersion: ai.PromptTemplateVersion,
+		GeneratedAt:           time.Now(),
+	}, nil
+}
+
+// stripMarkdownFences removes ```json ... ``` wrappers that some LLMs add.
+func stripMarkdownFences(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "```") {
+		if idx := strings.Index(s, "\n"); idx != -1 {
+			s = s[idx+1:]
+		}
+		if idx := strings.LastIndex(s, "```"); idx != -1 {
+			s = s[:idx]
+		}
+		s = strings.TrimSpace(s)
+	}
+	return s
 }
 
 // mapResultToModel converts the analyzer output to the database model.

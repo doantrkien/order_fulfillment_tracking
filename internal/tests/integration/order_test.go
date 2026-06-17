@@ -299,7 +299,7 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 
 			if !tt.expectError {
 				var body struct {
-					Status     int                `json:"status"`
+					Status     string             `json:"status"`
 					Data       []dto.OrderReponse `json:"data"`
 					Pagination struct {
 						TotalItems int64 `json:"total_items"`
@@ -464,14 +464,15 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 
 			if !tt.expectError {
 				var body struct {
-					Status int              `json:"status"`
+					Status string           `json:"status"`
 					Data   dto.OrderReponse `json:"data"`
 				}
 
 				err = json.NewDecoder(resp.Body).Decode(&body)
 				require.NoError(t, err)
 
-				assert.Equal(t, 200, body.Status)
+				// assert.Equal(t, 200, body.Status)
+				assert.Equal(t, "SUCCESS", body.Status)
 				assert.Equal(t, int64(5000), body.Data.TotalAmount)
 				assert.Equal(t, "kien", body.Data.Username)
 				assert.Equal(t, models.ORDER_STATUS_CREATED, body.Data.Status)
