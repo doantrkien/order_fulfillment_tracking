@@ -99,20 +99,30 @@ func TestSanitizePromptContext_DriverNotesCapped(t *testing.T) {
 	}
 }
 
-func TestSanitizePromptContext_StringFieldsCapped(t *testing.T) {
-	longName := strings.Repeat("A", 300)
-	longAddress := strings.Repeat("B", 300)
-
+func TestSanitizePromptContext_PIIRedacted(t *testing.T) {
 	ctx := &ExceptionPromptContext{
 		OrderID:         1,
-		CustomerName:    longName,
-		ShippingAddress: longAddress,
+		CustomerName:    "Nguyen Van A",
+		ShippingAddress: "123 Le Loi, HCM",
 	}
 
 	SanitizePromptContext(ctx)
 
-	assert.Equal(t, MaxStringFieldLength, len(ctx.CustomerName))
-	assert.Equal(t, MaxStringFieldLength, len(ctx.ShippingAddress))
+	assert.Equal(t, "[REDACTED_CUSTOMER_NAME]", ctx.CustomerName)
+	assert.Equal(t, "[REDACTED_SHIPPING_ADDRESS]", ctx.ShippingAddress)
+}
+
+func TestSanitizePromptContext_EmptyPIINotRedacted(t *testing.T) {
+	ctx := &ExceptionPromptContext{
+		OrderID:         1,
+		CustomerName:    "",
+		ShippingAddress: "",
+	}
+
+	SanitizePromptContext(ctx)
+
+	assert.Equal(t, "", ctx.CustomerName)
+	assert.Equal(t, "", ctx.ShippingAddress)
 }
 
 func TestBuildExceptionAnalysisPrompt_ContainsAllSections(t *testing.T) {
@@ -130,6 +140,7 @@ func TestBuildExceptionAnalysisPrompt_ContainsAllSections(t *testing.T) {
 		DriverNotes: "Package looks damaged",
 	}
 
+	SanitizePromptContext(&ctx)
 	prompt := BuildExceptionAnalysisPrompt(ctx)
 
 	assert.Contains(t, prompt, "[SYSTEM]")
@@ -142,8 +153,11 @@ func TestBuildExceptionAnalysisPrompt_ContainsAllSections(t *testing.T) {
 	assert.Contains(t, prompt, "Order ID: 123")
 	assert.Contains(t, prompt, "Current Status: shipped")
 	assert.Contains(t, prompt, "500000 VND")
-	assert.Contains(t, prompt, "Nguyen Van A")
-	assert.Contains(t, prompt, "123 HCM")
+	// PII should be redacted in the prompt — real names must NOT appear
+	assert.NotContains(t, prompt, "Nguyen Van A")
+	assert.NotContains(t, prompt, "123 HCM")
+	assert.Contains(t, prompt, "[REDACTED_CUSTOMER_NAME]")
+	assert.Contains(t, prompt, "[REDACTED_SHIPPING_ADDRESS]")
 	assert.Contains(t, prompt, "Package looks damaged")
 
 	assert.Contains(t, prompt, "created → paid")

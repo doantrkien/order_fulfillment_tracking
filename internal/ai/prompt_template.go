@@ -39,19 +39,21 @@ type EventTimelineEntry struct {
 }
 
 func SanitizePromptContext(ctx *ExceptionPromptContext) {
+	// Redact PII — the exception analyzer doesn't need real customer identity
+	// to detect stuck orders, invalid transitions, or timeline anomalies.
+	if ctx.CustomerName != "" {
+		ctx.CustomerName = "[REDACTED_CUSTOMER_NAME]"
+	}
+	if ctx.ShippingAddress != "" {
+		ctx.ShippingAddress = "[REDACTED_SHIPPING_ADDRESS]"
+	}
+
 	if len(ctx.EventTimeline) > MaxEventTimelineEntries {
 		ctx.EventTimeline = ctx.EventTimeline[len(ctx.EventTimeline)-MaxEventTimelineEntries:]
 	}
 
 	if len(ctx.DriverNotes) > MaxDriverNotesLength {
 		ctx.DriverNotes = ctx.DriverNotes[:MaxDriverNotesLength] + "...[truncated]"
-	}
-
-	if len(ctx.CustomerName) > MaxStringFieldLength {
-		ctx.CustomerName = ctx.CustomerName[:MaxStringFieldLength]
-	}
-	if len(ctx.ShippingAddress) > MaxStringFieldLength {
-		ctx.ShippingAddress = ctx.ShippingAddress[:MaxStringFieldLength]
 	}
 }
 
