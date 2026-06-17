@@ -79,6 +79,17 @@ func (s *aiService) UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIReque
 		return nil, errs.ERR_NOT_FOUND
 	}
 
+	// Normalize and validate Tone to avoid DB check constraint violations
+	tone := strings.ToLower(strings.TrimSpace(req.Tone))
+	switch tone {
+	case models.DraftToneApologetic, models.DraftToneInformative, models.DraftToneProactive, models.DraftToneNeutral:
+		// valid tone
+	case "empathetic":
+		tone = models.DraftToneApologetic // Map common alternative to allowed value
+	default:
+		tone = models.DraftToneNeutral
+	}
+
 	lastestException, err := s.aiRepo.GetLatestAnalysisByOrderID(ctx, req.OrderID)
 	if err != nil {
 		return nil, errs.ERR_NOT_FOUND
@@ -92,7 +103,7 @@ func (s *aiService) UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIReque
 		CurrentStatus:   (string)(aiCtx.CurrentStatus),
 		LikelyReason:    lastestException.LikelyReason,
 		ExceptionType:   lastestException.ExceptionType,
-		Tone:            req.Tone,
+		Tone:            tone,
 		Channel:         req.Channel,
 	}
 
@@ -102,15 +113,43 @@ func (s *aiService) UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIReque
 		return nil, errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
 	}
 
+	var fallbackReason *string
+	if result.FallbackUsed && result.FallbackReason != "" {
+		reason := result.FallbackReason
+		fallbackReason = &reason
+	}
+
+	var durationMs *int
+	if result.DurationMs > 0 {
+		d := result.DurationMs
+		durationMs = &d
+	}
+
+	var rawResponse datatypes.JSON
+	if result.RawResponse != "" {
+		var js interface{}
+		if err := json.Unmarshal([]byte(result.RawResponse), &js); err == nil {
+			rawResponse = datatypes.JSON(result.RawResponse)
+		} else {
+			if bytes, marshalErr := json.Marshal(result.RawResponse); marshalErr == nil {
+				rawResponse = datatypes.JSON(bytes)
+			}
+		}
+	}
+
 	// 4. Persist draft to DB
 	confidence := result.ConfidenceScore
 	draft := &models.AICustomerUpdateDraft{
 		OrderID:               req.OrderID,
+		AIExceptionResultID:   &lastestException.ID,
 		DraftMessage:          result.CustomerUpdateDraft,
-		Tone:                  req.Tone,
+		Tone:                  tone,
 		ConfidenceScore:       &confidence,
 		FallbackUsed:          result.FallbackUsed,
+		FallbackReason:        fallbackReason,
 		PromptTemplateVersion: ai.PromptTemplateVersion,
+		DurationMs:            durationMs,
+		RawResponse:           rawResponse,
 		ReviewStatus:          models.DraftReviewStatusPending,
 	}
 	if saveErr := s.aiDraftRepo.Save(ctx, draft); saveErr != nil {
@@ -121,7 +160,7 @@ func (s *aiService) UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIReque
 	return &dto.UpdateDraftAPIResponse{
 		OrderID:               req.OrderID,
 		DraftMessage:          result.CustomerUpdateDraft,
-		Tone:                  req.Tone,
+		Tone:                  tone,
 		ConfidenceScore:       result.ConfidenceScore,
 		FallbackUsed:          result.FallbackUsed,
 		PromptTemplateVersion: ai.PromptTemplateVersion,

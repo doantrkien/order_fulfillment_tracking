@@ -18,7 +18,7 @@ type DraftResult struct {
 	FallbackUsed        bool
 	FallbackReason      string
 	DurationMs          int
-	// RawResponse         string // Raw AI response (empty when fallback)
+	RawResponse         string // Raw AI response (empty when fallback)
 }
 
 // DraftGeneratorConfig holds runtime configuration for the generator.
@@ -97,7 +97,7 @@ func (dg *DraftGenerator) Generate(ctx context.Context, input dto.CustomerUpdate
 		ConfidenceScore:     output.ConfidenceScore,
 		FallbackUsed:        false,
 		DurationMs:          durationMs,
-		// RawResponse:         rawText,
+		RawResponse:         rawText,
 	}, nil
 }
 
@@ -111,7 +111,7 @@ func (dg *DraftGenerator) fallback(input dto.CustomerUpdateDraftInput, reason st
 		FallbackUsed:        true,
 		FallbackReason:      reason,
 		DurationMs:          durationMs,
-		// RawResponse:         rawResponse,
+		RawResponse:         rawResponse,
 	}
 }
 

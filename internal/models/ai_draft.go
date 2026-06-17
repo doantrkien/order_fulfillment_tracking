@@ -1,7 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
 
+	"gorm.io/datatypes"
+)
 type AICustomerUpdateDraft struct {
 	ID                  int64  `gorm:"primaryKey;column:id" json:"id"`
 	OrderID             int64  `gorm:"column:order_id;not null;index" json:"order_id"`
@@ -23,8 +26,9 @@ type AICustomerUpdateDraft struct {
 	FallbackReason        *string  `gorm:"column:fallback_reason;type:text" json:"fallback_reason,omitempty"`
 	PromptTemplateVersion string   `gorm:"column:prompt_template_version;type:varchar(20);not null;default:'v1'" json:"prompt_template_version"`
 	InputSizeBytes        int      `gorm:"column:input_size_bytes;not null;default:0" json:"input_size_bytes"`
-	DurationMs            *int     `gorm:"column:duration_ms" json:"duration_ms,omitempty"`
-	RequestID             *string  `gorm:"column:request_id;type:varchar(100)" json:"request_id,omitempty"`
+	DurationMs            *int           `gorm:"column:duration_ms" json:"duration_ms,omitempty"`
+	RequestID             *string        `gorm:"column:request_id;type:varchar(100)" json:"request_id,omitempty"`
+	RawResponse           datatypes.JSON `gorm:"column:raw_response" json:"raw_response,omitempty"`
 
 	// Timestamps
 	CreatedAt time.Time `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
