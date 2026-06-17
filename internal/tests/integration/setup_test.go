@@ -149,7 +149,9 @@ func TestMain(m *testing.M) {
 
 	aiDraftRepo := repositories.NewAIDraftRepository(db)
 
-	aiService := services.NewAIService(aiRepo, aiAnalyzer, draftGenerator, aiDraftRepo)
+	aiEvalRepo := repositories.NewAIEvaluationRepository(db)
+
+	aiService := services.NewAIService(aiRepo, aiAnalyzer, draftGenerator, aiDraftRepo, aiEvalRepo)
 	aiHandler := handlers.NewAIHandler(aiService)
 	routers.SetupAIRouter(app, aiHandler)
 
