@@ -88,7 +88,7 @@ func (h *AIHandler) GetLatestAnalysis(c fiber.Ctx) error {
 // @Failure 500 {object} response.ErrorInternalServerErrorResponse
 // @Security BearerAuth
 // @Router /api/v1/ai/orders/customer-update-draft [post]
-func (h *AIHandler) UpdateDraf(c fiber.Ctx) error {
+func (h *AIHandler) UpdateDraft(c fiber.Ctx) error {
 	var req dto.UpdateDraftAPIRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
