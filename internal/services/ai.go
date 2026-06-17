@@ -147,9 +147,9 @@ func (s *aiService) UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIReque
 		ConfidenceScore:       &confidence,
 		FallbackUsed:          result.FallbackUsed,
 		FallbackReason:        fallbackReason,
+		RawResponse:           rawResponse,
 		PromptTemplateVersion: ai.PromptTemplateVersion,
 		DurationMs:            durationMs,
-		RawResponse:           rawResponse,
 		ReviewStatus:          models.DraftReviewStatusPending,
 	}
 	if saveErr := s.aiDraftRepo.Save(ctx, draft); saveErr != nil {
