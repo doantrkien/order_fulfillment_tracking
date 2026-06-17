@@ -103,7 +103,7 @@ func (dg *DraftGenerator) Generate(ctx context.Context, input dto.CustomerUpdate
 
 // fallback generates a safe template-based draft message when AI is unavailable.
 // It preserves the raw AI response (if any) for audit purposes.
-func (dg *DraftGenerator) fallback(input dto.CustomerUpdateDraftInput, reason string, durationMs int, _ string) *DraftResult {
+func (dg *DraftGenerator) fallback(input dto.CustomerUpdateDraftInput, reason string, durationMs int, rawResponse string) *DraftResult {
 	message := buildFallbackDraftMessage(input)
 	return &DraftResult{
 		CustomerUpdateDraft: message,
