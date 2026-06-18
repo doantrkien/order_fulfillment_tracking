@@ -75,10 +75,10 @@ func (s *aiService) GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.
 	resp := mapToResponse(exception)
 
 	// Fetch latest customer update draft for this order (best-effort, not required)
-	draft, draftErr := s.aiDraftRepo.GetLatestByOrderID(ctx, orderID)
-	if draftErr == nil && draft != nil {
-		resp.CustomerUpdateDraft = draft.DraftMessage
-	}
+	// draft, draftErr := s.aiDraftRepo.GetLatestByOrderID(ctx, orderID)
+	// if draftErr == nil && draft != nil {
+	// 	resp.CustomerUpdateDraft = draft.DraftMessage
+	// }
 
 	return resp, nil
 }

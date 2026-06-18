@@ -15,6 +15,69 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/ai/evaluations/order-exceptions": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Run evaluation on order exceptions using provided cases.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Run evaluation on order exceptions",
+                "parameters": [
+                    {
+                        "description": "Evaluation input",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.EvaluationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ResponseStruct"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.EvaluationResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ai/orders/customer-update-draft": {
             "post": {
                 "security": [
@@ -148,6 +211,70 @@ const docTemplate = `{
                         "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorUnauthorizedResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorNotFoundResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ai/orders/{id}/insights/latest": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve the most recent AI-generated exception insights for a specific order, including customer update draft.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Get latest AI exception analysis for an order",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Order ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ResponseStruct"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.AnalyzeExceptionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
                         }
                     },
                     "404": {
@@ -771,7 +898,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "note": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Phân tích đơn hàng này hộ tôi"
                 }
             }
         },
@@ -779,6 +907,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "confidence_score": {
+                    "description": "CustomerUpdateDraft   string    ` + "`" + `json:\"customer_update_draft\"` + "`" + `",
                     "type": "number"
                 },
                 "evaluated_at": {
@@ -883,6 +1012,104 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.EvaluationCase": {
+            "type": "object",
+            "properties": {
+                "case_id": {
+                    "type": "string"
+                },
+                "expected_exception_type": {
+                    "type": "string"
+                },
+                "expected_severity": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "integer"
+                },
+                "synthetic_input": {
+                    "$ref": "#/definitions/dto.ExceptionInput"
+                }
+            }
+        },
+        "dto.EvaluationCaseResult": {
+            "type": "object",
+            "properties": {
+                "actual_exception_type": {
+                    "type": "string"
+                },
+                "actual_severity": {
+                    "type": "string"
+                },
+                "case_id": {
+                    "type": "string"
+                },
+                "confidence_score": {
+                    "type": "number"
+                },
+                "fail_reason": {
+                    "type": "string"
+                },
+                "fallback_used": {
+                    "type": "boolean"
+                },
+                "passed": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.EvaluationRequest": {
+            "type": "object",
+            "properties": {
+                "cases": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.EvaluationCase"
+                    }
+                },
+                "environment": {
+                    "type": "string"
+                },
+                "run_by": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.EvaluationResponse": {
+            "type": "object",
+            "properties": {
+                "avg_confidence": {
+                    "type": "number"
+                },
+                "failed_cases": {
+                    "type": "integer"
+                },
+                "fallback_cases": {
+                    "type": "integer"
+                },
+                "pass_rate": {
+                    "type": "number"
+                },
+                "passed_cases": {
+                    "type": "integer"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.EvaluationCaseResult"
+                    }
+                },
+                "run_at": {
+                    "type": "string"
+                },
+                "total_cases": {
+                    "type": "integer"
+                },
+                "workflow_name": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.EventError": {
             "type": "object",
             "properties": {
@@ -897,6 +1124,55 @@ const docTemplate = `{
                 "status": {
                     "type": "string",
                     "example": "delivered"
+                }
+            }
+        },
+        "dto.EventRecord": {
+            "type": "object",
+            "properties": {
+                "event_at": {
+                    "type": "string"
+                },
+                "from_status": {
+                    "type": "string"
+                },
+                "to_status": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ExceptionInput": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "current_status": {
+                    "type": "string"
+                },
+                "customer_name": {
+                    "type": "string"
+                },
+                "error_message": {
+                    "type": "string"
+                },
+                "event_history": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.EventRecord"
+                    }
+                },
+                "order_id": {
+                    "type": "integer"
+                },
+                "shipping_address": {
+                    "type": "string"
+                },
+                "total_amount": {
+                    "type": "integer"
                 }
             }
         },
