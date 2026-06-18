@@ -296,8 +296,6 @@ func buildAIContextFromSynthetic(input *dto.ExceptionInput) *models.AIContext {
 	// Parse CreatedAt from synthetic input; fall back to zero time if missing
 	createdAt, _ := time.Parse(time.RFC3339, input.CreatedAt)
 
-	// Map ErrorMessage to DriverNotes so rule-based detection can inspect it
-	driverNotes := input.ErrorMessage
 
 	status := models.OrderStatus(input.CurrentStatus)
 	return &models.AIContext{
@@ -309,7 +307,6 @@ func buildAIContextFromSynthetic(input *dto.ExceptionInput) *models.AIContext {
 		ShippingAddress: input.ShippingAddress,
 		PaymentStatus:   models.DerivePaymentStatus(status),
 		RefundStatus:    models.DeriveRefundStatus(status),
-		DriverNotes:     driverNotes,
 		Events:          events,
 	}
 }

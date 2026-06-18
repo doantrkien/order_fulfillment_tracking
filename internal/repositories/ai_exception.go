@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"main/internal/models"
-	"strings"
 
 	"gorm.io/gorm"
 )
@@ -55,7 +54,6 @@ func (r *aiRepository) GetAIContextByOrderID(ctx context.Context, orderID int64)
 	}
 
 	aiEvents := make([]models.AIEvent, 0, len(events))
-	var driverNotesParts []string
 	for _, e := range events {
 		aiEvents = append(aiEvents, models.AIEvent{
 			EventAt:        e.EventAt,
@@ -65,10 +63,6 @@ func (r *aiRepository) GetAIContextByOrderID(ctx context.Context, orderID int64)
 			DriverNote:     e.DriverNote,
 			UpdatedBy:      e.UpdatedBy,
 		})
-		// Aggregate all non-empty driver notes for rule-based analysis
-		if e.DriverNote != nil && strings.TrimSpace(*e.DriverNote) != "" {
-			driverNotesParts = append(driverNotesParts, strings.TrimSpace(*e.DriverNote))
-		}
 	}
 
 	var userInfo models.UserInfo
@@ -83,7 +77,6 @@ func (r *aiRepository) GetAIContextByOrderID(ctx context.Context, orderID int64)
 		ShippingAddress: userInfo.ShippingAddress,
 		PaymentStatus:   models.DerivePaymentStatus(order.CurrentStatus),
 		RefundStatus:    models.DeriveRefundStatus(order.CurrentStatus),
-		DriverNotes:     strings.Join(driverNotesParts, "; "),
 		Events:          aiEvents,
 	}, nil
 }

@@ -253,7 +253,14 @@ func detectDeliveryFailure(aiCtx *models.AIContext) *RuleBasedResult {
 		return nil
 	}
 
-	notes := strings.ToLower(aiCtx.DriverNotes)
+	var notesParts []string
+	for _, e := range aiCtx.Events {
+		if e.DriverNote != nil && strings.TrimSpace(*e.DriverNote) != "" {
+			notesParts = append(notesParts, strings.TrimSpace(*e.DriverNote))
+		}
+	}
+	rawNotes := strings.Join(notesParts, "; ")
+	notes := strings.ToLower(rawNotes)
 	if notes == "" {
 		return nil
 	}
@@ -264,7 +271,7 @@ func detectDeliveryFailure(aiCtx *models.AIContext) *RuleBasedResult {
 			return &RuleBasedResult{
 				ExceptionType:      "DELIVERY_FAILURE",
 				Severity:           "MEDIUM",
-				LikelyReason:       fmt.Sprintf("Delivery failed: %s", aiCtx.DriverNotes),
+				LikelyReason:       fmt.Sprintf("Delivery failed: %s", rawNotes),
 				InternalNextAction: "Contact customer to reschedule delivery. Update delivery attempts log.",
 				ConfidenceScore:    1.0,
 			}
@@ -277,7 +284,7 @@ func detectDeliveryFailure(aiCtx *models.AIContext) *RuleBasedResult {
 			return &RuleBasedResult{
 				ExceptionType:      "DELIVERY_FAILURE",
 				Severity:           "HIGH",
-				LikelyReason:       fmt.Sprintf("Delivery failed: %s", aiCtx.DriverNotes),
+				LikelyReason:       fmt.Sprintf("Delivery failed: %s", rawNotes),
 				InternalNextAction: "Escalate to logistics team. Arrange re-delivery or return to warehouse.",
 				ConfidenceScore:    1.0,
 			}

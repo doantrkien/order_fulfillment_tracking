@@ -286,7 +286,7 @@ func TestDetectStuckOrder(t *testing.T) {
 func TestAnalyzeByRules_PriorityOrder(t *testing.T) {
 	now := time.Now()
 
-	t.Run("invalid transition takes priority over duplicate", func(t *testing.T) {
+	t.Run("duplicate takes priority over invalid transition", func(t *testing.T) {
 		aiCtx := &models.AIContext{
 			CurrentStatus: models.ORDER_STATUS_SHIPPED,
 			CreatedAt:     now.Add(-100 * time.Hour),
@@ -300,7 +300,7 @@ func TestAnalyzeByRules_PriorityOrder(t *testing.T) {
 		}
 		result := AnalyzeByRules(aiCtx, now)
 		assert.NotNil(t, result)
-		assert.Equal(t, "INVALID_TRANSITION", result.ExceptionType)
+		assert.Equal(t, "DUPLICATE_EVENT", result.ExceptionType)
 	})
 
 	t.Run("duplicate takes priority over skipped status", func(t *testing.T) {
