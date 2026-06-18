@@ -4,23 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
-	"time"
-
 	"main/errs"
 	"main/internal/ai"
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/repositories"
+	"strings"
+	"time"
 
 	"gorm.io/datatypes"
 )
 
-// AIService defines the business-level interface for AI features.
 type AIService interface {
 	AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
 	GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error)
-	UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIRequest) (*dto.UpdateDraftAPIResponse, error)
+	GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIRequest) (*dto.GenerateDraftAPIResponse, error)
 	RunEvaluation(ctx context.Context, req dto.EvaluationRequest) (*dto.EvaluationResponse, error)
 }
 
@@ -32,7 +30,6 @@ type aiService struct {
 	aiEvalRepo     repositories.AIEvaluationRepository
 }
 
-// NewAIService creates the AI service wired to the repository and analyzer.
 func NewAIService(aiRepo repositories.AIRepository, analyzer *ai.ExceptionAnalyzer, draftGenerator *ai.DraftGenerator, aiDraftRepo repositories.AIDraftRepository, aiEvalRepo repositories.AIEvaluationRepository) AIService {
 	return &aiService{
 		aiRepo:         aiRepo,
@@ -44,25 +41,22 @@ func NewAIService(aiRepo repositories.AIRepository, analyzer *ai.ExceptionAnalyz
 }
 
 func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error) {
-	// 1. Fetch order context from DB
+
 	aiCtx, err := s.aiRepo.GetAIContextByOrderID(ctx, orderID)
 	if err != nil {
 		return nil, errs.ERR_NOT_FOUND
 	}
 
-	// 2. Run the analyzer (AI-first with automatic fallback)
 	result, err := s.analyzer.Analyze(ctx, aiCtx, notes)
 	if err != nil {
-		return nil, fmt.Errorf("analyzer error: %w", err)
+		return nil, fmt.Errorf("Error in Analyze Service: %w", err)
 	}
 
-	// 3. Persist the result to the database
 	exception := mapResultToModel(orderID, result)
 	if saveErr := s.aiRepo.Save(ctx, exception); saveErr != nil {
-		return nil, fmt.Errorf("failed to save AI result: %w", saveErr)
+		return nil, fmt.Errorf("Error in save AI result: %w", saveErr)
 	}
 
-	// 4. Map to response DTO
 	return mapToResponse(exception), nil
 }
 
@@ -83,20 +77,18 @@ func (s *aiService) GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.
 	return resp, nil
 }
 
-func (s *aiService) UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIRequest) (*dto.UpdateDraftAPIResponse, error) {
-	// 1. Fetch order context to enrich the AI input with customer info
+func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIRequest) (*dto.GenerateDraftAPIResponse, error) {
+
 	aiCtx, err := s.aiRepo.GetAIContextByOrderID(ctx, req.OrderID)
 	if err != nil {
 		return nil, errs.ERR_NOT_FOUND
 	}
 
-	// Normalize and validate Tone to avoid DB check constraint violations
 	tone := strings.ToLower(strings.TrimSpace(req.Tone))
 	switch tone {
 	case models.DraftToneApologetic, models.DraftToneInformative, models.DraftToneProactive, models.DraftToneNeutral:
-		// valid tone
 	case "empathetic":
-		tone = models.DraftToneApologetic // Map common alternative to allowed value
+		tone = models.DraftToneApologetic
 	default:
 		tone = models.DraftToneNeutral
 	}
@@ -106,7 +98,6 @@ func (s *aiService) UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIReque
 		return nil, errs.ERR_NOT_FOUND
 	}
 
-	// 2. Build adapter input
 	adapterInput := dto.CustomerUpdateDraftInput{
 		OrderID:         req.OrderID,
 		CustomerName:    aiCtx.CustomerName,
@@ -118,7 +109,6 @@ func (s *aiService) UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIReque
 		Channel:         req.Channel,
 	}
 
-	// 3. Generate draft — DraftGenerator handles AI call, JSON parsing, and fallback internally
 	result, err := s.draftGenerator.Generate(ctx, adapterInput)
 	if err != nil {
 		return nil, errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
@@ -148,7 +138,6 @@ func (s *aiService) UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIReque
 		}
 	}
 
-	// 4. Persist draft to DB
 	confidence := result.ConfidenceScore
 	draft := &models.AICustomerUpdateDraft{
 		OrderID:               req.OrderID,
@@ -167,8 +156,7 @@ func (s *aiService) UpdateDraft(ctx context.Context, req dto.UpdateDraftAPIReque
 		return nil, errs.ERR_INTERNAL_SERVER
 	}
 
-	// 5. Build and return response DTO
-	return &dto.UpdateDraftAPIResponse{
+	return &dto.GenerateDraftAPIResponse{
 		OrderID:               req.OrderID,
 		DraftMessage:          result.CustomerUpdateDraft,
 		Tone:                  tone,
@@ -188,8 +176,6 @@ func (s *aiService) RunEvaluation(ctx context.Context, req dto.EvaluationRequest
 	)
 
 	for _, c := range req.Cases {
-		// 1. Build AIContext — từ DB (order thật) hoặc synthetic input
-		// Dùng function buildAIContextForEval thay vì s.buildContext
 		aiCtx, err := buildAIContextForEval(ctx, s.aiRepo, &c)
 		if err != nil {
 			results = append(results, dto.EvaluationCaseResult{
@@ -285,8 +271,6 @@ func (s *aiService) RunEvaluation(ctx context.Context, req dto.EvaluationRequest
 	}, nil
 }
 
-// buildAIContextForEval là package-level function (không phải method)
-// để tránh lỗi "no field or method buildContext" trên *aiService
 func buildAIContextForEval(ctx context.Context, aiRepo repositories.AIRepository, c *dto.EvaluationCase) (*models.AIContext, error) {
 	if c.OrderID > 0 {
 		return aiRepo.GetAIContextByOrderID(ctx, c.OrderID)
@@ -297,8 +281,6 @@ func buildAIContextForEval(ctx context.Context, aiRepo repositories.AIRepository
 	return nil, fmt.Errorf("case %s: must provide either order_id or synthetic_input", c.CaseID)
 }
 
-// buildAIContextFromSynthetic chuyển ExceptionInput thành AIContext để đưa vào analyzer.
-// Dùng cho evaluation cases không có order thật trong DB.
 func buildAIContextFromSynthetic(input *dto.ExceptionInput) *models.AIContext {
 	events := make([]models.AIEvent, 0, len(input.EventHistory))
 	for _, e := range input.EventHistory {
@@ -322,7 +304,6 @@ func buildAIContextFromSynthetic(input *dto.ExceptionInput) *models.AIContext {
 	}
 }
 
-// stripMarkdownFences removes ```json ... ``` wrappers that some LLMs add.
 func stripMarkdownFences(s string) string {
 	s = strings.TrimSpace(s)
 	if strings.HasPrefix(s, "```") {
@@ -337,7 +318,6 @@ func stripMarkdownFences(s string) string {
 	return s
 }
 
-// mapResultToModel converts the analyzer output to the database model.
 func mapResultToModel(orderID int64, result *ai.AnalysisResult) *models.AIException {
 	now := time.Now()
 
@@ -355,12 +335,10 @@ func mapResultToModel(orderID int64, result *ai.AnalysisResult) *models.AIExcept
 
 	var rawResponse datatypes.JSON
 	if result.RawResponse != "" {
-		// Ensure rawResponse is valid JSON before saving to DB JSONB column
 		var js interface{}
 		if err := json.Unmarshal([]byte(result.RawResponse), &js); err == nil {
 			rawResponse = datatypes.JSON(result.RawResponse)
 		} else {
-			// If not valid JSON, serialize the raw string into a JSON string format
 			if bytes, marshalErr := json.Marshal(result.RawResponse); marshalErr == nil {
 				rawResponse = datatypes.JSON(bytes)
 			}
@@ -383,12 +361,7 @@ func mapResultToModel(orderID int64, result *ai.AnalysisResult) *models.AIExcept
 	}
 }
 
-// mapToResponse converts the database model to the API response DTO.
 func mapToResponse(e *models.AIException) *dto.AnalyzeExceptionResponse {
-	fallbackReason := ""
-	if e.FallbackReason != nil {
-		fallbackReason = *e.FallbackReason
-	}
 	return &dto.AnalyzeExceptionResponse{
 		ResultID:              fmt.Sprintf("res-%d", e.ID),
 		OrderID:               fmt.Sprintf("%d", e.OrderID),
@@ -398,7 +371,6 @@ func mapToResponse(e *models.AIException) *dto.AnalyzeExceptionResponse {
 		InternalNextAction:    e.InternalNextAction,
 		ConfidenceScore:       e.ConfidenceScore,
 		FallbackUsed:          e.FallbackUsed,
-		FallbackReason:        fallbackReason,
 		PromptTemplateVersion: e.PromptTemplateVersion,
 		EvaluatedAt:           e.EvaluatedAt,
 	}

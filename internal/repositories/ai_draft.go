@@ -38,8 +38,6 @@ func (r *aiDraftRepository) GetLatestByOrderID(ctx context.Context, orderID int6
 	return &draft, nil
 }
 
-// GetPendingByOrderID trả về tất cả draft chưa review của một order.
-// Dùng cho operator queue: hiển thị danh sách draft chờ duyệt.
 func (r *aiDraftRepository) GetPendingByOrderID(ctx context.Context, orderID int64) ([]models.AICustomerUpdateDraft, error) {
 	var drafts []models.AICustomerUpdateDraft
 	err := r.db.WithContext(ctx).
@@ -52,8 +50,6 @@ func (r *aiDraftRepository) GetPendingByOrderID(ctx context.Context, orderID int
 	return drafts, nil
 }
 
-// UpdateReviewStatus cập nhật trạng thái review — guard WHERE review_status = PENDING
-// để tránh race condition khi 2 operator review cùng lúc.
 func (r *aiDraftRepository) UpdateReviewStatus(ctx context.Context, id int64, status string, reviewedBy string) error {
 	return r.db.WithContext(ctx).
 		Model(&models.AICustomerUpdateDraft{}).

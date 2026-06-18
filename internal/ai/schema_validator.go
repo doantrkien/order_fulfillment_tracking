@@ -3,24 +3,9 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
+	"main/internal/dto"
 	"strings"
 )
-
-type AIExceptionRawOutput struct {
-	// ExceptionType      string  `json:"exception_type"`
-	// Severity           string  `json:"severity"`
-	// LikelyReason       string  `json:"likely_reason"`
-	// InternalNextAction string  `json:"internal_next_action"`
-	// ShouldAlert        bool    `json:"should_alert"`
-	// ConfidenceScore    float64 `json:"confidence_score"`
-	ExceptionType      string  `json:"exception_type"`
-	Severity           string  `json:"severity"`
-	LikelyReason       string  `json:"likely_reason"`
-	InternalNextAction string  `json:"internal_next_action"`
-	Suggestion         string  `json:"suggestion"`
-	ShouldAlert        bool    `json:"should_alert"`
-	ConfidenceScore    float64 `json:"confidence_score"`
-}
 
 var validExceptionTypes = map[string]bool{
 	"INVALID_TRANSITION":   true,
@@ -48,14 +33,7 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("schema validation failed: %s", strings.Join(e.Fields, "; "))
 }
 
-func ParseAndValidateAIOutput(rawResponse string) (*AIExceptionRawOutput, error) {
-	cleaned := stripMarkdownFences(rawResponse)
-
-	var output AIExceptionRawOutput
-	if err := json.Unmarshal([]byte(cleaned), &output); err != nil {
-		return nil, fmt.Errorf("AI response is not valid JSON: %w", err)
-	}
-
+func ParseAndValidateAIOutput(output *dto.ExceptionOutput) error {
 	var violations []string
 
 	if !validExceptionTypes[output.ExceptionType] {
@@ -90,10 +68,10 @@ func ParseAndValidateAIOutput(rawResponse string) (*AIExceptionRawOutput, error)
 	}
 
 	if len(violations) > 0 {
-		return nil, &ValidationError{Fields: violations}
+		return &ValidationError{Fields: violations}
 	}
 
-	return &output, nil
+	return nil
 }
 
 func stripMarkdownFences(s string) string {

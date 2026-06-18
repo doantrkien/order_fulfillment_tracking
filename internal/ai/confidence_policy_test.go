@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"main/internal/dto"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -53,7 +54,7 @@ func TestShouldFallback(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			output := &AIExceptionRawOutput{
+			output := &dto.ExceptionOutput{
 				ExceptionType:      "STUCK_ORDER",
 				Severity:           "HIGH",
 				LikelyReason:       "test reason",
@@ -67,3 +68,4 @@ func TestShouldFallback(t *testing.T) {
 		})
 	}
 }
+

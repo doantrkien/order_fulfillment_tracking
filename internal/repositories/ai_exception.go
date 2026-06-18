@@ -38,8 +38,8 @@ func (r *aiRepository) GetLatestAnalysisByOrderID(ctx context.Context, orderID i
 	return &result, nil
 }
 
-// GetAIContextByOrderID aggregates order + events into AIContext used for prompt building.
 func (r *aiRepository) GetAIContextByOrderID(ctx context.Context, orderID int64) (*models.AIContext, error) {
+
 	var order models.Order
 	if err := r.db.WithContext(ctx).Where("id = ?", orderID).First(&order).Error; err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (r *aiRepository) GetAIContextByOrderID(ctx context.Context, orderID int64)
 	var events []models.OrderEvent
 	if err := r.db.WithContext(ctx).
 		Where("order_id = ?", orderID).
-		Order("event_at DESC").
+		Order("event_at ASC").
 		Find(&events).Error; err != nil {
 		return nil, err
 	}

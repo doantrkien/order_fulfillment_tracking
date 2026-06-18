@@ -17,8 +17,6 @@ const (
 	FallbackReasonLowConfidence   = "ai_confidence_below_threshold"
 )
 
-// AnalysisResult is the unified output produced by the ExceptionAnalyzer.
-// Both AI and rule-based paths produce this same type.
 type AnalysisResult struct {
 	ExceptionType      string
 	Severity           string
@@ -28,24 +26,19 @@ type AnalysisResult struct {
 	FallbackUsed       bool
 	FallbackReason     string
 	DurationMs         int
-	RawResponse        string // Raw AI response (empty when fallback)
+	RawResponse        string
 }
 
-// ExceptionAnalyzerConfig holds runtime configuration for the analyzer.
 type ExceptionAnalyzerConfig struct {
 	AIEnabled bool
 	AITimeout time.Duration
 }
 
-// ExceptionAnalyzer orchestrates AI exception analysis with automatic
-// fallback to deterministic rule-based detection.
 type ExceptionAnalyzer struct {
 	adapter AIAdapter
 	config  ExceptionAnalyzerConfig
 }
 
-// NewExceptionAnalyzer creates an analyzer with the given AI adapter and config.
-// adapter may be nil when AI is disabled.
 func NewExceptionAnalyzer(adapter AIAdapter, config ExceptionAnalyzerConfig) *ExceptionAnalyzer {
 	return &ExceptionAnalyzer{
 		adapter: adapter,
@@ -53,60 +46,44 @@ func NewExceptionAnalyzer(adapter AIAdapter, config ExceptionAnalyzerConfig) *Ex
 	}
 }
 
-// Analyze is the main entry point. It follows this flow:
-//  1. Check if AI is enabled → if not, fallback immediately
-//  2. Call AI adapter with timeout context
-//  3. Check confidence threshold on the result
-//  4. Falls back to rule-based if any step fails
-//
-// This method never returns an error for AI failures — it always falls back.
-// Errors are only returned for genuine infrastructure issues (e.g., invalid input).
 func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContext, notes string) (*AnalysisResult, error) {
 	now := time.Now()
 
-	// Step 1: Check if AI is disabled
 	if !ea.config.AIEnabled {
 		return ea.fallback(aiCtx, FallbackReasonDisabled, 0, now), nil
 	}
 
-	// Step 2: Build input and call AI adapter with timeout
 	input := buildExceptionInput(aiCtx, notes)
 
 	start := time.Now()
 	aiCtxTimeout, cancel := context.WithTimeout(ctx, ea.config.AITimeout)
 	defer cancel()
 
-	aiOutput, err := ea.adapter.AnalyzeException(aiCtxTimeout, input)
+	aiOutput, rawText, err := ea.adapter.AnalyzeException(aiCtxTimeout, input)
 	durationMs := int(time.Since(start).Milliseconds())
 
-	// Step 3: Handle AI call errors (timeout, connection, etc.)
 	if err != nil {
 		reason := ClassifyError(err)
-		return ea.fallback(aiCtx, reason, durationMs, now), nil
+		return ea.fallbackWithRaw(aiCtx, reason, durationMs, rawText, now), nil
 	}
 
-	// Step 4: Validate response by marshaling back to JSON and running schema validation
-	rawStr := string(aiOutput)
-	validated, validationErr := ParseAndValidateAIOutput(rawStr)
-	if validationErr != nil {
-		return ea.fallbackWithRaw(aiCtx, FallbackReasonInvalidResponse, durationMs, rawStr, now), nil
+	if validationErr := ParseAndValidateAIOutput(&aiOutput); validationErr != nil {
+		return ea.fallbackWithRaw(aiCtx, FallbackReasonInvalidResponse, durationMs, rawText, now), nil
 	}
 
-	// Step 5: Check confidence threshold
-	if shouldFallback, _ := ShouldFallback(validated); shouldFallback {
-		return ea.fallback(aiCtx, FallbackReasonLowConfidence, durationMs, now), nil
+	if shouldFallback, _ := ShouldFallback(&aiOutput); shouldFallback {
+		return ea.fallbackWithRaw(aiCtx, FallbackReasonLowConfidence, durationMs, rawText, now), nil
 	}
 
-	// Step 6: AI succeeded — return the validated result
 	return &AnalysisResult{
-		ExceptionType:      validated.ExceptionType,
-		Severity:           validated.Severity,
-		LikelyReason:       validated.LikelyReason,
-		InternalNextAction: validated.InternalNextAction,
-		ConfidenceScore:    validated.ConfidenceScore,
+		ExceptionType:      aiOutput.ExceptionType,
+		Severity:           aiOutput.Severity,
+		LikelyReason:       aiOutput.LikelyReason,
+		InternalNextAction: aiOutput.InternalNextAction,
+		ConfidenceScore:    aiOutput.ConfidenceScore,
 		FallbackUsed:       false,
 		DurationMs:         durationMs,
-		RawResponse:        rawStr,
+		RawResponse:        rawText,
 	}, nil
 }
 
@@ -158,7 +135,6 @@ func (ea *ExceptionAnalyzer) fallbackWithRaw(aiCtx *models.AIContext, reason str
 	}
 }
 
-// buildExceptionInput converts the internal AIContext to the adapter's input DTO.
 func buildExceptionInput(aiCtx *models.AIContext, notes string) dto.ExceptionInput {
 	eventHistory := make([]dto.EventRecord, 0, len(aiCtx.Events))
 	for _, e := range aiCtx.Events {

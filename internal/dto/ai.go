@@ -3,20 +3,18 @@ package dto
 import "time"
 
 type AnalyzeExceptionRequest struct {
-	Note string `json:"note" example:"Phân tích đơn hàng này hộ tôi"`
+	Note string `json:"note" validate:"max=500" example:"Phân tích đơn hàng này hộ tôi"`
 }
 
 type AnalyzeExceptionResponse struct {
-	ResultID           string `json:"result_id"`
-	OrderID            string `json:"order_id"`
-	ExceptionType      string `json:"exception_type"`
-	Severity           string `json:"severity"`
-	LikelyReason       string `json:"likely_reason"`
-	InternalNextAction string `json:"internal_next_action"`
-	// CustomerUpdateDraft   string    `json:"customer_update_draft"`
+	ResultID              string    `json:"result_id"`
+	OrderID               string    `json:"order_id"`
+	ExceptionType         string    `json:"exception_type"`
+	Severity              string    `json:"severity"`
+	LikelyReason          string    `json:"likely_reason"`
+	InternalNextAction    string    `json:"internal_next_action"`
 	ConfidenceScore       float64   `json:"confidence_score"`
 	FallbackUsed          bool      `json:"fallback_used"`
-	FallbackReason        string    `json:"fallback_reason,omitempty"`
 	PromptTemplateVersion string    `json:"prompt_template_version"`
 	EvaluatedAt           time.Time `json:"evaluated_at"`
 }
@@ -46,22 +44,21 @@ type ExceptionOutput struct {
 	InternalNextAction string  `json:"internal_next_action"`
 	Suggestion         string  `json:"suggestion"`
 	ShouldAlert        bool    `json:"should_alert"`
-	Confidence         float64 `json:"confidence"`
+	ConfidenceScore    float64 `json:"confidence_score"`
 }
 
-type UpdateDraftAPIRequest struct {
-	OrderID int64  `json:"order_id"`
-	Tone    string `json:"tone"`
-	Channel string `json:"channel"`
+type GenerateDraftAPIRequest struct {
+	OrderID int64  `json:"order_id" example:"12345"`
+	Tone    string `json:"tone" example:"apologetic"`
+	Channel string `json:"channel" example:"email"`
 }
 
-type UpdateDraftAPIResponse struct {
+type GenerateDraftAPIResponse struct {
 	OrderID               int64     `json:"order_id"`
 	DraftMessage          string    `json:"draft_message"`
 	Tone                  string    `json:"tone"`
 	ConfidenceScore       float64   `json:"confidence_score"`
 	FallbackUsed          bool      `json:"fallback_used"`
-	FallbackReason        string    `json:"fallback_reason,omitempty"`
 	PromptTemplateVersion string    `json:"prompt_template_version"`
 	GeneratedAt           time.Time `json:"generated_at"`
 }
