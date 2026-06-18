@@ -147,10 +147,15 @@ func TestBuildExceptionAnalysisPrompt_ContainsAllSections(t *testing.T) {
 	assert.Contains(t, prompt, "[CONTEXT]")
 	assert.Contains(t, prompt, "[DOMAIN KNOWLEDGE]")
 	assert.Contains(t, prompt, "[TASK]")
+	assert.Contains(t, prompt, "[SEVERITY RULES]")
 	assert.Contains(t, prompt, "[OUTPUT FORMAT]")
 	assert.Contains(t, prompt, "[CONSTRAINTS]")
 
 	assert.Contains(t, prompt, "Order ID: 123")
+	assert.Contains(t, prompt, "CRITICAL")
+	assert.Contains(t, prompt, "HIGH")
+	assert.Contains(t, prompt, "MEDIUM")
+	assert.Contains(t, prompt, "LOW")
 	assert.Contains(t, prompt, "Current Status: shipped")
 	assert.Contains(t, prompt, "500000 VND")
 	// PII should be redacted in the prompt — real names must NOT appear

@@ -7,7 +7,9 @@ import (
 	"main/internal/dto"
 )
 
-const PromptTemplateVersion = "1.0.0"
+// PromptTemplateVersion tracks the current version of the exception analysis prompt.
+// Increment this when the prompt structure or instructions change.
+const PromptTemplateVersion = "1.2.0"
 
 const (
 	MaxEventTimelineEntries = 50
@@ -110,6 +112,48 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext) string {
 	sb.WriteString("  - Duplicate or contradictory events\n")
 	sb.WriteString("  - Delivery failures or cancellations with unusual patterns\n")
 	sb.WriteString("  - Any anomaly mentioned in the operator notes\n\n")
+
+	// ── [SEVERITY RULES] ──────────────────────────────────────────────────────
+	sb.WriteString("[SEVERITY RULES]\n")
+	sb.WriteString("You MUST assign severity using ONLY the rules below. Do not use intuition or guesswork.\n")
+	sb.WriteString("Each exception_type has specific, mandatory severity values:\n\n")
+
+	sb.WriteString("INVALID_TRANSITION:\n")
+	sb.WriteString("  → Always CRITICAL. Any transition outside the valid state machine is a data integrity violation.\n\n")
+
+	sb.WriteString("CANCELLATION_ANOMALY:\n")
+	sb.WriteString("  → CRITICAL if the order was cancelled after reaching 'shipped' or 'delivered' status.\n")
+	sb.WriteString("  → HIGH if cancelled after 'packed' status.\n")
+	sb.WriteString("  → MEDIUM if cancelled after 'paid' status (early cancellation, less impactful).\n\n")
+
+	sb.WriteString("REFUND_ANOMALY:\n")
+	sb.WriteString("  → CRITICAL if refund was triggered from 'created' status (order was never paid — potential fraud).\n")
+	sb.WriteString("  → HIGH if refund was triggered directly from 'paid' status (bypassed normal cancellation flow).\n\n")
+
+	sb.WriteString("DELIVERY_FAILURE:\n")
+	sb.WriteString("  → HIGH if operator notes mention: accident, vehicle breakdown, bad weather, package lost, could not deliver.\n")
+	sb.WriteString("  → MEDIUM if operator notes mention: customer not home, wrong address, no one home.\n\n")
+
+	sb.WriteString("STUCK_ORDER:\n")
+	sb.WriteString("  → CRITICAL if stuck time exceeds 2× the normal threshold for that status.\n")
+	sb.WriteString("  → HIGH if stuck in 'packed' > 24h or 'shipped' > 72h (but not yet 2× threshold).\n")
+	sb.WriteString("  → MEDIUM if stuck in 'created' > 24h or 'paid' > 48h (but not yet 2× threshold).\n\n")
+
+	sb.WriteString("  Normal stuck thresholds by status:\n")
+	sb.WriteString("    created  → 24h (MEDIUM baseline)\n")
+	sb.WriteString("    paid     → 48h (MEDIUM baseline)\n")
+	sb.WriteString("    packed   → 24h (HIGH baseline)\n")
+	sb.WriteString("    shipped  → 72h (HIGH baseline)\n\n")
+
+	sb.WriteString("SKIPPED_STATUS:\n")
+	sb.WriteString("  → Always HIGH. A missing lifecycle step may indicate a system bypass or data integrity issue.\n\n")
+
+	sb.WriteString("DUPLICATE_EVENT:\n")
+	sb.WriteString("  → Always LOW. Duplicate events are noisy but do not represent an immediate business threat.\n\n")
+
+	sb.WriteString("OTHER:\n")
+	sb.WriteString("  → LOW for minor anomalies or unclear issues not fitting any category above.\n")
+	sb.WriteString("  → MEDIUM if the anomaly could affect order accuracy or customer experience.\n\n")
 
 	// ── [OUTPUT FORMAT] ───────────────────────────────────────────────────────
 	sb.WriteString("[OUTPUT FORMAT]\n")
