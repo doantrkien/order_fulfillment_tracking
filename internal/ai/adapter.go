@@ -12,7 +12,7 @@ import (
 )
 
 type AIAdapter interface {
-	AnalyzeException(ctx context.Context, input dto.ExceptionInput) (string, error)
+	AnalyzeException(ctx context.Context, input dto.ExceptionInput) (dto.ExceptionOutput, string, error)
 	SummarizeReport(ctx context.Context, input dto.ExceptionOutput) (dto.ReportSummaryOutput, error)
 	DraftCustomerUpdate(ctx context.Context, input dto.CustomerUpdateDraftInput) (string, error)
 	Ping(ctx context.Context) error
@@ -29,7 +29,7 @@ func NewAIAdapter(client aiclient.AIClient) *aiAdapter {
 func (g *aiAdapter) AnalyzeException(
 	ctx context.Context,
 	input dto.ExceptionInput,
-) (string, error) {
+) (dto.ExceptionOutput, string, error) {
 	timeline := make([]EventTimelineEntry, 0, len(input.EventHistory))
 	for _, e := range input.EventHistory {
 		timeline = append(timeline, EventTimelineEntry{
@@ -57,10 +57,17 @@ func (g *aiAdapter) AnalyzeException(
 
 	rawText, err := g.client.GenerateContent(ctx, prompt)
 	if err != nil {
-		return "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
+		return dto.ExceptionOutput{}, "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
 	}
 
-	return rawText, nil
+	var output dto.ExceptionOutput
+	cleaned := stripMarkdownFences(rawText)
+	if err := json.Unmarshal([]byte(cleaned), &output); err != nil {
+		// Return the unparseable text so it can be logged/audited
+		return dto.ExceptionOutput{}, rawText, errs.ERR_AI_RESPONSE_VALIDATION_FAILED
+	}
+
+	return output, rawText, nil
 }
 
 func (g *aiAdapter) DraftCustomerUpdate(

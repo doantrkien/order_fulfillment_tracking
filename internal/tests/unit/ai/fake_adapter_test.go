@@ -14,11 +14,11 @@ import (
 
 func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 	expectedOutput := dto.ExceptionOutput{
-		Severity:     "HIGH",
-		LikelyReason: "Traffic congestion in metropolitan area",
-		Suggestion:   "Assign backup driver",
-		ShouldAlert:  true,
-		Confidence:   0.95,
+		Severity:        "HIGH",
+		LikelyReason:    "Traffic congestion in metropolitan area",
+		Suggestion:      "Assign backup driver",
+		ShouldAlert:     true,
+		ConfidenceScore: 0.95,
 	}
 
 	expectedSummary := dto.ReportSummaryOutput{
@@ -42,7 +42,7 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 		name      string
 		setup     func(f *ai.FakeAIAdapter)
 		assertErr func(t *testing.T, err error)
-		assertOut func(t *testing.T, output string)
+		assertOut func(t *testing.T, output dto.ExceptionOutput, rawText string)
 	}{
 		{
 			name: "Happy Path - Normal AI response",
@@ -52,9 +52,10 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 			assertErr: func(t *testing.T, err error) {
 				assert.NoError(t, err)
 			},
-			assertOut: func(t *testing.T, output string) {
-				assert.Contains(t, output, expectedOutput.Severity)
-				t.Logf("[HAPPY PATH OUTPUT] Raw JSON Output: %s", output)
+			assertOut: func(t *testing.T, output dto.ExceptionOutput, rawText string) {
+				assert.Equal(t, expectedOutput.Severity, output.Severity)
+				assert.Contains(t, rawText, expectedOutput.Severity)
+				t.Logf("[HAPPY PATH OUTPUT] Output: %+v", output)
 			},
 		},
 		{
@@ -67,8 +68,9 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 				assert.Equal(t, ai.ErrAIDisabled, err)
 				t.Logf("[AI DISABLED ERROR] Gặp lỗi giả lập khi AI disabled: %v", err)
 			},
-			assertOut: func(t *testing.T, output string) {
-				assert.Empty(t, output)
+			assertOut: func(t *testing.T, output dto.ExceptionOutput, rawText string) {
+				assert.Empty(t, output.ExceptionType)
+				assert.Empty(t, rawText)
 			},
 		},
 		{
@@ -81,8 +83,9 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 				assert.True(t, errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled))
 				t.Logf("[TIMEOUT ERROR] Gặp lỗi giả lập AI Timeout: %v", err)
 			},
-			assertOut: func(t *testing.T, output string) {
-				assert.Empty(t, output)
+			assertOut: func(t *testing.T, output dto.ExceptionOutput, rawText string) {
+				assert.Empty(t, output.ExceptionType)
+				assert.Empty(t, rawText)
 			},
 		},
 		{
@@ -91,11 +94,12 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 				f.SimulateInvalidResponse = true
 			},
 			assertErr: func(t *testing.T, err error) {
-				assert.NoError(t, err) // in the new FakeAIAdapter, invalid response does not return an error immediately, it returns invalid JSON string
+				assert.Error(t, err) // invalid response now returns an error
 			},
-			assertOut: func(t *testing.T, output string) {
-				assert.Equal(t, "{invalid-json}", output)
-				t.Logf("[INVALID RESPONSE OUTPUT] Gặp chuỗi JSON không hợp lệ: %s", output)
+			assertOut: func(t *testing.T, output dto.ExceptionOutput, rawText string) {
+				assert.Empty(t, output.ExceptionType)
+				assert.Equal(t, "{invalid-json}", rawText)
+				t.Logf("[INVALID RESPONSE OUTPUT] Error returned for invalid response")
 			},
 		},
 		{
@@ -106,9 +110,10 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 			assertErr: func(t *testing.T, err error) {
 				assert.NoError(t, err)
 			},
-			assertOut: func(t *testing.T, output string) {
-				assert.Contains(t, output, `"confidence_score": 0.3`)
-				t.Logf("[LOW CONFIDENCE OUTPUT] JSON với điểm tin cậy thấp: %s", output)
+			assertOut: func(t *testing.T, output dto.ExceptionOutput, rawText string) {
+				assert.Equal(t, 0.3, output.ConfidenceScore)
+				assert.Contains(t, rawText, `"confidence_score":0.3`)
+				t.Logf("[LOW CONFIDENCE OUTPUT] Output with low confidence: %+v", output)
 			},
 		},
 		{
@@ -121,8 +126,9 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 				assert.Contains(t, err.Error(), "connection reset by peer")
 				t.Logf("[CONNECTION ERROR] Gặp lỗi mất kết nối mạng: %v", err)
 			},
-			assertOut: func(t *testing.T, output string) {
-                assert.Empty(t, output)
+			assertOut: func(t *testing.T, output dto.ExceptionOutput, rawText string) {
+                assert.Empty(t, output.ExceptionType)
+                assert.Empty(t, rawText)
             },
 		},
 	}
@@ -135,9 +141,9 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 			defer cancel()
 
-			output, err := adapter.AnalyzeException(ctx, input)
+			output, rawText, err := adapter.AnalyzeException(ctx, input)
 			tt.assertErr(t, err)
-			tt.assertOut(t, output)
+			tt.assertOut(t, output, rawText)
 		})
 	}
 }

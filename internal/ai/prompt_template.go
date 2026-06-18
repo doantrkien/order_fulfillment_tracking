@@ -7,8 +7,6 @@ import (
 	"main/internal/dto"
 )
 
-// PromptTemplateVersion tracks the current version of the exception analysis prompt.
-// Increment this when the prompt structure or instructions change.
 const PromptTemplateVersion = "1.0.0"
 
 const (
@@ -26,7 +24,7 @@ type ExceptionPromptContext struct {
 	CustomerName    string
 	ShippingAddress string
 	CreatedAt       string
-	AnalyzedAt      string // Current timestamp so LLM can detect stuck orders
+	AnalyzedAt      string
 	EventTimeline   []EventTimelineEntry
 	DriverNotes     string
 }
@@ -39,8 +37,6 @@ type EventTimelineEntry struct {
 }
 
 func SanitizePromptContext(ctx *ExceptionPromptContext) {
-	// Redact PII — the exception analyzer doesn't need real customer identity
-	// to detect stuck orders, invalid transitions, or timeline anomalies.
 	if ctx.CustomerName != "" {
 		ctx.CustomerName = "[REDACTED_CUSTOMER_NAME]"
 	}
@@ -90,7 +86,6 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext) string {
 	}
 	sb.WriteString("\n")
 
-	// Driver / operator notes (optional)
 	if ctx.DriverNotes != "" {
 		sb.WriteString(fmt.Sprintf("Operator Notes: %s\n\n", ctx.DriverNotes))
 	}

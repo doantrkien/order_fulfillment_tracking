@@ -29,7 +29,7 @@ func TestDraftGenerator_AIDisabled(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonDisabled, result.FallbackReason)
-	assert.Contains(t, result.CustomerUpdateDraft, "chậm hơn dự kiến")
+	assert.Contains(t, result.CustomerUpdateDraft, "slower than expected")
 	assert.Equal(t, 1.0, result.ConfidenceScore)
 }
 
@@ -53,7 +53,7 @@ func TestDraftGenerator_AIReturnsError(t *testing.T) {
 	require.NoError(t, err) // DraftGenerator should never return error on AI failure
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonConnectionError, result.FallbackReason)
-	assert.Contains(t, result.CustomerUpdateDraft, "địa chỉ [REDACTED_SHIPPING_ADDRESS]")
+	assert.Contains(t, result.CustomerUpdateDraft, "address [REDACTED_SHIPPING_ADDRESS]")
 	assert.Equal(t, 1.0, result.ConfidenceScore)
 }
 
@@ -76,13 +76,13 @@ func TestDraftGenerator_AIReturnsTimeout(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonTimeout, result.FallbackReason)
-	assert.Contains(t, result.CustomerUpdateDraft, "trạng thái không khớp")
+	assert.Contains(t, result.CustomerUpdateDraft, "mismatch in your order status update")
 	assert.Equal(t, 1.0, result.ConfidenceScore)
 }
 
 func TestDraftGenerator_AIReturnsInvalidResponse(t *testing.T) {
 	adapter := &mockAdapter{
-		output: "{invalid-json}",
+		outputStr: "{invalid-json}",
 	}
 	generator := NewDraftGenerator(adapter, DraftGeneratorConfig{
 		AIEnabled: true,
@@ -99,13 +99,13 @@ func TestDraftGenerator_AIReturnsInvalidResponse(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonInvalidResponse, result.FallbackReason)
-	assert.Contains(t, result.CustomerUpdateDraft, "sự cố phát sinh liên quan đến đơn hàng")
+	assert.Contains(t, result.CustomerUpdateDraft, "unexpected issue related to your order")
 	assert.Equal(t, 1.0, result.ConfidenceScore)
 }
 
 func TestDraftGenerator_AIReturnsLowConfidence(t *testing.T) {
 	adapter := &mockAdapter{
-		output: `{
+		outputStr: `{
 			"customer_update_draft": "Apology message...",
 			"confidence_score": 0.3
 		}`,
@@ -125,13 +125,13 @@ func TestDraftGenerator_AIReturnsLowConfidence(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonLowConfidence, result.FallbackReason)
-	assert.Contains(t, result.CustomerUpdateDraft, "yêu cầu hoàn tiền")
+	assert.Contains(t, result.CustomerUpdateDraft, "refund request")
 	assert.Equal(t, 1.0, result.ConfidenceScore)
 }
 
 func TestDraftGenerator_Success(t *testing.T) {
 	adapter := &mockAdapter{
-		output: `{
+		outputStr: `{
 			"customer_update_draft": "Valid draft directly from AI.",
 			"confidence_score": 0.95
 		}`,
