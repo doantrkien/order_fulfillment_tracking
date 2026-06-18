@@ -3,7 +3,7 @@ package dto
 import "time"
 
 type AnalyzeExceptionRequest struct {
-	Note string `json:"note"`
+	Note string `json:"note" example:"Phân tích đơn hàng này hộ tôi"`
 }
 
 type AnalyzeExceptionResponse struct {
