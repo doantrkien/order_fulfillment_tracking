@@ -19,7 +19,6 @@ type AIService interface {
 	AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
 	GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error)
 	GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIRequest) (*dto.GenerateDraftAPIResponse, error)
-	RunEvaluation(ctx context.Context, req dto.EvaluationRequest) (*dto.EvaluationResponse, error)
 }
 
 type aiService struct {
@@ -27,16 +26,14 @@ type aiService struct {
 	analyzer       *ai.ExceptionAnalyzer
 	draftGenerator *ai.DraftGenerator
 	aiDraftRepo    repositories.AIDraftRepository
-	aiEvalRepo     repositories.AIEvaluationRepository
 }
 
-func NewAIService(aiRepo repositories.AIRepository, analyzer *ai.ExceptionAnalyzer, draftGenerator *ai.DraftGenerator, aiDraftRepo repositories.AIDraftRepository, aiEvalRepo repositories.AIEvaluationRepository) AIService {
+func NewAIService(aiRepo repositories.AIRepository, analyzer *ai.ExceptionAnalyzer, draftGenerator *ai.DraftGenerator, aiDraftRepo repositories.AIDraftRepository) AIService {
 	return &aiService{
 		aiRepo:         aiRepo,
 		analyzer:       analyzer,
 		draftGenerator: draftGenerator,
 		aiDraftRepo:    aiDraftRepo,
-		aiEvalRepo:     aiEvalRepo,
 	}
 }
 
@@ -165,150 +162,6 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		PromptTemplateVersion: ai.PromptTemplateVersion,
 		GeneratedAt:           time.Now(),
 	}, nil
-}
-
-func (s *aiService) RunEvaluation(ctx context.Context, req dto.EvaluationRequest) (*dto.EvaluationResponse, error) {
-	var (
-		results       []dto.EvaluationCaseResult
-		passedCases   int
-		fallbackCases int
-		totalConf     float64
-	)
-
-	for _, c := range req.Cases {
-		aiCtx, err := buildAIContextForEval(ctx, s.aiRepo, &c)
-		if err != nil {
-			results = append(results, dto.EvaluationCaseResult{
-				CaseID:     c.CaseID,
-				Passed:     false,
-				FailReason: fmt.Sprintf("context error: %s", err.Error()),
-			})
-			continue
-		}
-
-		// 2. Gọi AI analyzer
-		result, err := s.analyzer.Analyze(ctx, aiCtx, "")
-		if err != nil {
-			results = append(results, dto.EvaluationCaseResult{
-				CaseID:     c.CaseID,
-				Passed:     false,
-				FailReason: fmt.Sprintf("analyzer error: %s", err.Error()),
-			})
-			continue
-		}
-
-		// 3. So sánh kết quả với expected
-		passed := strings.EqualFold(result.Severity, c.ExpectedSeverity) &&
-			strings.EqualFold(result.ExceptionType, c.ExpectedExceptionType)
-
-		if passed {
-			passedCases++
-		}
-		if result.FallbackUsed {
-			fallbackCases++
-		}
-		totalConf += result.ConfidenceScore
-
-		results = append(results, dto.EvaluationCaseResult{
-			CaseID:              c.CaseID,
-			Passed:              passed,
-			FallbackUsed:        result.FallbackUsed,
-			ActualSeverity:      result.Severity,
-			ActualExceptionType: result.ExceptionType,
-			ConfidenceScore:     result.ConfidenceScore,
-		})
-	}
-
-	// 4. Tính aggregate
-	total := len(req.Cases)
-	passRate := 0.0
-	avgConf := 0.0
-	if total > 0 {
-		passRate = float64(passedCases) / float64(total)
-		avgConf = totalConf / float64(total)
-	}
-
-	// 5. Lưu vào ai_evaluation_runs — dùng s.aiEvalRepo (không phải s.evalRepo)
-	env := req.Environment
-	if env == "" {
-		env = models.EvalEnvironmentDev
-	}
-
-	rawJSON, _ := json.Marshal(results)
-	runBy := req.RunBy
-
-	run := &models.AIEvaluationRun{
-		WorkflowName:          models.WorkflowNameOrderException,
-		PromptTemplateVersion: ai.PromptTemplateVersion,
-		RunBy:                 &runBy,
-		Environment:           env,
-		TriggeredBy:           models.EvalTriggeredByManual,
-		TotalCases:            total,
-		PassedCases:           passedCases,
-		FailedCases:           total - passedCases,
-		FallbackCases:         fallbackCases,
-		AvgConfidence:         &avgConf,
-		PassRate:              &passRate,
-		RawResults:            datatypes.JSON(rawJSON),
-		RunAt:                 time.Now(),
-	}
-
-	if err := s.aiEvalRepo.Save(ctx, run); err != nil { // <-- aiEvalRepo bukan evalRepo
-		return nil, fmt.Errorf("failed to save evaluation run: %w", err)
-	}
-
-	// 6. Return response — chỉ dùng field có trong dto.EvaluationResponse hiện tại
-	return &dto.EvaluationResponse{
-		WorkflowName:  models.WorkflowNameOrderException,
-		TotalCases:    total,
-		PassedCases:   passedCases,
-		FailedCases:   total - passedCases,
-		FallbackCases: fallbackCases,
-		PassRate:      passRate,
-		AvgConfidence: avgConf,
-		Results:       results,
-		RunAt:         run.RunAt,
-	}, nil
-}
-
-func buildAIContextForEval(ctx context.Context, aiRepo repositories.AIRepository, c *dto.EvaluationCase) (*models.AIContext, error) {
-	if c.OrderID > 0 {
-		return aiRepo.GetAIContextByOrderID(ctx, c.OrderID)
-	}
-	if c.SyntheticInput != nil {
-		return buildAIContextFromSynthetic(c.SyntheticInput), nil
-	}
-	return nil, fmt.Errorf("case %s: must provide either order_id or synthetic_input", c.CaseID)
-}
-
-func buildAIContextFromSynthetic(input *dto.ExceptionInput) *models.AIContext {
-	events := make([]models.AIEvent, 0, len(input.EventHistory))
-	for _, e := range input.EventHistory {
-		parsedAt, _ := time.Parse(time.RFC3339, e.EventAt)
-		events = append(events, models.AIEvent{
-			EventAt:        parsedAt,
-			PreviousStatus: models.OrderStatus(e.FromStatus),
-			NewStatus:      models.OrderStatus(e.ToStatus),
-			UpdatedBy:      e.UpdatedBy,
-		})
-	}
-
-	// Parse CreatedAt from synthetic input; fall back to zero time if missing
-	createdAt, _ := time.Parse(time.RFC3339, input.CreatedAt)
-
-
-	status := models.OrderStatus(input.CurrentStatus)
-	return &models.AIContext{
-		OrderID:         input.OrderID,
-		CreatedAt:       createdAt,
-		CurrentStatus:   status,
-		TotalAmount:     input.TotalAmount,
-		CustomerName:    input.CustomerName,
-		ShippingAddress: input.ShippingAddress,
-		PaymentStatus:   models.DerivePaymentStatus(status),
-		RefundStatus:    models.DeriveRefundStatus(status),
-		Events:          events,
-	}
 }
 
 func stripMarkdownFences(s string) string {

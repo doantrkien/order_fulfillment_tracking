@@ -97,9 +97,7 @@ func main() {
 
 	aiDraftRepo := repositories.NewAIDraftRepository(db)
 
-	aiEvalRepo := repositories.NewAIEvaluationRepository(db)
-
-	aiService := services.NewAIService(aiRepo, analyzer, draftGenerator, aiDraftRepo, aiEvalRepo)
+	aiService := services.NewAIService(aiRepo, analyzer, draftGenerator, aiDraftRepo)
 	aiHandler := handlers.NewAIHandler(aiService)
 
 	routers.SetupAuthRouter(app, authHandler)

@@ -122,31 +122,3 @@ func (h *AIHandler) GenerateDraft(c fiber.Ctx) error {
 
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, result)
 }
-
-// RunEvaluation godoc
-// @Summary Run evaluation on order exceptions
-// @Description Run evaluation on order exceptions using provided cases.
-// @Tags AI
-// @Accept json
-// @Produce json
-// @Param request body dto.EvaluationRequest true "Evaluation input"
-// @Success 200 {object} response.ResponseStruct{data=dto.EvaluationResponse}
-// @Failure 400 {object} response.ErrorBadReqResponse
-// @Failure 500 {object} response.ErrorInternalServerErrorResponse
-// @Security BearerAuth
-// @Router /api/v1/ai/evaluations/order-exceptions [post]
-func (h *AIHandler) RunEvaluation(c fiber.Ctx) error {
-	var req dto.EvaluationRequest
-	if err := c.Bind().Body(&req); err != nil {
-		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
-	}
-	if len(req.Cases) < 20 {
-		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
-	}
-
-	result, err := h.aiService.RunEvaluation(c.Context(), req)
-	if err != nil {
-		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
-	}
-	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, result)
-}
