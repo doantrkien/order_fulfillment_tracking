@@ -907,10 +907,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "confidence_score": {
+                    "description": "CustomerUpdateDraft   string    ` + "`" + `json:\"customer_update_draft\"` + "`" + `",
                     "type": "number"
-                },
-                "customer_update_draft": {
-                    "type": "string"
                 },
                 "evaluated_at": {
                     "type": "string"
