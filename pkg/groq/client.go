@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -69,8 +70,10 @@ func NewClient() (*Client, error) {
 
 	maxInputSize := 4000
 	if v := os.Getenv("AI_MAX_INPUT_SIZE"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
+		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
 			maxInputSize = n
+		} else {
+			fmt.Printf("[DEBUG][groq.NewClient] Invalid AI_MAX_INPUT_SIZE: '%s'\n", v)
 		}
 	}
 	fmt.Printf("[DEBUG][groq.NewClient] MaxInputSize: %d\n", maxInputSize)
@@ -165,7 +168,19 @@ func (c *Client) GenerateContent(ctx context.Context, prompt string) (string, er
 		if readErr != nil || resp.StatusCode != http.StatusOK {
 			fmt.Printf("[DEBUG][groq.GenerateContent] Attempt %d: bad status=%d\n", attempt+1, resp.StatusCode)
 			if attempt < c.retryLimit {
-				time.Sleep(time.Second)
+				waitSec := 2
+				if resp.StatusCode == http.StatusTooManyRequests {
+					// Respect Retry-After header if present
+					if ra := resp.Header.Get("Retry-After"); ra != "" {
+						if secs, err := strconv.Atoi(strings.TrimSpace(ra)); err == nil && secs > 0 {
+							waitSec = secs + 1
+						}
+					} else {
+						waitSec = 10
+					}
+					fmt.Printf("[DEBUG][groq.GenerateContent] Rate limited (429), waiting %ds before retry...\n", waitSec)
+				}
+				time.Sleep(time.Duration(waitSec) * time.Second)
 			}
 			continue
 		}

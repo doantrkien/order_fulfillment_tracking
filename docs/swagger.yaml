@@ -236,6 +236,7 @@ definitions:
   dto.TriggerEvaluationRequest:
     properties:
       dataset_name:
+        example: evaluation_cases.json
         type: string
     required:
     - dataset_name

@@ -97,7 +97,7 @@ type CustomerUpdateDraftOutput struct {
 }
 
 type TriggerEvaluationRequest struct {
-	DatasetName string `json:"dataset_name" validate:"required"`
+	DatasetName string `json:"dataset_name" validate:"required" example:"evaluation_cases.json"`
 }
 
 type TriggerEvaluationResponse struct {

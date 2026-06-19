@@ -267,8 +267,9 @@ func (s *aiService) TriggerEvaluation(ctx context.Context, req dto.TriggerEvalua
 	}
 
 	// 3. Initialize Worker
-	// Note: We use a default of 3 workers, but it could be configurable via env var
-	maxWorkers := 3
+	// Use 1 worker to avoid hitting Groq API rate limits when running batch evaluation.
+	// Can be increased if using a paid tier with higher RPM limits.
+	maxWorkers := 1
 	worker := NewEvaluationWorker(s.analyzer, s.evalRepo, maxWorkers)
 
 	// 4. Trigger Worker in background goroutine

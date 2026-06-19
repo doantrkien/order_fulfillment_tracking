@@ -6,6 +6,7 @@ import (
 	"main/errs"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"google.golang.org/genai"
@@ -60,8 +61,10 @@ func NewClient() (*Client, error) {
 
 	maxInputSize := 4000
 	if sizeStr := os.Getenv("AI_MAX_INPUT_SIZE"); sizeStr != "" {
-		if value, err := strconv.Atoi(sizeStr); err == nil {
+		if value, err := strconv.Atoi(strings.TrimSpace(sizeStr)); err == nil {
 			maxInputSize = value
+		} else {
+			fmt.Printf("[DEBUG][gemini.NewClient] Invalid AI_MAX_INPUT_SIZE: '%s'\n", sizeStr)
 		}
 	}
 	fmt.Printf("[DEBUG][gemini.NewClient] MaxInputSize: %d\n", maxInputSize)

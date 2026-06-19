@@ -1238,7 +1238,8 @@ const docTemplate = `{
             ],
             "properties": {
                 "dataset_name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "evaluation_cases.json"
                 }
             }
         },
