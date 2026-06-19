@@ -9,6 +9,69 @@
     "host": "localhost:5000",
     "basePath": "/",
     "paths": {
+        "/api/v1/ai/evaluations/order-exceptions": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Start an asynchronous batch evaluation of the AI rules against synthetic ground truth data.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Evaluation"
+                ],
+                "summary": "Trigger AI batch evaluation",
+                "parameters": [
+                    {
+                        "description": "Dataset name",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.TriggerEvaluationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ResponseStruct"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.TriggerEvaluationResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ai/orders/customer-update-draft": {
             "post": {
                 "security": [
@@ -1159,6 +1222,31 @@
                 "username": {
                     "type": "string",
                     "example": "Supper Man"
+                }
+            }
+        },
+        "dto.TriggerEvaluationRequest": {
+            "type": "object",
+            "required": [
+                "dataset_name"
+            ],
+            "properties": {
+                "dataset_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.TriggerEvaluationResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "run_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
                 }
             }
         },

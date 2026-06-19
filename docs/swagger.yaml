@@ -233,6 +233,22 @@ definitions:
     - user_phone
     - username
     type: object
+  dto.TriggerEvaluationRequest:
+    properties:
+      dataset_name:
+        type: string
+    required:
+    - dataset_name
+    type: object
+  dto.TriggerEvaluationResponse:
+    properties:
+      message:
+        type: string
+      run_id:
+        type: integer
+      status:
+        type: string
+    type: object
   dto.UpdateStatusRequest:
     properties:
       driver_id:
@@ -363,6 +379,44 @@ info:
   title: Order Fulfillment Tracking API
   version: 1.0.0
 paths:
+  /api/v1/ai/evaluations/order-exceptions:
+    post:
+      consumes:
+      - application/json
+      description: Start an asynchronous batch evaluation of the AI rules against
+        synthetic ground truth data.
+      parameters:
+      - description: Dataset name
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.TriggerEvaluationRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ResponseStruct'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.TriggerEvaluationResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBadReqResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Trigger AI batch evaluation
+      tags:
+      - AI Evaluation
   /api/v1/ai/orders/{id}/exception-analysis:
     post:
       consumes:
