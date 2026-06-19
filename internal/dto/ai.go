@@ -95,3 +95,26 @@ type CustomerUpdateDraftOutput struct {
 	CustomerUpdateDraft string  `json:"customer_update_draft"`
 	ConfidenceScore     float64 `json:"confidence_score"`
 }
+
+type TriggerEvaluationRequest struct {
+	DatasetName string `json:"dataset_name" validate:"required"`
+}
+
+type TriggerEvaluationResponse struct {
+	RunID   int64  `json:"run_id"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
+
+type EvaluationCase struct {
+	CaseID                string         `json:"case_id"`
+	SyntheticInput        ExceptionInput `json:"synthetic_input"`
+	ExpectedSeverity      string         `json:"expected_severity"`
+	ExpectedExceptionType string         `json:"expected_exception_type"`
+}
+
+type EvaluationDataset struct {
+	RunBy       string           `json:"run_by"`
+	Environment string           `json:"environment"`
+	Cases       []EvaluationCase `json:"cases"`
+}
