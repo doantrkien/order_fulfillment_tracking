@@ -72,6 +72,134 @@
                 }
             }
         },
+        "/api/v1/ai/evaluations/{run_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the summary metrics of an evaluation run (status, passed/failed counts, accuracy). Poll this until status is COMPLETED.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Evaluation"
+                ],
+                "summary": "Get evaluation run summary",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Evaluation Run ID",
+                        "name": "run_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ResponseStruct"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.GetEvaluationRunResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorNotFoundResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ai/evaluations/{run_id}/details": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the detailed PASS/FAIL result of every individual test case within an evaluation run.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Evaluation"
+                ],
+                "summary": "Get evaluation case details (PASS/FAIL per case)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Evaluation Run ID",
+                        "name": "run_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ResponseStruct"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.GetEvaluationDetailsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorNotFoundResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ai/orders/customer-update-draft": {
             "post": {
                 "security": [
@@ -1003,6 +1131,29 @@
                 }
             }
         },
+        "dto.EvaluationDetailItem": {
+            "type": "object",
+            "properties": {
+                "actual_output": {
+                    "type": "string"
+                },
+                "error_message": {
+                    "type": "string"
+                },
+                "expected_output": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "latency_ms": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.EventError": {
             "type": "object",
             "properties": {
@@ -1072,6 +1223,61 @@
                 "date": {
                     "type": "string",
                     "example": "2026-05-18"
+                }
+            }
+        },
+        "dto.GetEvaluationDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.EvaluationDetailItem"
+                    }
+                },
+                "run_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.GetEvaluationRunResponse": {
+            "type": "object",
+            "properties": {
+                "accuracy_rate": {
+                    "type": "number"
+                },
+                "avg_latency_ms": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "dataset_name": {
+                    "type": "string"
+                },
+                "failed_cases": {
+                    "type": "integer"
+                },
+                "fallback_count": {
+                    "type": "integer"
+                },
+                "passed_cases": {
+                    "type": "integer"
+                },
+                "run_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "total_cases": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },

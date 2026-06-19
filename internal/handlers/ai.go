@@ -152,3 +152,61 @@ func (h *AIHandler) TriggerEvaluation(c fiber.Ctx) error {
 
 	return response.ResponseSuccess(c, 202, constant.SUCCESS.Message, result)
 }
+
+// GetEvaluationRun godoc
+// @Summary Get evaluation run summary
+// @Description Get the summary metrics of an evaluation run (status, passed/failed counts, accuracy). Poll this until status is COMPLETED.
+// @Tags AI Evaluation
+// @Produce json
+// @Param run_id path int true "Evaluation Run ID"
+// @Success 200 {object} response.ResponseStruct{data=dto.GetEvaluationRunResponse}
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 404 {object} response.ErrorNotFoundResponse
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse
+// @Security BearerAuth
+// @Router /api/v1/ai/evaluations/{run_id} [get]
+func (h *AIHandler) GetEvaluationRun(c fiber.Ctx) error {
+	runID, err := strconv.ParseInt(c.Params("run_id"), 10, 64)
+	if err != nil || runID <= 0 {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	}
+
+	result, err := h.aiService.GetEvaluationRun(c.Context(), runID)
+	if err != nil {
+		if errors.Is(err, errs.ERR_NOT_FOUND) {
+			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)
+		}
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
+	}
+
+	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, result)
+}
+
+// GetEvaluationDetails godoc
+// @Summary Get evaluation case details (PASS/FAIL per case)
+// @Description Get the detailed PASS/FAIL result of every individual test case within an evaluation run.
+// @Tags AI Evaluation
+// @Produce json
+// @Param run_id path int true "Evaluation Run ID"
+// @Success 200 {object} response.ResponseStruct{data=dto.GetEvaluationDetailsResponse}
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 404 {object} response.ErrorNotFoundResponse
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse
+// @Security BearerAuth
+// @Router /api/v1/ai/evaluations/{run_id}/details [get]
+func (h *AIHandler) GetEvaluationDetails(c fiber.Ctx) error {
+	runID, err := strconv.ParseInt(c.Params("run_id"), 10, 64)
+	if err != nil || runID <= 0 {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	}
+
+	result, err := h.aiService.GetEvaluationDetails(c.Context(), runID)
+	if err != nil {
+		if errors.Is(err, errs.ERR_NOT_FOUND) {
+			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)
+		}
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
+	}
+
+	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, result)
+}

@@ -12,4 +12,6 @@ func SetupAIRouter(app *fiber.App, aiHandler *handlers.AIHandler) {
 	aiRouter.Get("orders/:id/insights/latest", aiHandler.GetLatestAnalysis)
 	aiRouter.Post("orders/customer-update-draft", aiHandler.GenerateDraft)
 	aiRouter.Post("evaluations/order-exceptions", aiHandler.TriggerEvaluation)
+	aiRouter.Get("evaluations/:run_id", aiHandler.GetEvaluationRun)
+	aiRouter.Get("evaluations/:run_id/details", aiHandler.GetEvaluationDetails)
 }

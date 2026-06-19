@@ -68,7 +68,7 @@ func (w *EvaluationWorker) Run(runID int64, cases []dto.EvaluationCase) {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
-			
+
 			// Panic recovery for each worker
 			defer func() {
 				if r := recover(); r != nil {
@@ -81,7 +81,7 @@ func (w *EvaluationWorker) Run(runID int64, cases []dto.EvaluationCase) {
 
 			for evalCase := range jobs {
 				startTime := time.Now()
-				
+
 				// 4.1 Build AI Context from synthetic input
 				aiCtx := buildAIContextFromSyntheticInput(evalCase.SyntheticInput)
 
@@ -121,7 +121,7 @@ func (w *EvaluationWorker) Run(runID int64, cases []dto.EvaluationCase) {
 				var actualOutputJSON []byte
 				if analysisResult != nil {
 					// We only need basic fields for actual_output logging, or we can just martial the AnalysisResult
-					actualOutputJSON = []byte(fmt.Sprintf(`{"exception_type":"%s", "severity":"%s", "fallback_used":%v}`, 
+					actualOutputJSON = []byte(fmt.Sprintf(`{"exception_type":"%s", "severity":"%s", "fallback_used":%v}`,
 						analysisResult.ExceptionType, analysisResult.Severity, analysisResult.FallbackUsed))
 				} else {
 					actualOutputJSON = []byte(`{}`)
@@ -140,7 +140,7 @@ func (w *EvaluationWorker) Run(runID int64, cases []dto.EvaluationCase) {
 					LatencyMs:      caseResult.LatencyMs,
 					ErrorMessage:   errMsg,
 				}
-				
+
 				if err := w.evalRepo.SaveDetail(ctx, detail); err != nil {
 					log.Printf("[EvaluationWorker %d] Failed to save detail for case %s: %v", workerID, evalCase.CaseID, err)
 				}

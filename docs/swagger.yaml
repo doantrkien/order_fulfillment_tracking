@@ -79,6 +79,21 @@ definitions:
         example: 10
         type: integer
     type: object
+  dto.EvaluationDetailItem:
+    properties:
+      actual_output:
+        type: string
+      error_message:
+        type: string
+      expected_output:
+        type: string
+      id:
+        type: integer
+      latency_ms:
+        type: integer
+      status:
+        type: string
+    type: object
   dto.EventError:
     properties:
       order_id:
@@ -127,6 +142,42 @@ definitions:
         type: string
     required:
     - date
+    type: object
+  dto.GetEvaluationDetailsResponse:
+    properties:
+      details:
+        items:
+          $ref: '#/definitions/dto.EvaluationDetailItem'
+        type: array
+      run_id:
+        type: integer
+      status:
+        type: string
+    type: object
+  dto.GetEvaluationRunResponse:
+    properties:
+      accuracy_rate:
+        type: number
+      avg_latency_ms:
+        type: integer
+      created_at:
+        type: string
+      dataset_name:
+        type: string
+      failed_cases:
+        type: integer
+      fallback_count:
+        type: integer
+      passed_cases:
+        type: integer
+      run_id:
+        type: integer
+      status:
+        type: string
+      total_cases:
+        type: integer
+      updated_at:
+        type: string
     type: object
   dto.ImportOrderEventRequest:
     properties:
@@ -380,6 +431,84 @@ info:
   title: Order Fulfillment Tracking API
   version: 1.0.0
 paths:
+  /api/v1/ai/evaluations/{run_id}:
+    get:
+      description: Get the summary metrics of an evaluation run (status, passed/failed
+        counts, accuracy). Poll this until status is COMPLETED.
+      parameters:
+      - description: Evaluation Run ID
+        in: path
+        name: run_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ResponseStruct'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.GetEvaluationRunResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBadReqResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorNotFoundResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get evaluation run summary
+      tags:
+      - AI Evaluation
+  /api/v1/ai/evaluations/{run_id}/details:
+    get:
+      description: Get the detailed PASS/FAIL result of every individual test case
+        within an evaluation run.
+      parameters:
+      - description: Evaluation Run ID
+        in: path
+        name: run_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ResponseStruct'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.GetEvaluationDetailsResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBadReqResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorNotFoundResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get evaluation case details (PASS/FAIL per case)
+      tags:
+      - AI Evaluation
   /api/v1/ai/evaluations/order-exceptions:
     post:
       consumes:

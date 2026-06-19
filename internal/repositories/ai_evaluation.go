@@ -13,6 +13,7 @@ type AIEvaluationRepository interface {
 	UpdateRun(ctx context.Context, run *models.AIEvaluationRun) error
 	SaveDetail(ctx context.Context, detail *models.AIEvaluationResultDetail) error
 	GetRunByID(ctx context.Context, id int64) (*models.AIEvaluationRun, error)
+	GetDetailsByRunID(ctx context.Context, runID int64) ([]models.AIEvaluationResultDetail, error)
 }
 
 type aiEvaluationRepository struct {
@@ -41,4 +42,12 @@ func (r *aiEvaluationRepository) GetRunByID(ctx context.Context, id int64) (*mod
 		return nil, err
 	}
 	return &run, nil
+}
+
+func (r *aiEvaluationRepository) GetDetailsByRunID(ctx context.Context, runID int64) ([]models.AIEvaluationResultDetail, error) {
+	var details []models.AIEvaluationResultDetail
+	if err := r.db.WithContext(ctx).Where("run_id = ?", runID).Order("id ASC").Find(&details).Error; err != nil {
+		return nil, err
+	}
+	return details, nil
 }

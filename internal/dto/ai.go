@@ -118,3 +118,35 @@ type EvaluationDataset struct {
 	Environment string           `json:"environment"`
 	Cases       []EvaluationCase `json:"cases"`
 }
+
+// GetEvaluationRunResponse trả về summary của 1 evaluation run.
+type GetEvaluationRunResponse struct {
+	RunID         int64   `json:"run_id"`
+	DatasetName   string  `json:"dataset_name"`
+	Status        string  `json:"status"`
+	TotalCases    int     `json:"total_cases"`
+	PassedCases   int     `json:"passed_cases"`
+	FailedCases   int     `json:"failed_cases"`
+	FallbackCount int     `json:"fallback_count"`
+	AccuracyRate  float64 `json:"accuracy_rate"`
+	AvgLatencyMs  int     `json:"avg_latency_ms"`
+	CreatedAt     string  `json:"created_at"`
+	UpdatedAt     string  `json:"updated_at"`
+}
+
+// EvaluationDetailItem trả về kết quả PASS/FAIL của từng test case.
+type EvaluationDetailItem struct {
+	ID             int64   `json:"id"`
+	Status         string  `json:"status"`
+	LatencyMs      int     `json:"latency_ms"`
+	ExpectedOutput string  `json:"expected_output"`
+	ActualOutput   string  `json:"actual_output"`
+	ErrorMessage   *string `json:"error_message,omitempty"`
+}
+
+// GetEvaluationDetailsResponse chứa danh sách kết quả chi tiết của 1 run.
+type GetEvaluationDetailsResponse struct {
+	RunID   int64                  `json:"run_id"`
+	Status  string                 `json:"status"`
+	Details []EvaluationDetailItem `json:"details"`
+}

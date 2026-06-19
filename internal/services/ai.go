@@ -21,6 +21,8 @@ type AIService interface {
 	GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error)
 	GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIRequest) (*dto.GenerateDraftAPIResponse, error)
 	TriggerEvaluation(ctx context.Context, req dto.TriggerEvaluationRequest) (*dto.TriggerEvaluationResponse, error)
+	GetEvaluationRun(ctx context.Context, runID int64) (*dto.GetEvaluationRunResponse, error)
+	GetEvaluationDetails(ctx context.Context, runID int64) (*dto.GetEvaluationDetailsResponse, error)
 }
 
 type aiService struct {
@@ -280,5 +282,57 @@ func (s *aiService) TriggerEvaluation(ctx context.Context, req dto.TriggerEvalua
 		RunID:   runRecord.ID,
 		Status:  string(runRecord.Status),
 		Message: "Batch evaluation started in background",
+	}, nil
+}
+
+// GetEvaluationRun trả về summary metrics của 1 evaluation run (dùng để poll status / xem kết quả tổng).
+func (s *aiService) GetEvaluationRun(ctx context.Context, runID int64) (*dto.GetEvaluationRunResponse, error) {
+	run, err := s.evalRepo.GetRunByID(ctx, runID)
+	if err != nil {
+		return nil, errs.ERR_NOT_FOUND
+	}
+	return &dto.GetEvaluationRunResponse{
+		RunID:         run.ID,
+		DatasetName:   run.DatasetName,
+		Status:        run.Status,
+		TotalCases:    run.TotalCases,
+		PassedCases:   run.PassedCases,
+		FailedCases:   run.FailedCases,
+		FallbackCount: run.FallbackCount,
+		AccuracyRate:  run.AccuracyRate,
+		AvgLatencyMs:  run.AvgLatencyMs,
+		CreatedAt:     run.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:     run.UpdatedAt.Format(time.RFC3339),
+	}, nil
+}
+
+// GetEvaluationDetails trả về danh sách chi tiết PASS/FAIL của từng test case trong 1 run.
+func (s *aiService) GetEvaluationDetails(ctx context.Context, runID int64) (*dto.GetEvaluationDetailsResponse, error) {
+	run, err := s.evalRepo.GetRunByID(ctx, runID)
+	if err != nil {
+		return nil, errs.ERR_NOT_FOUND
+	}
+
+	details, err := s.evalRepo.GetDetailsByRunID(ctx, runID)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch evaluation details: %w", err)
+	}
+
+	items := make([]dto.EvaluationDetailItem, 0, len(details))
+	for _, d := range details {
+		items = append(items, dto.EvaluationDetailItem{
+			ID:             d.ID,
+			Status:         d.Status,
+			LatencyMs:      d.LatencyMs,
+			ExpectedOutput: string(d.ExpectedOutput),
+			ActualOutput:   string(d.ActualOutput),
+			ErrorMessage:   d.ErrorMessage,
+		})
+	}
+
+	return &dto.GetEvaluationDetailsResponse{
+		RunID:   runID,
+		Status:  run.Status,
+		Details: items,
 	}, nil
 }
