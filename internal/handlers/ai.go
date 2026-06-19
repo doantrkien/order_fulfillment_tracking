@@ -122,3 +122,33 @@ func (h *AIHandler) GenerateDraft(c fiber.Ctx) error {
 
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, result)
 }
+
+// TriggerEvaluation godoc
+// @Summary Trigger AI batch evaluation
+// @Description Start an asynchronous batch evaluation of the AI rules against synthetic ground truth data.
+// @Tags AI Evaluation
+// @Accept json
+// @Produce json
+// @Param request body dto.TriggerEvaluationRequest true "Dataset name"
+// @Success 202 {object} response.ResponseStruct{data=dto.TriggerEvaluationResponse}
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse
+// @Security BearerAuth
+// @Router /api/v1/ai/evaluations/order-exceptions [post]
+func (h *AIHandler) TriggerEvaluation(c fiber.Ctx) error {
+	var req dto.TriggerEvaluationRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	}
+
+	if req.DatasetName == "" {
+		req.DatasetName = "evaluation_cases.json" // Default
+	}
+
+	result, err := h.aiService.TriggerEvaluation(c.Context(), req)
+	if err != nil {
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
+	}
+
+	return response.ResponseSuccess(c, 202, constant.SUCCESS.Message, result)
+}

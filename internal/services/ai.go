@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"main/errs"
 	"main/internal/ai"
 	"main/internal/dto"
@@ -19,6 +20,7 @@ type AIService interface {
 	AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
 	GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error)
 	GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIRequest) (*dto.GenerateDraftAPIResponse, error)
+	TriggerEvaluation(ctx context.Context, req dto.TriggerEvaluationRequest) (*dto.TriggerEvaluationResponse, error)
 }
 
 type aiService struct {
@@ -26,14 +28,16 @@ type aiService struct {
 	analyzer       *ai.ExceptionAnalyzer
 	draftGenerator *ai.DraftGenerator
 	aiDraftRepo    repositories.AIDraftRepository
+	evalRepo       repositories.AIEvaluationRepository
 }
 
-func NewAIService(aiRepo repositories.AIRepository, analyzer *ai.ExceptionAnalyzer, draftGenerator *ai.DraftGenerator, aiDraftRepo repositories.AIDraftRepository) AIService {
+func NewAIService(aiRepo repositories.AIRepository, analyzer *ai.ExceptionAnalyzer, draftGenerator *ai.DraftGenerator, aiDraftRepo repositories.AIDraftRepository, evalRepo repositories.AIEvaluationRepository) AIService {
 	return &aiService{
 		aiRepo:         aiRepo,
 		analyzer:       analyzer,
 		draftGenerator: draftGenerator,
 		aiDraftRepo:    aiDraftRepo,
+		evalRepo:       evalRepo,
 	}
 }
 
@@ -234,4 +238,46 @@ func mapToResponse(e *models.AIException) *dto.AnalyzeExceptionResponse {
 		PromptTemplateVersion: e.PromptTemplateVersion,
 		EvaluatedAt:           e.EvaluatedAt,
 	}
+}
+
+func (s *aiService) TriggerEvaluation(ctx context.Context, req dto.TriggerEvaluationRequest) (*dto.TriggerEvaluationResponse, error) {
+	// 1. Read evaluation_cases.json
+	datasetFile := "evaluation_cases.json"
+	bytes, err := os.ReadFile(datasetFile)
+	if err != nil {
+		return nil, fmt.Errorf("could not read dataset file: %w", err)
+	}
+
+	var dataset dto.EvaluationDataset
+	if err := json.Unmarshal(bytes, &dataset); err != nil {
+		return nil, fmt.Errorf("could not parse dataset JSON: %w", err)
+	}
+
+	// Optionally validate if the dataset matches what was requested
+	// But usually, since it's hardcoded for this feature, it's fine.
+
+	// 2. Create Run Record in DB (Status = PENDING)
+	runRecord := &models.AIEvaluationRun{
+		DatasetName: "evaluation_cases.json",
+		TotalCases:  len(dataset.Cases),
+		Status:      models.EVAL_STATUS_PENDING,
+	}
+	if err := s.evalRepo.CreateRun(ctx, runRecord); err != nil {
+		return nil, fmt.Errorf("could not create evaluation run: %w", err)
+	}
+
+	// 3. Initialize Worker
+	// Note: We use a default of 3 workers, but it could be configurable via env var
+	maxWorkers := 3
+	worker := NewEvaluationWorker(s.analyzer, s.evalRepo, maxWorkers)
+
+	// 4. Trigger Worker in background goroutine
+	go worker.Run(runRecord.ID, dataset.Cases)
+
+	// 5. Return immediate response
+	return &dto.TriggerEvaluationResponse{
+		RunID:   runRecord.ID,
+		Status:  string(runRecord.Status),
+		Message: "Batch evaluation started in background",
+	}, nil
 }
