@@ -5,20 +5,22 @@ package ai
 // These templates use placeholders [REDACTED_CUSTOMER_NAME] and [REDACTED_SHIPPING_ADDRESS]
 // for safe, server-side data masking and hydration at the client.
 var CustomerUpdateFallbackTemplates = map[string]string{
-	// Group 1: Đơn hàng bị trễ / Stuck Order (STUCK_ORDER)
-	"STUCK_ORDER": "Xin chào [REDACTED_CUSTOMER_NAME], đơn hàng của bạn đang xử lý chậm hơn dự kiến. Chúng tôi đang tích cực phối hợp với bộ phận vận chuyển để đẩy nhanh tiến độ. Rất xin lỗi vì sự bất tiện này.",
-	// Group 2: Sự cố giao hàng (DELIVERY_FAILURE)
-	"DELIVERY_FAILURE": "Xin chào [REDACTED_CUSTOMER_NAME], chúng tôi rất tiếc phải thông báo rằng đã xảy ra sự cố trong quá trình vận chuyển đơn hàng đến địa chỉ [REDACTED_SHIPPING_ADDRESS]. Đội ngũ giao hàng đang điều tra và sẽ liên hệ với bạn sớm nhất có thể.",
-	// Group 3: Sự kiện bất thường về trạng thái (INVALID_TRANSITION, SKIPPED_STATUS, DUPLICATE_EVENT, CANCELLATION_ANOMALY, REFUND_ANOMALY)
-	"INVALID_TRANSITION":   "Xin chào [REDACTED_CUSTOMER_NAME], hệ thống phát hiện trạng thái không khớp trong quá trình cập nhật đơn hàng của bạn. Đội kỹ thuật đang xác minh thông tin để đảm bảo lộ trình giao hàng chính xác.",
-	"SKIPPED_STATUS":       "Xin chào [REDACTED_CUSTOMER_NAME], chúng tôi nhận thấy có cập nhật bất thường trong tiến trình xử lý đơn hàng của bạn. Chúng tôi đang kiểm tra nội bộ và sẽ cập nhật thông tin chính xác nhất đến bạn trong thời gian sớm nhất.",
-	"DUPLICATE_EVENT":      "Xin chào [REDACTED_CUSTOMER_NAME], hệ thống ghi nhận sự trùng lặp trong lịch sử trạng thái đơn hàng. Bộ phận vận hành đang xử lý sự không nhất quán này — tiến độ giao hàng của bạn sẽ không bị ảnh hưởng.",
-	"CANCELLATION_ANOMALY": "Xin chào [REDACTED_CUSTOMER_NAME], chúng tôi phát hiện trạng thái hủy đơn bất thường hoặc yêu cầu hủy không hợp lệ liên quan đến đơn hàng của bạn. Bộ phận Chăm sóc Khách hàng đang xác minh và sẽ liên hệ trực tiếp với bạn sớm nhất có thể.",
-	"REFUND_ANOMALY":       "Xin chào [REDACTED_CUSTOMER_NAME], chúng tôi phát hiện bất thường liên quan đến yêu cầu hoàn tiền của bạn. Bộ phận tài chính đang xử lý thông tin để đảm bảo quyền lợi tối đa cho bạn.",
+	// Group 1: Stuck Order (STUCK_ORDER)
+	"STUCK_ORDER": "Hello [REDACTED_CUSTOMER_NAME], your order is being processed slower than expected. We are actively coordinating with the shipping department to expedite the delivery. We sincerely apologize for this inconvenience.",
+	
+	// Group 2: Delivery Incident (DELIVERY_FAILURE)
+	"DELIVERY_FAILURE": "Hello [REDACTED_CUSTOMER_NAME], we regret to inform you that an issue occurred during the shipment of your order to [REDACTED_SHIPPING_ADDRESS]. The delivery team is currently investigating and will contact you as soon as possible.",
+	
+	// Group 3: Status Anomalies (INVALID_TRANSITION, SKIPPED_STATUS, DUPLICATE_EVENT, CANCELLATION_ANOMALY, REFUND_ANOMALY)
+	"INVALID_TRANSITION":   "Hello [REDACTED_CUSTOMER_NAME], the system detected a status mismatch during your order update. Our technical team is verifying the information to ensure an accurate delivery route.",
+	"SKIPPED_STATUS":       "Hello [REDACTED_CUSTOMER_NAME], we noticed an unusual update in your order processing progress. We are checking internally and will provide you with the most accurate update as soon as possible.",
+	"DUPLICATE_EVENT":      "Hello [REDACTED_CUSTOMER_NAME], the system recorded a duplicate in your order status history. The operations department is resolving this inconsistency — your delivery progress will not be affected.",
+	"CANCELLATION_ANOMALY": "Hello [REDACTED_CUSTOMER_NAME], we detected an unusual cancellation status or an invalid cancellation request regarding your order. Our Customer Support team is verifying it and will contact you directly as soon as possible.",
+	"REFUND_ANOMALY":       "Hello [REDACTED_CUSTOMER_NAME], we detected an anomaly related to your refund request. The finance department is processing the details to ensure your maximum protection.",
 
-	// Group 4: Fallback mặc định (OTHER hoặc lỗi chưa phân loại)
-	"OTHER":   "Xin chào [REDACTED_CUSTOMER_NAME], chúng tôi đang xử lý sự cố phát sinh liên quan đến đơn hàng của bạn. Chúng tôi sẽ cập nhật thông tin chi tiết và các bước tiếp theo sớm nhất có thể.",
-	"DEFAULT": "Xin chào [REDACTED_CUSTOMER_NAME], chúng tôi đang xác minh thông tin đơn hàng của bạn do có sự cố phát sinh ngoài ý muốn. Đội hỗ trợ sẽ gửi cập nhật mới nhất đến bạn trong thời gian sớm nhất.",
+	// Group 4: Default Fallback (OTHER or unclassified errors)
+	"OTHER":   "Hello [REDACTED_CUSTOMER_NAME], we are processing an issue that has arisen regarding your order. We will update you with detailed information and the next steps as soon as possible.",
+	"DEFAULT": "Hello [REDACTED_CUSTOMER_NAME], we are verifying your order information due to an unexpected issue. Our support team will send you the latest update as soon as possible.",
 }
 
 // GetFallbackTemplate returns the static message template for a given exception type.

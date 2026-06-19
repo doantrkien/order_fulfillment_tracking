@@ -98,10 +98,10 @@ func AnalyzeByRules(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
 		return r
 	}
 
-	// Priority 4: Duplicate events (LOW)
-	if r := detectDuplicateEvents(aiCtx.Events); r != nil {
-		return r
-	}
+	// // Priority 4: Duplicate events (LOW)
+	// if r := detectDuplicateEvents(aiCtx.Events); r != nil {
+	// 	return r
+	// }
 
 	// Priority 5: Skipped statuses (HIGH)
 	if r := detectSkippedStatuses(aiCtx.Events); r != nil {
