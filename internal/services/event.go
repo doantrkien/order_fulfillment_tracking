@@ -36,7 +36,7 @@ func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto.Im
 		Errors: []dto.EventError{},
 	}
 
-	var validReqs []dto.ImportOrderEventRequest
+	validReqs := make([]dto.ImportOrderEventRequest, 0, len(reqs))
 	for _, req := range reqs {
 		if reason := validateBasic(req); reason != "" {
 			resp.Rejected++
@@ -141,7 +141,7 @@ func splitIntoBatches(orderGroups map[int64][]dto.ImportOrderEventRequest, numBa
 
 	batches := make([][]models.OrderEvent, numBatches)
 
-	var orderIDs []int64
+	orderIDs := make([]int64, 0, len(orderGroups))
 	for id := range orderGroups {
 		orderIDs = append(orderIDs, id)
 	}

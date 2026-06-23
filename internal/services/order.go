@@ -35,7 +35,7 @@ func (s *orderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, in
 		return nil, 0, err
 	}
 
-	var response []dto.OrderReponse
+	response := make([]dto.OrderReponse, 0, len(orders))
 
 	for _, order := range orders {
 		userInfo := &models.UserInfo{}

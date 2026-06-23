@@ -140,7 +140,7 @@ func (r *orderEventRepository) ProcessBatchEventsTx(ctx context.Context, events 
 		}
 
 		// 3. Validate each event in Go and classify results
-		var acceptedEvents []models.OrderEvent
+		acceptedEvents := make([]models.OrderEvent, 0, len(events))
 		finalStatuses := make(map[int64]models.OrderStatus) // tracks the last accepted status per order
 
 		for i, event := range events {
