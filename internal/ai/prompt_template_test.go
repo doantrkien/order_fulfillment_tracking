@@ -141,21 +141,17 @@ func TestBuildExceptionAnalysisPrompt_ContainsAllSections(t *testing.T) {
 	}
 
 	SanitizePromptContext(&ctx)
-	prompt := BuildExceptionAnalysisPrompt(ctx)
+	knowledge := ClassifyDriverNote(ctx.DriverNotes)
+	prompt := BuildExceptionAnalysisPrompt(ctx, knowledge)
 
 	assert.Contains(t, prompt, "[SYSTEM]")
 	assert.Contains(t, prompt, "[CONTEXT]")
-	assert.Contains(t, prompt, "[DOMAIN KNOWLEDGE]")
+	assert.Contains(t, prompt, "[KNOWLEDGE BASE]")
 	assert.Contains(t, prompt, "[TASK]")
-	assert.Contains(t, prompt, "[SEVERITY RULES]")
 	assert.Contains(t, prompt, "[OUTPUT FORMAT]")
 	assert.Contains(t, prompt, "[CONSTRAINTS]")
 
 	assert.Contains(t, prompt, "Order ID: 123")
-	assert.Contains(t, prompt, "CRITICAL")
-	assert.Contains(t, prompt, "HIGH")
-	assert.Contains(t, prompt, "MEDIUM")
-	assert.Contains(t, prompt, "LOW")
 	assert.Contains(t, prompt, "Current Status: shipped")
 	assert.Contains(t, prompt, "500000 VND")
 	// PII should be redacted in the prompt — real names must NOT appear
@@ -179,7 +175,7 @@ func TestBuildExceptionAnalysisPrompt_EmptyTimeline(t *testing.T) {
 		CurrentStatus: "created",
 	}
 
-	prompt := BuildExceptionAnalysisPrompt(ctx)
+	prompt := BuildExceptionAnalysisPrompt(ctx, nil)
 	assert.Contains(t, prompt, "(no events recorded)")
 }
 
@@ -190,6 +186,86 @@ func TestBuildExceptionAnalysisPrompt_NoDriverNotes(t *testing.T) {
 		DriverNotes:   "",
 	}
 
-	prompt := BuildExceptionAnalysisPrompt(ctx)
-	assert.NotContains(t, prompt, "Operator Notes:")
+	prompt := BuildExceptionAnalysisPrompt(ctx, nil)
+	assert.NotContains(t, prompt, "Driver Note:")
+}
+
+// ── ClassifyDriverNote tests ─────────────────────────────────────────────────
+
+func TestClassifyDriverNote_AlwaysIncludesStateMachine(t *testing.T) {
+	entries := ClassifyDriverNote("")
+	ids := kbIDs(entries)
+	assert.Contains(t, ids, "state_machine")
+}
+
+func TestClassifyDriverNote_DeliveryKeywords(t *testing.T) {
+	cases := []string{
+		"customer not home",
+		"xe hỏng trên đường",
+		"accident on highway",
+		"package lost",
+		"could not deliver",
+		"giao thất bại",
+		"bad weather",
+	}
+	for _, note := range cases {
+		entries := ClassifyDriverNote(note)
+		ids := kbIDs(entries)
+		assert.Contains(t, ids, "delivery_failure", "note: %q", note)
+	}
+}
+
+func TestClassifyDriverNote_CancellationKeywords(t *testing.T) {
+	entries := ClassifyDriverNote("khách hàng muốn hủy đơn hàng")
+	ids := kbIDs(entries)
+	assert.Contains(t, ids, "cancellation_anomaly")
+}
+
+func TestClassifyDriverNote_RefundKeywords(t *testing.T) {
+	entries := ClassifyDriverNote("khách yêu cầu hoàn tiền")
+	ids := kbIDs(entries)
+	assert.Contains(t, ids, "refund_anomaly")
+}
+
+func TestClassifyDriverNote_StuckKeywords(t *testing.T) {
+	entries := ClassifyDriverNote("order is delayed, no progress for 3 days")
+	ids := kbIDs(entries)
+	assert.Contains(t, ids, "stuck_order")
+}
+
+func TestClassifyDriverNote_UnknownNote_FallsBackToDeliveryAndDataIntegrity(t *testing.T) {
+	// A non-empty note that matches no specific keyword should still get
+	// delivery_failure and data_integrity so the AI has useful context.
+	entries := ClassifyDriverNote("driver arrived at destination")
+	ids := kbIDs(entries)
+	assert.Contains(t, ids, "state_machine")
+	assert.Contains(t, ids, "delivery_failure")
+	assert.Contains(t, ids, "data_integrity")
+}
+
+func TestBuildExceptionAnalysisPrompt_InjectsOnlyRelevantKB(t *testing.T) {
+	ctx := ExceptionPromptContext{
+		OrderID:       999,
+		CurrentStatus: "shipped",
+		DriverNotes:   "vehicle breakdown on the way",
+	}
+	knowledge := ClassifyDriverNote(ctx.DriverNotes)
+	prompt := BuildExceptionAnalysisPrompt(ctx, knowledge)
+
+	// Delivery failure KB should be present
+	assert.Contains(t, prompt, "Delivery Failure")
+	// State machine KB should always be present
+	assert.Contains(t, prompt, "Order State Machine")
+	// Cancellation and refund KB should NOT be present (not in note)
+	assert.NotContains(t, prompt, "Cancellation Anomaly")
+	assert.NotContains(t, prompt, "Refund Anomaly")
+}
+
+// kbIDs extracts the ID field from a slice of KnowledgeEntry for easy assertion.
+func kbIDs(entries []KnowledgeEntry) []string {
+	ids := make([]string, len(entries))
+	for i, e := range entries {
+		ids[i] = e.ID
+	}
+	return ids
 }

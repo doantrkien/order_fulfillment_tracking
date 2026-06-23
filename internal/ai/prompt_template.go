@@ -9,7 +9,7 @@ import (
 
 // PromptTemplateVersion tracks the current version of the exception analysis prompt.
 // Increment this when the prompt structure or instructions change.
-const PromptTemplateVersion = "1.2.0"
+const PromptTemplateVersion = "1.3.0"
 
 const (
 	MaxEventTimelineEntries = 50
@@ -55,7 +55,12 @@ func SanitizePromptContext(ctx *ExceptionPromptContext) {
 	}
 }
 
-func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext) string {
+// BuildExceptionAnalysisPrompt constructs a focused prompt for the AI.
+//
+// knowledge is the set of KnowledgeEntry items selected by ClassifyDriverNote;
+// only the relevant domain rules are injected, keeping the prompt lean.
+// Pass nil or an empty slice to fall back to the baseline state-machine KB only.
+func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext, knowledge []KnowledgeEntry) string {
 	var sb strings.Builder
 
 	// ── [SYSTEM] ──────────────────────────────────────────────────────────────
@@ -63,6 +68,7 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext) string {
 	sb.WriteString("You are an Order Exception Analyst for a fulfillment tracking system.\n")
 	sb.WriteString("Your role is to analyze order data, event history, and operator notes to identify exceptions.\n")
 	sb.WriteString("You must determine the exception type, severity, likely root cause, and recommend the next internal action.\n")
+	sb.WriteString("Use ONLY the rules provided in [KNOWLEDGE BASE] to assign severity — do not use intuition or guesswork.\n")
 	sb.WriteString("You MUST respond ONLY with a single valid JSON object. No explanations, no markdown, no extra text.\n\n")
 
 	// ── [CONTEXT] ─────────────────────────────────────────────────────────────
@@ -89,71 +95,28 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext) string {
 	sb.WriteString("\n")
 
 	if ctx.DriverNotes != "" {
-		sb.WriteString(fmt.Sprintf("Operator Notes: %s\n\n", ctx.DriverNotes))
+		sb.WriteString(fmt.Sprintf("Driver Note: %s\n\n", ctx.DriverNotes))
 	}
 
-	// ── [DOMAIN KNOWLEDGE] ───────────────────────────────────────────────────
-	sb.WriteString("[DOMAIN KNOWLEDGE]\n")
-	sb.WriteString("Valid order statuses: created, paid, packed, shipped, delivered, cancelled, refunded\n")
-	sb.WriteString("Valid state transitions:\n")
-	sb.WriteString("  created  → paid, cancelled\n")
-	sb.WriteString("  paid     → packed, refunded\n")
-	sb.WriteString("  packed   → shipped\n")
-	sb.WriteString("  shipped  → delivered\n")
-	sb.WriteString("Terminal states (no further transitions): delivered, cancelled, refunded\n\n")
+	// ── [KNOWLEDGE BASE] — injected per driver-note classification ────────────
+	if len(knowledge) == 0 {
+		knowledge = []KnowledgeEntry{kbStateMachine}
+	}
+	sb.WriteString("[KNOWLEDGE BASE]\n")
+	sb.WriteString("Apply the following domain rules when classifying and rating the exception:\n\n")
+	for _, kb := range knowledge {
+		sb.WriteString("--- ")
+		sb.WriteString(kb.Title)
+		sb.WriteString(" ---\n")
+		sb.WriteString(kb.Body)
+		sb.WriteString("\n\n")
+	}
 
 	// ── [TASK] ────────────────────────────────────────────────────────────────
 	sb.WriteString("[TASK]\n")
-	sb.WriteString("Analyze the order context above and identify any exception or anomaly.\n")
-	sb.WriteString("Consider the following scenarios:\n")
-	sb.WriteString("  - Invalid or unexpected status transitions\n")
-	sb.WriteString("  - Stuck orders (no progress for an unusually long time)\n")
-	sb.WriteString("  - Skipped statuses in the lifecycle\n")
-	sb.WriteString("  - Duplicate or contradictory events\n")
-	sb.WriteString("  - Delivery failures or cancellations with unusual patterns\n")
-	sb.WriteString("  - Any anomaly mentioned in the operator notes\n\n")
-
-	// ── [SEVERITY RULES] ──────────────────────────────────────────────────────
-	sb.WriteString("[SEVERITY RULES]\n")
-	sb.WriteString("You MUST assign severity using ONLY the rules below. Do not use intuition or guesswork.\n")
-	sb.WriteString("Each exception_type has specific, mandatory severity values:\n\n")
-
-	sb.WriteString("INVALID_TRANSITION:\n")
-	sb.WriteString("  → Always CRITICAL. Any transition outside the valid state machine is a data integrity violation.\n\n")
-
-	sb.WriteString("CANCELLATION_ANOMALY:\n")
-	sb.WriteString("  → CRITICAL if the order was cancelled after reaching 'shipped' or 'delivered' status.\n")
-	sb.WriteString("  → HIGH if cancelled after 'packed' status.\n")
-	sb.WriteString("  → MEDIUM if cancelled after 'paid' status (early cancellation, less impactful).\n\n")
-
-	sb.WriteString("REFUND_ANOMALY:\n")
-	sb.WriteString("  → CRITICAL if refund was triggered from 'created' status (order was never paid — potential fraud).\n")
-	sb.WriteString("  → HIGH if refund was triggered directly from 'paid' status (bypassed normal cancellation flow).\n\n")
-
-	sb.WriteString("DELIVERY_FAILURE:\n")
-	sb.WriteString("  → HIGH if operator notes mention: accident, vehicle breakdown, bad weather, package lost, could not deliver.\n")
-	sb.WriteString("  → MEDIUM if operator notes mention: customer not home, wrong address, no one home.\n\n")
-
-	sb.WriteString("STUCK_ORDER:\n")
-	sb.WriteString("  → CRITICAL if stuck time exceeds 2× the normal threshold for that status.\n")
-	sb.WriteString("  → HIGH if stuck in 'packed' > 24h or 'shipped' > 72h (but not yet 2× threshold).\n")
-	sb.WriteString("  → MEDIUM if stuck in 'created' > 24h or 'paid' > 48h (but not yet 2× threshold).\n\n")
-
-	sb.WriteString("  Normal stuck thresholds by status:\n")
-	sb.WriteString("    created  → 24h (MEDIUM baseline)\n")
-	sb.WriteString("    paid     → 48h (MEDIUM baseline)\n")
-	sb.WriteString("    packed   → 24h (HIGH baseline)\n")
-	sb.WriteString("    shipped  → 72h (HIGH baseline)\n\n")
-
-	sb.WriteString("SKIPPED_STATUS:\n")
-	sb.WriteString("  → Always HIGH. A missing lifecycle step may indicate a system bypass or data integrity issue.\n\n")
-
-	sb.WriteString("DUPLICATE_EVENT:\n")
-	sb.WriteString("  → Always LOW. Duplicate events are noisy but do not represent an immediate business threat.\n\n")
-
-	sb.WriteString("OTHER:\n")
-	sb.WriteString("  → LOW for minor anomalies or unclear issues not fitting any category above.\n")
-	sb.WriteString("  → MEDIUM if the anomaly could affect order accuracy or customer experience.\n\n")
+	sb.WriteString("Analyze the order context and the driver note above.\n")
+	sb.WriteString("Identify the exception type and assign severity using ONLY the [KNOWLEDGE BASE] rules.\n")
+	sb.WriteString("Focus on anomalies mentioned in the driver note as the primary signal.\n\n")
 
 	// ── [OUTPUT FORMAT] ───────────────────────────────────────────────────────
 	sb.WriteString("[OUTPUT FORMAT]\n")
@@ -163,9 +126,7 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext) string {
 	sb.WriteString("  \"severity\": \"<string: one of LOW | MEDIUM | HIGH | CRITICAL>\",\n")
 	sb.WriteString("  \"likely_reason\": \"<string: concise root cause explanation in English, max 200 chars>\",\n")
 	sb.WriteString("  \"internal_next_action\": \"<string: recommended internal action for the fulfillment team, max 200 chars>\",\n")
-
-	sb.WriteString("  \"should_alert\": <boolean: true if the exception warrants an alert, false otherwise>\n")
-
+	sb.WriteString("  \"should_alert\": <boolean: true if the exception warrants an alert, false otherwise>,\n")
 	sb.WriteString("  \"confidence_score\": <float: 0.0 to 1.0, your confidence in this analysis>\n")
 	sb.WriteString("}\n\n")
 

@@ -51,9 +51,13 @@ func (g *aiAdapter) AnalyzeException(
 		EventTimeline:   timeline,
 		AnalyzedAt:      time.Now().Format(time.RFC3339),
 	}
+
 	SanitizePromptContext(&promptCtx)
 
-	prompt := BuildExceptionAnalysisPrompt(promptCtx)
+	// Select only the KB entries relevant to this driver note.
+	// The AI receives focused, context-appropriate rules instead of the full domain dump.
+	knowledge := ClassifyDriverNote(input.ErrorMessage)
+	prompt := BuildExceptionAnalysisPrompt(promptCtx, knowledge)
 
 	rawText, err := g.client.GenerateContent(ctx, prompt)
 	if err != nil {
@@ -63,7 +67,6 @@ func (g *aiAdapter) AnalyzeException(
 	var output dto.ExceptionOutput
 	cleaned := stripMarkdownFences(rawText)
 	if err := json.Unmarshal([]byte(cleaned), &output); err != nil {
-		// Return the unparseable text so it can be logged/audited
 		return dto.ExceptionOutput{}, rawText, errs.ERR_AI_RESPONSE_VALIDATION_FAILED
 	}
 
