@@ -89,6 +89,7 @@ type CustomerUpdateDraftInput struct {
 	LikelyReason    string `json:"likely_reason"`
 	Tone            string `json:"tone"`
 	Channel         string `json:"channel"`
+	BaselineDraft   string `json:"baseline_draft"`
 }
 
 type CustomerUpdateDraftOutput struct {

@@ -11,9 +11,10 @@ import (
 
 // Fallback reason constants used in audit logging.
 const (
-	FallbackReasonDisabled        = "ai_disabled"
-	FallbackReasonNoDriverNote    = "no_driver_note" // rule-based result, AI not needed
-	FallbackReasonTimeout         = "ai_timeout"
+	FallbackReasonDisabled           = "ai_disabled"
+	FallbackReasonNoDriverNote       = "no_driver_note" // rule-based result, AI not needed
+	FallbackReasonTemplateSufficient = "template_sufficient"
+	FallbackReasonTimeout            = "ai_timeout"
 	FallbackReasonConnectionError = "ai_connection_error"
 	FallbackReasonInvalidResponse = "ai_invalid_response"
 	FallbackReasonLowConfidence   = "ai_confidence_below_threshold"
@@ -226,6 +227,8 @@ func FormatFallbackReason(reason string) string {
 		return "AI feature is disabled via configuration"
 	case FallbackReasonNoDriverNote:
 		return "No driver note present; rule-based result returned without calling AI"
+	case FallbackReasonTemplateSufficient:
+		return "Static template is sufficient, skipping AI draft generation"
 	case FallbackReasonTimeout:
 		return "AI service call timed out"
 	case FallbackReasonConnectionError:

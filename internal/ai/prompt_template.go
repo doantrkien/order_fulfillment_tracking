@@ -127,5 +127,5 @@ func BuildCustomerUpdateDraftPrompt(input dto.CustomerUpdateDraftInput) string {
 	ctxSb.WriteString(fmt.Sprintf("Communication Channel: %s\n", input.Channel))
 
 	// 2. Inject into base markdown template
-	return fmt.Sprintf(basePromptDraft, ctxSb.String())
+	return fmt.Sprintf(basePromptDraft, ctxSb.String(), input.BaselineDraft)
 }

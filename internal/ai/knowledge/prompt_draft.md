@@ -7,8 +7,14 @@ You MUST respond ONLY with a single valid JSON object. No explanations, no markd
 [CONTEXT]
 %s
 
+[BASELINE DRAFT]
+This is the standard company template for this exception:
+%s
+
 [TASK]
-Draft a message to the customer explaining the situation politely, using the requested tone and appropriate length for the channel.
+Draft a message to the customer explaining the situation politely.
+Use the [BASELINE DRAFT] as your foundation. You must modify it to match the requested Tone and Channel length.
+If the exception is OTHER, use the Likely Reason to provide more specific details.
 Reassure them that we are handling it, but do not promise refunds or exact resolution times unless explicitly supported by standard policy.
 
 [OUTPUT FORMAT]

@@ -53,7 +53,7 @@ func TestDraftGenerator_AIReturnsError(t *testing.T) {
 	require.NoError(t, err) // DraftGenerator should never return error on AI failure
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonConnectionError, result.FallbackReason)
-	assert.Contains(t, result.CustomerUpdateDraft, "address [REDACTED_SHIPPING_ADDRESS]")
+	assert.Contains(t, result.CustomerUpdateDraft, "order to [REDACTED_SHIPPING_ADDRESS]")
 	assert.Equal(t, 1.0, result.ConfidenceScore)
 }
 
@@ -69,6 +69,7 @@ func TestDraftGenerator_AIReturnsTimeout(t *testing.T) {
 	input := dto.CustomerUpdateDraftInput{
 		OrderID:       1003,
 		ExceptionType: "INVALID_TRANSITION",
+		Tone:          "apologetic",
 	}
 
 	result, err := generator.Generate(context.Background(), input)
@@ -76,7 +77,7 @@ func TestDraftGenerator_AIReturnsTimeout(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonTimeout, result.FallbackReason)
-	assert.Contains(t, result.CustomerUpdateDraft, "mismatch in your order status update")
+	assert.Contains(t, result.CustomerUpdateDraft, "status mismatch during your order")
 	assert.Equal(t, 1.0, result.ConfidenceScore)
 }
 
@@ -99,7 +100,7 @@ func TestDraftGenerator_AIReturnsInvalidResponse(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonInvalidResponse, result.FallbackReason)
-	assert.Contains(t, result.CustomerUpdateDraft, "unexpected issue related to your order")
+	assert.Contains(t, result.CustomerUpdateDraft, "issue that has arisen regarding your order")
 	assert.Equal(t, 1.0, result.ConfidenceScore)
 }
 
@@ -118,6 +119,7 @@ func TestDraftGenerator_AIReturnsLowConfidence(t *testing.T) {
 	input := dto.CustomerUpdateDraftInput{
 		OrderID:       1005,
 		ExceptionType: "REFUND_ANOMALY",
+		Tone:          "apologetic",
 	}
 
 	result, err := generator.Generate(context.Background(), input)
@@ -143,7 +145,7 @@ func TestDraftGenerator_Success(t *testing.T) {
 
 	input := dto.CustomerUpdateDraftInput{
 		OrderID:       1006,
-		ExceptionType: "STUCK_ORDER",
+		ExceptionType: "OTHER",
 	}
 
 	result, err := generator.Generate(context.Background(), input)

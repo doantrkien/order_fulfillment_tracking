@@ -12,15 +12,15 @@ func TestGetFallbackTemplate(t *testing.T) {
 		wantContains  string
 	}{
 		{"STUCK_ORDER", "slower than expected"},
-		{"DELIVERY_FAILURE", "address [REDACTED_SHIPPING_ADDRESS]"},
-		{"INVALID_TRANSITION", "mismatch in your order status"},
-		{"SKIPPED_STATUS", "unusual updates"},
-		{"DUPLICATE_EVENT", "duplication has been recorded"},
-		{"CANCELLATION_ANOMALY", "unusual cancellation request"},
+		{"DELIVERY_FAILURE", "order to [REDACTED_SHIPPING_ADDRESS]"},
+		{"INVALID_TRANSITION", "status mismatch during your order"},
+		{"SKIPPED_STATUS", "unusual update"},
+		{"DUPLICATE_EVENT", "recorded a duplicate"},
+		{"CANCELLATION_ANOMALY", "unusual cancellation"},
 		{"REFUND_ANOMALY", "refund request"},
-		{"OTHER", "unexpected issue related to your order"},
-		{"SOME_RANDOM_TYPE", "unforeseen issue"}, // Dẫn về DEFAULT
-		{"", "unforeseen issue"},                 // Dẫn về DEFAULT
+		{"OTHER", "issue that has arisen regarding your order"},
+		{"SOME_RANDOM_TYPE", "unexpected issue"}, // Dẫn về DEFAULT
+		{"", "unexpected issue"},                 // Dẫn về DEFAULT
 	}
 
 	for _, tc := range tests {
