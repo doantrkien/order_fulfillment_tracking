@@ -2,6 +2,7 @@ package ai
 
 import (
 	_ "embed"
+	"fmt"
 	"strings"
 )
 
@@ -101,6 +102,12 @@ func ClassifyDriverNote(note string) []KnowledgeEntry {
 	if !matched {
 		entries = append(entries, kbDeliveryFailure, kbDuplicateEvent, kbSkippedStatus, kbStuckOrder)
 	}
+
+	var titles []string
+	for _, e := range entries {
+		titles = append(titles, e.Title)
+	}
+	fmt.Printf("[DEBUG][ClassifyDriverNote] Note: %q | Matched: %v | KB Sent: %d (%s)\n", note, matched, len(entries), strings.Join(titles, ", "))
 
 	return entries
 }
