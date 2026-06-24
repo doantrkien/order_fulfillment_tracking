@@ -12,9 +12,11 @@ import (
 const (
 	FallbackReasonDisabled        = "ai_disabled"
 	FallbackReasonTimeout         = "ai_timeout"
-	FallbackReasonConnectionError = "ai_connection_error"
-	FallbackReasonInvalidResponse = "ai_invalid_response"
-	FallbackReasonLowConfidence   = "ai_confidence_below_threshold"
+	FallbackReasonConnectionError  = "ai_connection_error"
+	FallbackReasonInvalidResponse  = "ai_invalid_response"
+	FallbackReasonLowConfidence    = "ai_confidence_below_threshold"
+	FallbackReasonNoDriverNote     = "no_driver_note"
+	FallbackReasonEarlyNoteIgnored = "early_note_ignored_to_save_cost"
 )
 
 type AnalysisResult struct {
@@ -49,10 +51,26 @@ func NewExceptionAnalyzer(adapter AIAdapter, config ExceptionAnalyzerConfig) *Ex
 func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContext, notes string) (*AnalysisResult, error) {
 	now := time.Now()
 
+	// Gate 1: AI disabled
 	if !ea.config.AIEnabled {
 		return ea.fallback(aiCtx, FallbackReasonDisabled, 0, now), nil
 	}
 
+	noteClassification := ClassifyDriverNote(notes)
+
+	// Gate 2: No driver note
+	if noteClassification.Category == DriverNoteCategoryNone {
+		return ea.fallback(aiCtx, FallbackReasonNoDriverNote, 0, now), nil
+	}
+
+	slaBreached := IsSLABreached(aiCtx, now)
+
+	// Gate 3: Early Note Ignored (Not breached SLA + General/Delay note)
+	if !slaBreached && (noteClassification.Category == DriverNoteCategoryGeneral || noteClassification.Category == DriverNoteCategoryDelay) {
+		return ea.fallback(aiCtx, FallbackReasonEarlyNoteIgnored, 0, now), nil
+	}
+
+	// At this point, we either have a breached SLA, OR a critical note (Delivery Failure/Cancellation). We proceed to call AI.
 	input := buildExceptionInput(aiCtx, notes)
 
 	start := time.Now()
@@ -171,6 +189,10 @@ func FormatFallbackReason(reason string) string {
 		return "AI returned an invalid or malformed response"
 	case FallbackReasonLowConfidence:
 		return "AI response confidence score was below threshold"
+	case FallbackReasonNoDriverNote:
+		return "No driver note provided, skipping AI analysis to save cost"
+	case FallbackReasonEarlyNoteIgnored:
+		return "Driver note ignored as SLA is not breached and note is not critical"
 	default:
 		return fmt.Sprintf("Unknown fallback reason: %s", reason)
 	}

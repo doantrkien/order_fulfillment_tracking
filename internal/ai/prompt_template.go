@@ -82,7 +82,7 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext) string {
 
 	kbSnippet := ""
 	if ctx.DriverNotes != "" {
-		kbSnippet = ClassifyDriverNote(ctx.DriverNotes)
+		kbSnippet = ClassifyDriverNote(ctx.DriverNotes).KBSnippet
 	}
 
 	// 3. Inject variables into the Task template

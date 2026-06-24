@@ -157,15 +157,15 @@ func detectSkippedStatuses(events []models.AIEvent) *RuleBasedResult {
 	return nil
 }
 
-// detectStuckOrder calculates the time since the last event (or order creation)
-// and compares against per-status thresholds.
-func detectStuckOrder(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
+// IsSLABreached checks if the order has exceeded its per-status SLA threshold.
+// Returns true if the order is stuck, false otherwise.
+func IsSLABreached(aiCtx *models.AIContext, now time.Time) bool {
 	currentStatus := aiCtx.CurrentStatus
 
 	threshold, exists := stuckThresholds[currentStatus]
 	if !exists {
 		// Terminal states (delivered, cancelled, refunded) cannot be "stuck"
-		return nil
+		return false
 	}
 
 	// Determine the last activity time
@@ -178,10 +178,29 @@ func detectStuckOrder(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
 	}
 
 	age := now.Sub(lastActivityAt)
-	if age < threshold.Duration {
+	return age >= threshold.Duration
+}
+
+// detectStuckOrder calculates the time since the last event (or order creation)
+// and compares against per-status thresholds.
+func detectStuckOrder(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
+	if !IsSLABreached(aiCtx, now) {
 		return nil
 	}
 
+	currentStatus := aiCtx.CurrentStatus
+	threshold := stuckThresholds[currentStatus]
+
+	// Determine the last activity time (re-calculating age for severity)
+	lastActivityAt := aiCtx.CreatedAt
+	if len(aiCtx.Events) > 0 {
+		lastEvent := aiCtx.Events[len(aiCtx.Events)-1]
+		if lastEvent.EventAt.After(lastActivityAt) {
+			lastActivityAt = lastEvent.EventAt
+		}
+	}
+
+	age := now.Sub(lastActivityAt)
 	severity := threshold.BaseSeverity
 	if age >= 2*threshold.Duration {
 		severity = threshold.EscalateSeverity

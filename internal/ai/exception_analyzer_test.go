@@ -78,7 +78,8 @@ func TestExceptionAnalyzer_AIReturnsError(t *testing.T) {
 	})
 
 	aiCtx := newTestAIContext()
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	// Pass critical note to trigger AI despite not breaching SLA
+	result, err := analyzer.Analyze(context.Background(), aiCtx, "xe hỏng tai nạn")
 
 	require.NoError(t, err) // Analyzer should NOT return error on AI failure
 	assert.True(t, result.FallbackUsed)
@@ -96,7 +97,8 @@ func TestExceptionAnalyzer_AIReturnsTimeout(t *testing.T) {
 	})
 
 	aiCtx := newTestAIContext()
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	// Pass critical note to trigger AI despite not breaching SLA
+	result, err := analyzer.Analyze(context.Background(), aiCtx, "xe hỏng tai nạn")
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
@@ -115,7 +117,8 @@ func TestExceptionAnalyzer_AIReturnsInvalidResponse(t *testing.T) {
 	})
 
 	aiCtx := newTestAIContext()
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	// Pass critical note to trigger AI despite not breaching SLA
+	result, err := analyzer.Analyze(context.Background(), aiCtx, "xe hỏng tai nạn")
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
@@ -141,12 +144,73 @@ func TestExceptionAnalyzer_AIReturnsLowConfidence(t *testing.T) {
 	})
 
 	aiCtx := newTestAIContext()
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "test notes")
+	// Pass critical note to trigger AI despite not breaching SLA
+	result, err := analyzer.Analyze(context.Background(), aiCtx, "xe hỏng tai nạn")
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonLowConfidence, result.FallbackReason)
 	assert.Equal(t, `{"confidence_score": 0.3}`, result.RawResponse)
+}
+
+func TestExceptionAnalyzer_NoDriverNoteFallback(t *testing.T) {
+	analyzer := NewExceptionAnalyzer(nil, ExceptionAnalyzerConfig{
+		AIEnabled: true,
+		AITimeout: 10 * time.Second,
+	})
+
+	aiCtx := newTestAIContext()
+	result, err := analyzer.Analyze(context.Background(), aiCtx, "") // empty driver note
+
+	require.NoError(t, err)
+	assert.True(t, result.FallbackUsed)
+	assert.Equal(t, FallbackReasonNoDriverNote, result.FallbackReason)
+}
+
+func TestExceptionAnalyzer_EarlyNoteIgnoredFallback(t *testing.T) {
+	analyzer := NewExceptionAnalyzer(nil, ExceptionAnalyzerConfig{
+		AIEnabled: true,
+		AITimeout: 10 * time.Second,
+	})
+
+	aiCtx := newTestAIContext()
+	// normal delay note, SLA is not breached (PAID is 48h stuck threshold, order is 2h old)
+	result, err := analyzer.Analyze(context.Background(), aiCtx, "kẹt xe trễ một chút")
+
+	require.NoError(t, err)
+	assert.True(t, result.FallbackUsed)
+	assert.Equal(t, FallbackReasonEarlyNoteIgnored, result.FallbackReason)
+}
+
+func TestExceptionAnalyzer_SLABreachedCallsAI(t *testing.T) {
+	adapter := &mockAdapter{
+		output: dto.ExceptionOutput{
+			ExceptionType:      "STUCK_ORDER",
+			Severity:           "CRITICAL",
+			LikelyReason:       "Stuck in paid state for too long",
+			InternalNextAction: "Contact logistics",
+			ConfidenceScore:    0.9,
+		},
+		outputStr: `{"confidence_score": 0.9}`,
+	}
+	analyzer := NewExceptionAnalyzer(adapter, ExceptionAnalyzerConfig{
+		AIEnabled: true,
+		AITimeout: 10 * time.Second,
+	})
+
+	now := time.Now()
+	aiCtx := &models.AIContext{
+		OrderID:       1001,
+		CreatedAt:     now.Add(-100 * time.Hour), // 100h age > 48h threshold for PAID
+		CurrentStatus: models.ORDER_STATUS_PAID,
+	}
+	// General note, but SLA breached -> should call AI
+	result, err := analyzer.Analyze(context.Background(), aiCtx, "kẹt xe chút xíu")
+
+	require.NoError(t, err)
+	assert.False(t, result.FallbackUsed)
+	assert.Equal(t, "STUCK_ORDER", result.ExceptionType)
+	assert.Equal(t, 0.9, result.ConfidenceScore)
 }
 
 func TestExceptionAnalyzer_FallbackProducesValidResult(t *testing.T) {
@@ -172,7 +236,8 @@ func TestExceptionAnalyzer_FallbackProducesValidResult(t *testing.T) {
 		},
 	}
 
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	// Pass critical note to avoid no_driver_note bypass (AIDisabled check is first anyway)
+	result, err := analyzer.Analyze(context.Background(), aiCtx, "xe hỏng tai nạn")
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
@@ -206,7 +271,8 @@ func TestExceptionAnalyzer_FallbackNoExceptionDetected(t *testing.T) {
 		},
 	}
 
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	// Pass critical note to avoid no_driver_note bypass
+	result, err := analyzer.Analyze(context.Background(), aiCtx, "xe hỏng tai nạn")
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
@@ -230,7 +296,8 @@ func TestExceptionAnalyzer_NeverReturnsError_ForAIFailures(t *testing.T) {
 			AITimeout: 5 * time.Second,
 		})
 
-		result, err := analyzer.Analyze(context.Background(), newTestAIContext(), "")
+		// Pass critical note to avoid no_driver_note bypass
+		result, err := analyzer.Analyze(context.Background(), newTestAIContext(), "xe hỏng tai nạn")
 		assert.NoError(t, err, "Analyze should not return error for: %v", testErr)
 		assert.True(t, result.FallbackUsed, "Fallback should be used for: %v", testErr)
 	}

@@ -53,11 +53,28 @@ func NewDraftGenerator(adapter AIAdapter, config DraftGeneratorConfig) *DraftGen
 	}
 }
 
+// shouldCallAI checks whether to bypass the AI call and use a static template instead.
+// If the exception is not OTHER, and the tone requested is neutral/informative,
+// and the channel is not SMS, it returns false (and fallback reason "template_sufficient").
+func shouldCallAI(input dto.CustomerUpdateDraftInput) (bool, string) {
+	if input.ExceptionType != "OTHER" &&
+		(input.Tone == "neutral" || input.Tone == "informative") &&
+		input.Channel != "SMS" {
+		return false, "template_sufficient"
+	}
+	return true, ""
+}
+
 // Generate is the main entry point. See DraftGenerator doc for the full flow.
 func (dg *DraftGenerator) Generate(ctx context.Context, input dto.CustomerUpdateDraftInput) (*DraftResult, error) {
 	// Step 1: Check if AI is disabled — fallback immediately.
 	if !dg.config.AIEnabled {
 		return dg.fallback(input, FallbackReasonDisabled, 0, ""), nil
+	}
+
+	// Step 1.5: Smart Routing — Check if AI call is necessary.
+	if shouldCall, reason := shouldCallAI(input); !shouldCall {
+		return dg.fallback(input, reason, 0, ""), nil
 	}
 
 	// Step 2: Call AI adapter with per-request timeout.
@@ -142,6 +159,8 @@ func FormatDraftFallbackReason(reason string) string {
 		return "AI returned an invalid or malformed response"
 	case FallbackReasonLowConfidence:
 		return "AI response confidence score was below threshold"
+	case "template_sufficient":
+		return "Standard template is sufficient for this exception type and tone"
 	default:
 		return fmt.Sprintf("Unknown fallback reason: %s", reason)
 	}
