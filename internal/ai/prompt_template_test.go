@@ -161,6 +161,9 @@ func TestBuildExceptionAnalysisPrompt_ContainsAllSections(t *testing.T) {
 
 	assert.Contains(t, prompt, "MUST NOT suggest or trigger any automatic order status changes")
 	assert.Contains(t, prompt, "MUST NOT suggest sending messages directly to customers")
+	
+	// Ensure the newly added field exists
+	assert.Contains(t, prompt, `"suggestion": "<string: additional detailed suggestions or context, max 300 chars>"`)
 }
 
 func TestBuildExceptionAnalysisPrompt_EmptyTimeline(t *testing.T) {

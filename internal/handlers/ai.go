@@ -50,7 +50,9 @@ func (h *AIHandler) AnalyzeException(c fiber.Ctx) error {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
-	result, err := h.aiService.AnalyzeException(c.Context(), orderID, req.Note)
+	requestID, _ := c.Locals("requestid").(string)
+
+	result, err := h.aiService.AnalyzeException(c.Context(), orderID, req.Note, requestID)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
 			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)
@@ -112,7 +114,9 @@ func (h *AIHandler) GenerateDraft(c fiber.Ctx) error {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
-	result, err := h.aiService.GenerateDraft(c.Context(), req)
+	requestID, _ := c.Locals("requestid").(string)
+
+	result, err := h.aiService.GenerateDraft(c.Context(), req, requestID)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
 			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)

@@ -13,6 +13,10 @@ func ClassifyError(err error) string {
 		return FallbackReasonTimeout
 	}
 
+	if errors.Is(err, context.Canceled) {
+		return FallbackReasonConnectionError
+	}
+
 	var netErr net.Error
 	if errors.As(err, &netErr) && netErr.Timeout() {
 		return FallbackReasonTimeout

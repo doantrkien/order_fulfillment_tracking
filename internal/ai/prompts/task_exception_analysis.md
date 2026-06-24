@@ -39,6 +39,7 @@ Respond with EXACTLY this JSON structure:
 "severity": "<string: one of LOW | MEDIUM | HIGH | CRITICAL>",
 "likely_reason": "<string: concise root cause explanation in English, max 200 chars>",
 "internal_next_action": "<string: recommended internal action for the fulfillment team, max 200 chars>",
+"suggestion": "<string: additional detailed suggestions or context, max 300 chars>",
 "should_alert": <boolean: true if the exception warrants an alert, false otherwise>,
 "confidence_score": <float: 0.0 to 1.0, your confidence in this analysis>
 }

@@ -16,9 +16,9 @@ import (
 )
 
 type AIService interface {
-	AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
+	AnalyzeException(ctx context.Context, orderID int64, notes string, requestID string) (*dto.AnalyzeExceptionResponse, error)
 	GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error)
-	GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIRequest) (*dto.GenerateDraftAPIResponse, error)
+	GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIRequest, requestID string) (*dto.GenerateDraftAPIResponse, error)
 	RunEvaluation(ctx context.Context, req dto.EvaluationRequest) (*dto.EvaluationResponse, error)
 }
 
@@ -40,7 +40,7 @@ func NewAIService(aiRepo repositories.AIRepository, analyzer *ai.ExceptionAnalyz
 	}
 }
 
-func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error) {
+func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes string, requestID string) (*dto.AnalyzeExceptionResponse, error) {
 
 	aiCtx, err := s.aiRepo.GetAIContextByOrderID(ctx, orderID)
 	if err != nil {
@@ -53,6 +53,9 @@ func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes s
 	}
 
 	exception := mapResultToModel(orderID, result)
+	if requestID != "" {
+		exception.RequestID = &requestID
+	}
 	if saveErr := s.aiRepo.Save(ctx, exception); saveErr != nil {
 		return nil, fmt.Errorf("Error in save AI result: %w", saveErr)
 	}
@@ -77,7 +80,7 @@ func (s *aiService) GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.
 	return resp, nil
 }
 
-func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIRequest) (*dto.GenerateDraftAPIResponse, error) {
+func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIRequest, requestID string) (*dto.GenerateDraftAPIResponse, error) {
 
 	aiCtx, err := s.aiRepo.GetAIContextByOrderID(ctx, req.OrderID)
 	if err != nil {
@@ -151,6 +154,9 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		PromptTemplateVersion: ai.PromptTemplateVersion,
 		DurationMs:            durationMs,
 		ReviewStatus:          models.DraftReviewStatusPending,
+	}
+	if requestID != "" {
+		draft.RequestID = &requestID
 	}
 	if saveErr := s.aiDraftRepo.Save(ctx, draft); saveErr != nil {
 		return nil, errs.ERR_INTERNAL_SERVER

@@ -18,7 +18,7 @@ type AIConfig struct {
 // LoadAIConfig reads AI configuration from environment variables.
 func LoadAIConfig() AIConfig {
 	enabled := os.Getenv("AI_ENABLED") != "false" // default: true
-	timeoutMs := 10000                             // default: 10 seconds
+	timeoutMs := 5000                              // default: 5 seconds
 	if v := os.Getenv("AI_TIMEOUT_MS"); v != "" {
 		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
 			timeoutMs = parsed
