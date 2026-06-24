@@ -53,6 +53,12 @@ func newTestAIContext() *models.AIContext {
 	}
 }
 
+func newTestAIContextWithDriverNote(note string) *models.AIContext {
+	ctx := newTestAIContext()
+	ctx.Events[0].DriverNote = &note
+	return ctx
+}
+
 func TestExceptionAnalyzer_AIDisabled(t *testing.T) {
 	analyzer := NewExceptionAnalyzer(nil, ExceptionAnalyzerConfig{
 		AIEnabled: false,
@@ -68,6 +74,51 @@ func TestExceptionAnalyzer_AIDisabled(t *testing.T) {
 	assert.Equal(t, "", result.RawResponse)
 }
 
+// TestExceptionAnalyzer_NoDriverNote verifies that when AI is enabled but no event
+// carries a driver note, AI is NOT called and rule-based result is returned directly.
+func TestExceptionAnalyzer_NoDriverNote_SkipsAI(t *testing.T) {
+	// adapter would panic if called — ensures AI is never invoked
+	analyzer := NewExceptionAnalyzer(nil, ExceptionAnalyzerConfig{
+		AIEnabled: true,
+		AITimeout: 10 * time.Second,
+	})
+
+	aiCtx := newTestAIContext() // no driver notes
+	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+
+	require.NoError(t, err)
+	assert.True(t, result.FallbackUsed)
+	assert.Equal(t, FallbackReasonNoDriverNote, result.FallbackReason)
+	assert.Equal(t, "", result.RawResponse)
+}
+
+// TestExceptionAnalyzer_WithDriverNote_CallsAI verifies that when a driver note
+// is present, the AI adapter is invoked.
+func TestExceptionAnalyzer_WithDriverNote_CallsAI(t *testing.T) {
+	adapter := &mockAdapter{
+		output: dto.ExceptionOutput{
+			ExceptionType:      "DELIVERY_FAILURE",
+			Severity:           "HIGH",
+			LikelyReason:       "Driver note indicates vehicle breakdown",
+			InternalNextAction: "Reschedule delivery",
+			ConfidenceScore:    0.9,
+		},
+		outputStr: `{"exception_type":"DELIVERY_FAILURE"}`,
+	}
+	analyzer := NewExceptionAnalyzer(adapter, ExceptionAnalyzerConfig{
+		AIEnabled: true,
+		AITimeout: 10 * time.Second,
+	})
+
+	aiCtx := newTestAIContextWithDriverNote("vehicle breakdown on highway")
+	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+
+	require.NoError(t, err)
+	assert.False(t, result.FallbackUsed)
+	assert.Equal(t, "DELIVERY_FAILURE", result.ExceptionType)
+	assert.Equal(t, 0.9, result.ConfidenceScore)
+}
+
 func TestExceptionAnalyzer_AIReturnsError(t *testing.T) {
 	adapter := &mockAdapter{
 		err: errors.New("connection refused"),
@@ -77,7 +128,7 @@ func TestExceptionAnalyzer_AIReturnsError(t *testing.T) {
 		AITimeout: 10 * time.Second,
 	})
 
-	aiCtx := newTestAIContext()
+	aiCtx := newTestAIContextWithDriverNote("some note") // need driver note to trigger AI
 	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
 
 	require.NoError(t, err) // Analyzer should NOT return error on AI failure
@@ -95,7 +146,7 @@ func TestExceptionAnalyzer_AIReturnsTimeout(t *testing.T) {
 		AITimeout: 10 * time.Second,
 	})
 
-	aiCtx := newTestAIContext()
+	aiCtx := newTestAIContextWithDriverNote("some note") // need driver note to trigger AI
 	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
 
 	require.NoError(t, err)
@@ -114,7 +165,7 @@ func TestExceptionAnalyzer_AIReturnsInvalidResponse(t *testing.T) {
 		AITimeout: 10 * time.Second,
 	})
 
-	aiCtx := newTestAIContext()
+	aiCtx := newTestAIContextWithDriverNote("some note") // need driver note to trigger AI
 	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
 
 	require.NoError(t, err)
@@ -140,7 +191,7 @@ func TestExceptionAnalyzer_AIReturnsLowConfidence(t *testing.T) {
 		AITimeout: 10 * time.Second,
 	})
 
-	aiCtx := newTestAIContext()
+	aiCtx := newTestAIContextWithDriverNote("some driver note") // need driver note to trigger AI
 	result, err := analyzer.Analyze(context.Background(), aiCtx, "test notes")
 
 	require.NoError(t, err)
@@ -177,9 +228,9 @@ func TestExceptionAnalyzer_FallbackProducesValidResult(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonDisabled, result.FallbackReason)
-	assert.Equal(t, "INVALID_TRANSITION", result.ExceptionType)
+	assert.Equal(t, "SKIPPED_STATUS", result.ExceptionType)
 	assert.Equal(t, "CRITICAL", result.Severity)
-	assert.Equal(t, 1.0, result.ConfidenceScore)
+	assert.Equal(t, 0.99, result.ConfidenceScore)
 	assert.NotEmpty(t, result.LikelyReason)
 	assert.NotEmpty(t, result.InternalNextAction)
 }
@@ -230,7 +281,9 @@ func TestExceptionAnalyzer_NeverReturnsError_ForAIFailures(t *testing.T) {
 			AITimeout: 5 * time.Second,
 		})
 
-		result, err := analyzer.Analyze(context.Background(), newTestAIContext(), "")
+		// Must have a driver note so the AI path is exercised
+		aiCtx := newTestAIContextWithDriverNote("some note")
+		result, err := analyzer.Analyze(context.Background(), aiCtx, "")
 		assert.NoError(t, err, "Analyze should not return error for: %v", testErr)
 		assert.True(t, result.FallbackUsed, "Fallback should be used for: %v", testErr)
 	}

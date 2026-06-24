@@ -9,6 +9,7 @@ import (
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/repositories"
+	"os"
 	"strings"
 	"time"
 
@@ -19,7 +20,9 @@ type AIService interface {
 	AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
 	GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error)
 	GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIRequest) (*dto.GenerateDraftAPIResponse, error)
-	RunEvaluation(ctx context.Context, req dto.EvaluationRequest) (*dto.EvaluationResponse, error)
+	TriggerEvaluation(ctx context.Context, req dto.TriggerEvaluationRequest) (*dto.TriggerEvaluationResponse, error)
+	GetEvaluationRun(ctx context.Context, runID int64) (*dto.GetEvaluationRunResponse, error)
+	GetEvaluationDetails(ctx context.Context, runID int64) (*dto.GetEvaluationDetailsResponse, error)
 }
 
 type aiService struct {
@@ -27,16 +30,16 @@ type aiService struct {
 	analyzer       *ai.ExceptionAnalyzer
 	draftGenerator *ai.DraftGenerator
 	aiDraftRepo    repositories.AIDraftRepository
-	aiEvalRepo     repositories.AIEvaluationRepository
+	evalRepo       repositories.AIEvaluationRepository
 }
 
-func NewAIService(aiRepo repositories.AIRepository, analyzer *ai.ExceptionAnalyzer, draftGenerator *ai.DraftGenerator, aiDraftRepo repositories.AIDraftRepository, aiEvalRepo repositories.AIEvaluationRepository) AIService {
+func NewAIService(aiRepo repositories.AIRepository, analyzer *ai.ExceptionAnalyzer, draftGenerator *ai.DraftGenerator, aiDraftRepo repositories.AIDraftRepository, evalRepo repositories.AIEvaluationRepository) AIService {
 	return &aiService{
 		aiRepo:         aiRepo,
 		analyzer:       analyzer,
 		draftGenerator: draftGenerator,
 		aiDraftRepo:    aiDraftRepo,
-		aiEvalRepo:     aiEvalRepo,
+		evalRepo:       evalRepo,
 	}
 }
 
@@ -167,143 +170,6 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 	}, nil
 }
 
-func (s *aiService) RunEvaluation(ctx context.Context, req dto.EvaluationRequest) (*dto.EvaluationResponse, error) {
-	var (
-		results       []dto.EvaluationCaseResult
-		passedCases   int
-		fallbackCases int
-		totalConf     float64
-	)
-
-	for _, c := range req.Cases {
-		aiCtx, err := buildAIContextForEval(ctx, s.aiRepo, &c)
-		if err != nil {
-			results = append(results, dto.EvaluationCaseResult{
-				CaseID:     c.CaseID,
-				Passed:     false,
-				FailReason: fmt.Sprintf("context error: %s", err.Error()),
-			})
-			continue
-		}
-
-		// 2. Gọi AI analyzer
-		result, err := s.analyzer.Analyze(ctx, aiCtx, "")
-		if err != nil {
-			results = append(results, dto.EvaluationCaseResult{
-				CaseID:     c.CaseID,
-				Passed:     false,
-				FailReason: fmt.Sprintf("analyzer error: %s", err.Error()),
-			})
-			continue
-		}
-
-		// 3. So sánh kết quả với expected
-		passed := strings.EqualFold(result.Severity, c.ExpectedSeverity) &&
-			strings.EqualFold(result.ExceptionType, c.ExpectedExceptionType)
-
-		if passed {
-			passedCases++
-		}
-		if result.FallbackUsed {
-			fallbackCases++
-		}
-		totalConf += result.ConfidenceScore
-
-		results = append(results, dto.EvaluationCaseResult{
-			CaseID:              c.CaseID,
-			Passed:              passed,
-			FallbackUsed:        result.FallbackUsed,
-			ActualSeverity:      result.Severity,
-			ActualExceptionType: result.ExceptionType,
-			ConfidenceScore:     result.ConfidenceScore,
-		})
-	}
-
-	// 4. Tính aggregate
-	total := len(req.Cases)
-	passRate := 0.0
-	avgConf := 0.0
-	if total > 0 {
-		passRate = float64(passedCases) / float64(total)
-		avgConf = totalConf / float64(total)
-	}
-
-	// 5. Lưu vào ai_evaluation_runs — dùng s.aiEvalRepo (không phải s.evalRepo)
-	env := req.Environment
-	if env == "" {
-		env = models.EvalEnvironmentDev
-	}
-
-	rawJSON, _ := json.Marshal(results)
-	runBy := req.RunBy
-
-	run := &models.AIEvaluationRun{
-		WorkflowName:          models.WorkflowNameOrderException,
-		PromptTemplateVersion: ai.PromptTemplateVersion,
-		RunBy:                 &runBy,
-		Environment:           env,
-		TriggeredBy:           models.EvalTriggeredByManual,
-		TotalCases:            total,
-		PassedCases:           passedCases,
-		FailedCases:           total - passedCases,
-		FallbackCases:         fallbackCases,
-		AvgConfidence:         &avgConf,
-		PassRate:              &passRate,
-		RawResults:            datatypes.JSON(rawJSON),
-		RunAt:                 time.Now(),
-	}
-
-	if err := s.aiEvalRepo.Save(ctx, run); err != nil { // <-- aiEvalRepo bukan evalRepo
-		return nil, fmt.Errorf("failed to save evaluation run: %w", err)
-	}
-
-	// 6. Return response — chỉ dùng field có trong dto.EvaluationResponse hiện tại
-	return &dto.EvaluationResponse{
-		WorkflowName:  models.WorkflowNameOrderException,
-		TotalCases:    total,
-		PassedCases:   passedCases,
-		FailedCases:   total - passedCases,
-		FallbackCases: fallbackCases,
-		PassRate:      passRate,
-		AvgConfidence: avgConf,
-		Results:       results,
-		RunAt:         run.RunAt,
-	}, nil
-}
-
-func buildAIContextForEval(ctx context.Context, aiRepo repositories.AIRepository, c *dto.EvaluationCase) (*models.AIContext, error) {
-	if c.OrderID > 0 {
-		return aiRepo.GetAIContextByOrderID(ctx, c.OrderID)
-	}
-	if c.SyntheticInput != nil {
-		return buildAIContextFromSynthetic(c.SyntheticInput), nil
-	}
-	return nil, fmt.Errorf("case %s: must provide either order_id or synthetic_input", c.CaseID)
-}
-
-func buildAIContextFromSynthetic(input *dto.ExceptionInput) *models.AIContext {
-	events := make([]models.AIEvent, 0, len(input.EventHistory))
-	for _, e := range input.EventHistory {
-		parsedAt, _ := time.Parse(time.RFC3339, e.EventAt)
-		events = append(events, models.AIEvent{
-			EventAt:        parsedAt,
-			PreviousStatus: models.OrderStatus(e.FromStatus),
-			NewStatus:      models.OrderStatus(e.ToStatus),
-			UpdatedBy:      e.UpdatedBy,
-		})
-	}
-
-	status := models.OrderStatus(input.CurrentStatus)
-	return &models.AIContext{
-		OrderID:       input.OrderID,
-		CurrentStatus: status,
-		TotalAmount:   input.TotalAmount,
-		PaymentStatus: models.DerivePaymentStatus(status),
-		RefundStatus:  models.DeriveRefundStatus(status),
-		Events:        events,
-	}
-}
-
 func stripMarkdownFences(s string) string {
 	s = strings.TrimSpace(s)
 	if strings.HasPrefix(s, "```") {
@@ -374,4 +240,99 @@ func mapToResponse(e *models.AIException) *dto.AnalyzeExceptionResponse {
 		PromptTemplateVersion: e.PromptTemplateVersion,
 		EvaluatedAt:           e.EvaluatedAt,
 	}
+}
+
+func (s *aiService) TriggerEvaluation(ctx context.Context, req dto.TriggerEvaluationRequest) (*dto.TriggerEvaluationResponse, error) {
+	// 1. Read evaluation_cases.json
+	datasetFile := "evaluation_cases.json"
+	bytes, err := os.ReadFile(datasetFile)
+	if err != nil {
+		return nil, fmt.Errorf("could not read dataset file: %w", err)
+	}
+
+	var dataset dto.EvaluationDataset
+	if err := json.Unmarshal(bytes, &dataset); err != nil {
+		return nil, fmt.Errorf("could not parse dataset JSON: %w", err)
+	}
+
+	// Optionally validate if the dataset matches what was requested
+	// But usually, since it's hardcoded for this feature, it's fine.
+
+	// 2. Create Run Record in DB (Status = PENDING)
+	runRecord := &models.AIEvaluationRun{
+		DatasetName: "evaluation_cases.json",
+		TotalCases:  len(dataset.Cases),
+		Status:      models.EVAL_STATUS_PENDING,
+	}
+	if err := s.evalRepo.CreateRun(ctx, runRecord); err != nil {
+		return nil, fmt.Errorf("could not create evaluation run: %w", err)
+	}
+
+	// 3. Initialize Worker
+	// Use 1 worker to avoid hitting Groq API rate limits when running batch evaluation.
+	// Can be increased if using a paid tier with higher RPM limits.
+	maxWorkers := 1
+	worker := NewEvaluationWorker(s.analyzer, s.evalRepo, maxWorkers)
+
+	// 4. Trigger Worker in background goroutine
+	go worker.Run(runRecord.ID, dataset.Cases)
+
+	// 5. Return immediate response
+	return &dto.TriggerEvaluationResponse{
+		RunID:   runRecord.ID,
+		Status:  string(runRecord.Status),
+		Message: "Batch evaluation started in background",
+	}, nil
+}
+
+// GetEvaluationRun trả về summary metrics của 1 evaluation run (dùng để poll status / xem kết quả tổng).
+func (s *aiService) GetEvaluationRun(ctx context.Context, runID int64) (*dto.GetEvaluationRunResponse, error) {
+	run, err := s.evalRepo.GetRunByID(ctx, runID)
+	if err != nil {
+		return nil, errs.ERR_NOT_FOUND
+	}
+	return &dto.GetEvaluationRunResponse{
+		RunID:         run.ID,
+		DatasetName:   run.DatasetName,
+		Status:        run.Status,
+		TotalCases:    run.TotalCases,
+		PassedCases:   run.PassedCases,
+		FailedCases:   run.FailedCases,
+		FallbackCount: run.FallbackCount,
+		AccuracyRate:  run.AccuracyRate,
+		AvgLatencyMs:  run.AvgLatencyMs,
+		CreatedAt:     run.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:     run.UpdatedAt.Format(time.RFC3339),
+	}, nil
+}
+
+// GetEvaluationDetails trả về danh sách chi tiết PASS/FAIL của từng test case trong 1 run.
+func (s *aiService) GetEvaluationDetails(ctx context.Context, runID int64) (*dto.GetEvaluationDetailsResponse, error) {
+	run, err := s.evalRepo.GetRunByID(ctx, runID)
+	if err != nil {
+		return nil, errs.ERR_NOT_FOUND
+	}
+
+	details, err := s.evalRepo.GetDetailsByRunID(ctx, runID)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch evaluation details: %w", err)
+	}
+
+	items := make([]dto.EvaluationDetailItem, 0, len(details))
+	for _, d := range details {
+		items = append(items, dto.EvaluationDetailItem{
+			ID:             d.ID,
+			Status:         d.Status,
+			LatencyMs:      d.LatencyMs,
+			ExpectedOutput: string(d.ExpectedOutput),
+			ActualOutput:   string(d.ActualOutput),
+			ErrorMessage:   d.ErrorMessage,
+		})
+	}
+
+	return &dto.GetEvaluationDetailsResponse{
+		RunID:   runID,
+		Status:  run.Status,
+		Details: items,
+	}, nil
 }

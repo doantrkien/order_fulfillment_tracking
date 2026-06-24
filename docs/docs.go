@@ -22,7 +22,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Run evaluation on order exceptions using provided cases.",
+                "description": "Start an asynchronous batch evaluation of the AI rules against synthetic ground truth data.",
                 "consumes": [
                     "application/json"
                 ],
@@ -30,18 +30,76 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "AI"
+                    "AI Evaluation"
                 ],
-                "summary": "Run evaluation on order exceptions",
+                "summary": "Trigger AI batch evaluation",
                 "parameters": [
                     {
-                        "description": "Evaluation input",
+                        "description": "Dataset name",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.EvaluationRequest"
+                            "$ref": "#/definitions/dto.TriggerEvaluationRequest"
                         }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ResponseStruct"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.TriggerEvaluationResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ai/evaluations/{run_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the summary metrics of an evaluation run (status, passed/failed counts, accuracy). Poll this until status is COMPLETED.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Evaluation"
+                ],
+                "summary": "Get evaluation run summary",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Evaluation Run ID",
+                        "name": "run_id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -56,7 +114,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.EvaluationResponse"
+                                            "$ref": "#/definitions/dto.GetEvaluationRunResponse"
                                         }
                                     }
                                 }
@@ -67,6 +125,76 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorBadReqResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorNotFoundResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ai/evaluations/{run_id}/details": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the detailed PASS/FAIL result of every individual test case within an evaluation run.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Evaluation"
+                ],
+                "summary": "Get evaluation case details (PASS/FAIL per case)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Evaluation Run ID",
+                        "name": "run_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ResponseStruct"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.GetEvaluationDetailsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBadReqResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorNotFoundResponse"
                         }
                     },
                     "500": {
@@ -103,7 +231,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UpdateDraftAPIRequest"
+                            "$ref": "#/definitions/dto.GenerateDraftAPIRequest"
                         }
                     }
                 ],
@@ -119,7 +247,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.UpdateDraftAPIResponse"
+                                            "$ref": "#/definitions/dto.GenerateDraftAPIResponse"
                                         }
                                     }
                                 }
@@ -899,6 +1027,7 @@ const docTemplate = `{
             "properties": {
                 "note": {
                     "type": "string",
+                    "maxLength": 500,
                     "example": "Phân tích đơn hàng này hộ tôi"
                 }
             }
@@ -907,16 +1036,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "confidence_score": {
-                    "description": "CustomerUpdateDraft   string    ` + "`" + `json:\"customer_update_draft\"` + "`" + `",
                     "type": "number"
                 },
                 "evaluated_at": {
                     "type": "string"
                 },
                 "exception_type": {
-                    "type": "string"
-                },
-                "fallback_reason": {
                     "type": "string"
                 },
                 "fallback_used": {
@@ -1012,100 +1137,25 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.EvaluationCase": {
+        "dto.EvaluationDetailItem": {
             "type": "object",
             "properties": {
-                "case_id": {
+                "actual_output": {
                     "type": "string"
                 },
-                "expected_exception_type": {
+                "error_message": {
                     "type": "string"
                 },
-                "expected_severity": {
+                "expected_output": {
                     "type": "string"
                 },
-                "order_id": {
+                "id": {
                     "type": "integer"
                 },
-                "synthetic_input": {
-                    "$ref": "#/definitions/dto.ExceptionInput"
-                }
-            }
-        },
-        "dto.EvaluationCaseResult": {
-            "type": "object",
-            "properties": {
-                "actual_exception_type": {
-                    "type": "string"
-                },
-                "actual_severity": {
-                    "type": "string"
-                },
-                "case_id": {
-                    "type": "string"
-                },
-                "confidence_score": {
-                    "type": "number"
-                },
-                "fail_reason": {
-                    "type": "string"
-                },
-                "fallback_used": {
-                    "type": "boolean"
-                },
-                "passed": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "dto.EvaluationRequest": {
-            "type": "object",
-            "properties": {
-                "cases": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dto.EvaluationCase"
-                    }
-                },
-                "environment": {
-                    "type": "string"
-                },
-                "run_by": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.EvaluationResponse": {
-            "type": "object",
-            "properties": {
-                "avg_confidence": {
-                    "type": "number"
-                },
-                "failed_cases": {
+                "latency_ms": {
                     "type": "integer"
                 },
-                "fallback_cases": {
-                    "type": "integer"
-                },
-                "pass_rate": {
-                    "type": "number"
-                },
-                "passed_cases": {
-                    "type": "integer"
-                },
-                "results": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dto.EvaluationCaseResult"
-                    }
-                },
-                "run_at": {
-                    "type": "string"
-                },
-                "total_cases": {
-                    "type": "integer"
-                },
-                "workflow_name": {
+                "status": {
                     "type": "string"
                 }
             }
@@ -1127,52 +1177,46 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.EventRecord": {
+        "dto.GenerateDraftAPIRequest": {
             "type": "object",
             "properties": {
-                "event_at": {
-                    "type": "string"
+                "channel": {
+                    "type": "string",
+                    "example": "email"
                 },
-                "from_status": {
-                    "type": "string"
+                "order_id": {
+                    "type": "integer",
+                    "example": 12345
                 },
-                "to_status": {
-                    "type": "string"
-                },
-                "updated_by": {
-                    "type": "string"
+                "tone": {
+                    "type": "string",
+                    "example": "apologetic"
                 }
             }
         },
-        "dto.ExceptionInput": {
+        "dto.GenerateDraftAPIResponse": {
             "type": "object",
             "properties": {
-                "created_at": {
+                "confidence_score": {
+                    "type": "number"
+                },
+                "draft_message": {
                     "type": "string"
                 },
-                "current_status": {
-                    "type": "string"
+                "fallback_used": {
+                    "type": "boolean"
                 },
-                "customer_name": {
+                "generated_at": {
                     "type": "string"
-                },
-                "error_message": {
-                    "type": "string"
-                },
-                "event_history": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dto.EventRecord"
-                    }
                 },
                 "order_id": {
                     "type": "integer"
                 },
-                "shipping_address": {
+                "prompt_template_version": {
                     "type": "string"
                 },
-                "total_amount": {
-                    "type": "integer"
+                "tone": {
+                    "type": "string"
                 }
             }
         },
@@ -1185,6 +1229,61 @@ const docTemplate = `{
                 "date": {
                     "type": "string",
                     "example": "2026-05-18"
+                }
+            }
+        },
+        "dto.GetEvaluationDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.EvaluationDetailItem"
+                    }
+                },
+                "run_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.GetEvaluationRunResponse": {
+            "type": "object",
+            "properties": {
+                "accuracy_rate": {
+                    "type": "number"
+                },
+                "avg_latency_ms": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "dataset_name": {
+                    "type": "string"
+                },
+                "failed_cases": {
+                    "type": "integer"
+                },
+                "fallback_count": {
+                    "type": "integer"
+                },
+                "passed_cases": {
+                    "type": "integer"
+                },
+                "run_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "total_cases": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
@@ -1338,45 +1437,28 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.UpdateDraftAPIRequest": {
+        "dto.TriggerEvaluationRequest": {
             "type": "object",
+            "required": [
+                "dataset_name"
+            ],
             "properties": {
-                "channel": {
-                    "type": "string"
-                },
-                "order_id": {
-                    "type": "integer"
-                },
-                "tone": {
-                    "type": "string"
+                "dataset_name": {
+                    "type": "string",
+                    "example": "evaluation_cases.json"
                 }
             }
         },
-        "dto.UpdateDraftAPIResponse": {
+        "dto.TriggerEvaluationResponse": {
             "type": "object",
             "properties": {
-                "confidence_score": {
-                    "type": "number"
-                },
-                "draft_message": {
+                "message": {
                     "type": "string"
                 },
-                "fallback_reason": {
-                    "type": "string"
-                },
-                "fallback_used": {
-                    "type": "boolean"
-                },
-                "generated_at": {
-                    "type": "string"
-                },
-                "order_id": {
+                "run_id": {
                     "type": "integer"
                 },
-                "prompt_template_version": {
-                    "type": "string"
-                },
-                "tone": {
+                "status": {
                     "type": "string"
                 }
             }

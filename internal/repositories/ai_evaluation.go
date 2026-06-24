@@ -7,10 +7,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// AIEvaluationRepository handles persistence for evaluation batch runs and details.
 type AIEvaluationRepository interface {
-	Save(ctx context.Context, run *models.AIEvaluationRun) error
-	GetLatestByWorkflow(ctx context.Context, workflowName string) (*models.AIEvaluationRun, error)
-	ListByWorkflow(ctx context.Context, workflowName string, limit int) ([]models.AIEvaluationRun, error)
+	CreateRun(ctx context.Context, run *models.AIEvaluationRun) error
+	UpdateRun(ctx context.Context, run *models.AIEvaluationRun) error
+	SaveDetail(ctx context.Context, detail *models.AIEvaluationResultDetail) error
+	GetRunByID(ctx context.Context, id int64) (*models.AIEvaluationRun, error)
+	GetDetailsByRunID(ctx context.Context, runID int64) ([]models.AIEvaluationResultDetail, error)
 }
 
 type aiEvaluationRepository struct {
@@ -21,33 +24,30 @@ func NewAIEvaluationRepository(db *gorm.DB) AIEvaluationRepository {
 	return &aiEvaluationRepository{db: db}
 }
 
-func (r *aiEvaluationRepository) Save(ctx context.Context, run *models.AIEvaluationRun) error {
+func (r *aiEvaluationRepository) CreateRun(ctx context.Context, run *models.AIEvaluationRun) error {
 	return r.db.WithContext(ctx).Create(run).Error
 }
 
-func (r *aiEvaluationRepository) GetLatestByWorkflow(ctx context.Context, workflowName string) (*models.AIEvaluationRun, error) {
+func (r *aiEvaluationRepository) UpdateRun(ctx context.Context, run *models.AIEvaluationRun) error {
+	return r.db.WithContext(ctx).Save(run).Error
+}
+
+func (r *aiEvaluationRepository) SaveDetail(ctx context.Context, detail *models.AIEvaluationResultDetail) error {
+	return r.db.WithContext(ctx).Create(detail).Error
+}
+
+func (r *aiEvaluationRepository) GetRunByID(ctx context.Context, id int64) (*models.AIEvaluationRun, error) {
 	var run models.AIEvaluationRun
-	err := r.db.WithContext(ctx).
-		Where("workflow_name = ?", workflowName).
-		Order("run_at DESC").
-		First(&run).Error
-	if err != nil {
+	if err := r.db.WithContext(ctx).First(&run, id).Error; err != nil {
 		return nil, err
 	}
 	return &run, nil
 }
 
-// ListByWorkflow lấy N lần eval gần nhất của một workflow.
-// Dùng cho demo Week 12: so sánh pass rate giữa các prompt version.
-func (r *aiEvaluationRepository) ListByWorkflow(ctx context.Context, workflowName string, limit int) ([]models.AIEvaluationRun, error) {
-	var runs []models.AIEvaluationRun
-	err := r.db.WithContext(ctx).
-		Where("workflow_name = ?", workflowName).
-		Order("run_at DESC").
-		Limit(limit).
-		Find(&runs).Error
-	if err != nil {
+func (r *aiEvaluationRepository) GetDetailsByRunID(ctx context.Context, runID int64) ([]models.AIEvaluationResultDetail, error) {
+	var details []models.AIEvaluationResultDetail
+	if err := r.db.WithContext(ctx).Where("run_id = ?", runID).Order("id ASC").Find(&details).Error; err != nil {
 		return nil, err
 	}
-	return runs, nil
+	return details, nil
 }

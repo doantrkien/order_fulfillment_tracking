@@ -6,45 +6,53 @@ import (
 	"gorm.io/datatypes"
 )
 
+// Evaluation run status constants.
+const (
+	EVAL_STATUS_PENDING     = "PENDING"
+	EVAL_STATUS_IN_PROGRESS = "IN_PROGRESS"
+	EVAL_STATUS_COMPLETED   = "COMPLETED"
+	EVAL_STATUS_FAILED      = "FAILED"
+)
+
+// Evaluation detail status constants.
+const (
+	EVAL_DETAIL_PENDING = "PENDING"
+	EVAL_DETAIL_PASSED  = "PASSED"
+	EVAL_DETAIL_FAILED  = "FAILED"
+)
+
+// AIEvaluationRun represents a batch evaluation run record.
 type AIEvaluationRun struct {
-	ID int64 `gorm:"primaryKey;column:id" json:"id"`
-
-	// Run Metadata
-	WorkflowName          string  `gorm:"column:workflow_name;type:varchar(100);not null" json:"workflow_name"`
-	PromptTemplateVersion string  `gorm:"column:prompt_template_version;type:varchar(20);not null;default:'v1'" json:"prompt_template_version"`
-	RunBy                 *string `gorm:"column:run_by;type:varchar(100)" json:"run_by,omitempty"`
-	Environment           string  `gorm:"column:environment;type:varchar(20);not null;default:'dev'" json:"environment"`
-	TriggeredBy           string  `gorm:"column:triggered_by;type:varchar(50);not null;default:'manual'" json:"triggered_by"`
-
-	// Aggregate Results
-	TotalCases    int      `gorm:"column:total_cases;not null;default:0" json:"total_cases"`
-	PassedCases   int      `gorm:"column:passed_cases;not null;default:0" json:"passed_cases"`
-	FailedCases   int      `gorm:"column:failed_cases;not null;default:0" json:"failed_cases"`
-	FallbackCases int      `gorm:"column:fallback_cases;not null;default:0" json:"fallback_cases"`
-	AvgConfidence *float64 `gorm:"column:avg_confidence;type:decimal(4,3)" json:"avg_confidence,omitempty"`
-	PassRate      *float64 `gorm:"column:pass_rate;type:decimal(5,4)" json:"pass_rate,omitempty"`
-
-	// Detail & Debug
-	Notes      *string        `gorm:"column:notes;type:text" json:"notes,omitempty"`
-	RawResults datatypes.JSON `gorm:"column:raw_results;type:jsonb" json:"raw_results,omitempty"`
-
-	// Timestamps
-	RunAt time.Time `gorm:"column:run_at;not null;default:CURRENT_TIMESTAMP" json:"run_at"`
+	ID            int64     `gorm:"primaryKey;column:id" json:"id"`
+	DatasetName   string    `gorm:"column:dataset_name;type:varchar(255);not null" json:"dataset_name"`
+	Status        string    `gorm:"column:status;type:varchar(20);not null;default:'PENDING'" json:"status"`
+	TotalCases    int       `gorm:"column:total_cases;not null;default:0" json:"total_cases"`
+	PassedCases   int       `gorm:"column:passed_cases;not null;default:0" json:"passed_cases"`
+	FailedCases   int       `gorm:"column:failed_cases;not null;default:0" json:"failed_cases"`
+	FallbackCount int       `gorm:"column:fallback_count;not null;default:0" json:"fallback_count"`
+	AccuracyRate  float64   `gorm:"column:accuracy_rate;type:decimal(5,2);default:0" json:"accuracy_rate"`
+	AvgLatencyMs  int       `gorm:"column:avg_latency_ms;default:0" json:"avg_latency_ms"`
+	CreatedAt     time.Time `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt     time.Time `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
 func (AIEvaluationRun) TableName() string {
 	return "ai_evaluation_runs"
 }
 
-const (
-	EvalEnvironmentDev     = "dev"
-	EvalEnvironmentStaging = "staging"
-	EvalEnvironmentProd    = "prod"
+// AIEvaluationResultDetail represents a single test case result.
+type AIEvaluationResultDetail struct {
+	ID             int64          `gorm:"primaryKey;column:id" json:"id"`
+	RunID          int64          `gorm:"column:run_id;not null;index" json:"run_id"`
+	Input          datatypes.JSON `gorm:"column:input;type:jsonb;not null" json:"input"`
+	ExpectedOutput datatypes.JSON `gorm:"column:expected_output;type:jsonb;not null" json:"expected_output"`
+	ActualOutput   datatypes.JSON `gorm:"column:actual_output;type:jsonb" json:"actual_output"`
+	Status         string         `gorm:"column:status;type:varchar(20);not null;default:'PENDING'" json:"status"`
+	LatencyMs      int            `gorm:"column:latency_ms;default:0" json:"latency_ms"`
+	ErrorMessage   *string        `gorm:"column:error_message;type:text" json:"error_message,omitempty"`
+	CreatedAt      time.Time      `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+}
 
-	EvalTriggeredByManual    = "manual"
-	EvalTriggeredByCI        = "ci"
-	EvalTriggeredByScheduled = "scheduled"
-
-	// WorkflowNameOrderException là tên chuẩn dùng cho Team 2.
-	WorkflowNameOrderException = "order-exception-analysis"
-)
+func (AIEvaluationResultDetail) TableName() string {
+	return "ai_evaluation_results_detail"
+}

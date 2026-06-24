@@ -96,7 +96,6 @@ func main() {
 	})
 
 	aiDraftRepo := repositories.NewAIDraftRepository(db)
-
 	aiEvalRepo := repositories.NewAIEvaluationRepository(db)
 
 	aiService := services.NewAIService(aiRepo, analyzer, draftGenerator, aiDraftRepo, aiEvalRepo)

@@ -1,21 +1,23 @@
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: order_tracking
-    ports:
-      - "5000:5000"
-    env_file:
-      - .env.docker
-    volumes:
-      - .:/app
-      - /app/tmp
-    depends_on:
-      postgres:
-        condition: service_healthy
-    stdin_open: true
-    tty: true
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: order_tracking
+  #   ports:
+  #     - "5000:5000"
+  #   env_file:
+  #     - .env.docker
+  #   volumes:
+  #     - .:/app
+  #     - /app/tmp
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   stdin_open: true
+  #   tty: true
+
+  
 
   postgres:
     image: postgres:16
@@ -59,8 +61,8 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
     restart: unless-stopped
-    depends_on:
-      - app
+    # depends_on:
+    #   - app
 
 volumes:
   postgres_data:

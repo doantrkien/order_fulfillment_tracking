@@ -56,49 +56,4 @@ CREATE INDEX IF NOT EXISTS idx_ai_drafts_pending
     ON ai_customer_update_drafts(created_at DESC)
     WHERE review_status = 'PENDING';              -- partial index: operator queue
 
-
--- ============================================================
--- Table 2: ai_evaluation_runs
--- Lưu kết quả mỗi lần chạy evaluation batch (>= 20 test cases).
--- Yêu cầu Phase 3: phải có evaluation evidence cho demo và peer review.
--- ============================================================
-CREATE TABLE IF NOT EXISTS ai_evaluation_runs (
-    -- Identity
-    id                      BIGSERIAL       PRIMARY KEY,
-
-    -- Run Metadata
-    workflow_name           VARCHAR(100)    NOT NULL,            -- e.g. 'order-exception-analysis'
-    prompt_template_version VARCHAR(20)     NOT NULL DEFAULT 'v1',
-    run_by                  VARCHAR(100),                        -- người/service trigger eval
-    environment             VARCHAR(20)     NOT NULL DEFAULT 'dev'
-                                CHECK (environment IN ('dev', 'staging', 'prod')),
-
-    -- Aggregate Results
-    total_cases             INTEGER         NOT NULL DEFAULT 0,
-    passed_cases            INTEGER         NOT NULL DEFAULT 0,
-    failed_cases            INTEGER         NOT NULL DEFAULT 0,
-    fallback_cases          INTEGER         NOT NULL DEFAULT 0,
-    avg_confidence          DECIMAL(4,3)    CHECK (avg_confidence >= 0.0 AND avg_confidence <= 1.0),
-    pass_rate               DECIMAL(5,4)    CHECK (pass_rate >= 0.0 AND pass_rate <= 1.0),  -- passed/total
-
-    -- Detail & Debug
-    notes                   TEXT,
-    raw_results             JSONB,                               -- mảng chi tiết từng test case
-    triggered_by            VARCHAR(50)     NOT NULL DEFAULT 'manual'
-                                CHECK (triggered_by IN ('manual', 'ci', 'scheduled')),
-
-    -- Timestamps
-    run_at                  TIMESTAMPTZ     NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_ai_eval_runs_workflow
-    ON ai_evaluation_runs(workflow_name);
-
-CREATE INDEX IF NOT EXISTS idx_ai_eval_runs_prompt_version
-    ON ai_evaluation_runs(prompt_template_version);
-
-CREATE INDEX IF NOT EXISTS idx_ai_eval_runs_run_at
-    ON ai_evaluation_runs(run_at DESC);
-
 COMMIT;

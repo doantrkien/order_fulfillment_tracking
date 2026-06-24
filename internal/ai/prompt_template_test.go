@@ -141,11 +141,12 @@ func TestBuildExceptionAnalysisPrompt_ContainsAllSections(t *testing.T) {
 	}
 
 	SanitizePromptContext(&ctx)
-	prompt := BuildExceptionAnalysisPrompt(ctx)
+	knowledge := ClassifyDriverNote(ctx.DriverNotes)
+	prompt := BuildExceptionAnalysisPrompt(ctx, knowledge)
 
 	assert.Contains(t, prompt, "[SYSTEM]")
 	assert.Contains(t, prompt, "[CONTEXT]")
-	assert.Contains(t, prompt, "[DOMAIN KNOWLEDGE]")
+	assert.Contains(t, prompt, "[KNOWLEDGE BASE]")
 	assert.Contains(t, prompt, "[TASK]")
 	assert.Contains(t, prompt, "[OUTPUT FORMAT]")
 	assert.Contains(t, prompt, "[CONSTRAINTS]")
@@ -174,7 +175,7 @@ func TestBuildExceptionAnalysisPrompt_EmptyTimeline(t *testing.T) {
 		CurrentStatus: "created",
 	}
 
-	prompt := BuildExceptionAnalysisPrompt(ctx)
+	prompt := BuildExceptionAnalysisPrompt(ctx, nil)
 	assert.Contains(t, prompt, "(no events recorded)")
 }
 
@@ -185,6 +186,90 @@ func TestBuildExceptionAnalysisPrompt_NoDriverNotes(t *testing.T) {
 		DriverNotes:   "",
 	}
 
-	prompt := BuildExceptionAnalysisPrompt(ctx)
-	assert.NotContains(t, prompt, "Operator Notes:")
+	prompt := BuildExceptionAnalysisPrompt(ctx, nil)
+	assert.NotContains(t, prompt, "Driver Note:")
+}
+
+// ── ClassifyDriverNote tests ─────────────────────────────────────────────────
+
+// kbTitles extracts the Title field from a slice of KnowledgeEntry for easy assertion.
+func kbTitles(entries []KnowledgeEntry) []string {
+	titles := make([]string, len(entries))
+	for i, e := range entries {
+		titles[i] = e.Title
+	}
+	return titles
+}
+
+func TestClassifyDriverNote_AlwaysIncludesStateMachine(t *testing.T) {
+	entries := ClassifyDriverNote("")
+	titles := kbTitles(entries)
+	assert.Contains(t, titles, "Order State Machine")
+}
+
+func TestClassifyDriverNote_DeliveryKeywords(t *testing.T) {
+	cases := []string{
+		"customer not home",
+		"xe hỏng trên đường",
+		"accident on highway",
+		"package lost",
+		"could not deliver",
+		"giao thất bại",
+		"bad weather",
+	}
+	for _, note := range cases {
+		entries := ClassifyDriverNote(note)
+		titles := kbTitles(entries)
+		assert.Contains(t, titles, "Delivery Failure", "note: %q", note)
+	}
+}
+
+func TestClassifyDriverNote_DuplicateKeywords(t *testing.T) {
+	entries := ClassifyDriverNote("duplicate event received")
+	titles := kbTitles(entries)
+	assert.Contains(t, titles, "Duplicate Event")
+}
+
+func TestClassifyDriverNote_SkippedKeywords(t *testing.T) {
+	entries := ClassifyDriverNote("skipped mandatory step")
+	titles := kbTitles(entries)
+	assert.Contains(t, titles, "Skipped Status")
+}
+
+func TestClassifyDriverNote_StuckKeywords(t *testing.T) {
+	entries := ClassifyDriverNote("order is delayed, no progress for 3 days")
+	titles := kbTitles(entries)
+	assert.Contains(t, titles, "Stuck Order")
+}
+
+func TestClassifyDriverNote_UnknownNote_FallsBackToAll(t *testing.T) {
+	// A non-empty note that matches no specific keyword should still get
+	// all fallback domains so the AI has useful context.
+	entries := ClassifyDriverNote("driver arrived at destination")
+	titles := kbTitles(entries)
+	assert.Contains(t, titles, "Order State Machine")
+	assert.Contains(t, titles, "Delivery Failure")
+	assert.Contains(t, titles, "Duplicate Event")
+	assert.Contains(t, titles, "Skipped Status")
+	assert.Contains(t, titles, "Stuck Order")
+}
+
+func TestBuildExceptionAnalysisPrompt_InjectsOnlyRelevantKB(t *testing.T) {
+	ctx := ExceptionPromptContext{
+		OrderID:       999,
+		CurrentStatus: "shipped",
+		DriverNotes:   "vehicle breakdown on the way",
+	}
+	knowledge := ClassifyDriverNote(ctx.DriverNotes)
+	prompt := BuildExceptionAnalysisPrompt(ctx, knowledge)
+
+	// Delivery failure KB should be present — note matches delivery keywords
+	assert.Contains(t, prompt, "Delivery Failure")
+	// State machine KB should always be present
+	assert.Contains(t, prompt, "Order State Machine")
+	// Unrelated KB entries (stuck, duplicate, skipped) should NOT appear
+	// because the note matched delivery_failure keywords specifically
+	assert.NotContains(t, prompt, "Stuck Order")
+	assert.NotContains(t, prompt, "Duplicate Event")
+	assert.NotContains(t, prompt, "Skipped Status")
 }

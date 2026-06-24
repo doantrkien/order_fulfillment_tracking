@@ -2,19 +2,21 @@ package ai
 
 import (
 	"context"
-	"fmt"
 	"main/internal/dto"
 	"main/internal/models"
+	"strings"
 	"time"
 )
 
 // Fallback reason constants used in audit logging.
 const (
-	FallbackReasonDisabled        = "ai_disabled"
-	FallbackReasonTimeout         = "ai_timeout"
-	FallbackReasonConnectionError = "ai_connection_error"
-	FallbackReasonInvalidResponse = "ai_invalid_response"
-	FallbackReasonLowConfidence   = "ai_confidence_below_threshold"
+	FallbackReasonDisabled           = "ai_disabled"
+	FallbackReasonNoDriverNote       = "no_driver_note"
+	FallbackReasonTemplateSufficient = "template_sufficient"
+	FallbackReasonTimeout            = "ai_timeout"
+	FallbackReasonConnectionError    = "ai_connection_error"
+	FallbackReasonInvalidResponse    = "ai_invalid_response"
+	FallbackReasonLowConfidence      = "ai_confidence_below_threshold"
 )
 
 type AnalysisResult struct {
@@ -49,10 +51,22 @@ func NewExceptionAnalyzer(adapter AIAdapter, config ExceptionAnalyzerConfig) *Ex
 func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContext, notes string) (*AnalysisResult, error) {
 	now := time.Now()
 
-	if !ea.config.AIEnabled {
-		return ea.fallback(aiCtx, FallbackReasonDisabled, 0, now), nil
+	// ── Step 1: Rule-based engine
+	ruleResult := AnalyzeByRules(aiCtx, now)
+
+	// ── Step 2: Check for driver notes
+	hasDriverNote := hasAnyDriverNote(aiCtx) || strings.TrimSpace(notes) != ""
+
+	// ── Step 3: Skip AI when disabled or no driver note
+	if !ea.config.AIEnabled || !hasDriverNote {
+		reason := FallbackReasonDisabled
+		if ea.config.AIEnabled && !hasDriverNote {
+			reason = FallbackReasonNoDriverNote
+		}
+		return ruleResultToAnalysis(ruleResult, reason, 0, ""), nil
 	}
 
+	// ── Step 4: Call AI
 	input := buildExceptionInput(aiCtx, notes)
 
 	start := time.Now()
@@ -87,28 +101,52 @@ func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContex
 	}, nil
 }
 
-// fallback runs the rule-based analyzer and wraps the result.
-func (ea *ExceptionAnalyzer) fallback(aiCtx *models.AIContext, reason string, durationMs int, now time.Time) *AnalysisResult {
-	return ea.fallbackWithRaw(aiCtx, reason, durationMs, "", now)
-	// return &AnalysisResult{
-	// 	ExceptionType:      "OTHER",
-	// 	Severity:           "LOW",
-	// 	LikelyReason:       "No specific exception detected by rule-based analysis",
-	// 	InternalNextAction: "No action required. Monitor the order for further changes.",
-	// 	ConfidenceScore:    1.0,
-	// 	FallbackUsed:       true,
-	// 	FallbackReason:     reason,
-	// 	DurationMs:         durationMs,
-	// 	// RawResponse:        rawResponse,
-	// }
+func hasAnyDriverNote(aiCtx *models.AIContext) bool {
+	for _, e := range aiCtx.Events {
+		if e.DriverNote != nil && strings.TrimSpace(*e.DriverNote) != "" {
+			return true
+		}
+	}
+	return false
 }
 
-// fallbackWithRaw runs the rule-based analyzer, preserving the raw AI response for audit.
+func ruleResultToAnalysis(ruleResult *RuleBasedResult, reason string, durationMs int, rawResponse string) *AnalysisResult {
+	if ruleResult == nil {
+		return &AnalysisResult{
+			ExceptionType:      "OTHER",
+			Severity:           "LOW",
+			LikelyReason:       "No specific exception detected by rule-based analysis",
+			InternalNextAction: "No action required. Monitor the order for further changes.",
+			ConfidenceScore:    1.0,
+			FallbackUsed:       true,
+			FallbackReason:     reason,
+			DurationMs:         durationMs,
+			RawResponse:        rawResponse,
+		}
+	}
+	return &AnalysisResult{
+		ExceptionType:      ruleResult.ExceptionType,
+		Severity:           ruleResult.Severity,
+		LikelyReason:       ruleResult.LikelyReason,
+		InternalNextAction: ruleResult.InternalNextAction,
+		ConfidenceScore:    ruleResult.ConfidenceScore,
+		FallbackUsed:       true,
+		FallbackReason:     reason,
+		DurationMs:         durationMs,
+		RawResponse:        rawResponse,
+	}
+}
+
+// fallback runs the rule-based analyzer
+func (ea *ExceptionAnalyzer) fallback(aiCtx *models.AIContext, reason string, durationMs int, now time.Time) *AnalysisResult {
+	return ea.fallbackWithRaw(aiCtx, reason, durationMs, "", now)
+}
+
+// fallbackWithRaw
 func (ea *ExceptionAnalyzer) fallbackWithRaw(aiCtx *models.AIContext, reason string, durationMs int, rawResponse string, now time.Time) *AnalysisResult {
 	ruleResult := AnalyzeByRules(aiCtx, now)
 
 	if ruleResult == nil {
-		// No exception detected by rules either
 		return &AnalysisResult{
 			ExceptionType:      "OTHER",
 			Severity:           "LOW",
@@ -146,6 +184,17 @@ func buildExceptionInput(aiCtx *models.AIContext, notes string) dto.ExceptionInp
 		})
 	}
 
+	allNotes := []string{}
+	if strings.TrimSpace(notes) != "" {
+		allNotes = append(allNotes, strings.TrimSpace(notes))
+	}
+	for _, e := range aiCtx.Events {
+		if e.DriverNote != nil && strings.TrimSpace(*e.DriverNote) != "" {
+			allNotes = append(allNotes, strings.TrimSpace(*e.DriverNote))
+		}
+	}
+	errorMessage := strings.Join(allNotes, "; ")
+
 	return dto.ExceptionInput{
 		OrderID:         aiCtx.OrderID,
 		CurrentStatus:   string(aiCtx.CurrentStatus),
@@ -153,25 +202,7 @@ func buildExceptionInput(aiCtx *models.AIContext, notes string) dto.ExceptionInp
 		CustomerName:    aiCtx.CustomerName,
 		ShippingAddress: aiCtx.ShippingAddress,
 		CreatedAt:       aiCtx.CreatedAt.Format(time.RFC3339),
-		ErrorMessage:    notes,
+		ErrorMessage:    errorMessage,
 		EventHistory:    eventHistory,
-	}
-}
-
-// FormatFallbackReason returns a human-readable description of the fallback reason.
-func FormatFallbackReason(reason string) string {
-	switch reason {
-	case FallbackReasonDisabled:
-		return "AI feature is disabled via configuration"
-	case FallbackReasonTimeout:
-		return "AI service call timed out"
-	case FallbackReasonConnectionError:
-		return "Could not connect to AI service"
-	case FallbackReasonInvalidResponse:
-		return "AI returned an invalid or malformed response"
-	case FallbackReasonLowConfidence:
-		return "AI response confidence score was below threshold"
-	default:
-		return fmt.Sprintf("Unknown fallback reason: %s", reason)
 	}
 }

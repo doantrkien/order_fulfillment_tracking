@@ -148,7 +148,6 @@ func TestMain(m *testing.M) {
 	})
 
 	aiDraftRepo := repositories.NewAIDraftRepository(db)
-
 	aiEvalRepo := repositories.NewAIEvaluationRepository(db)
 
 	aiService := services.NewAIService(aiRepo, aiAnalyzer, draftGenerator, aiDraftRepo, aiEvalRepo)

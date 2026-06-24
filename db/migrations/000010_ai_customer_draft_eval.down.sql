@@ -10,10 +10,4 @@ DROP INDEX IF EXISTS idx_ai_drafts_review_status;
 DROP INDEX IF EXISTS idx_ai_drafts_order_id;
 DROP TABLE IF EXISTS ai_customer_update_drafts;
 
--- ai_evaluation_runs indexes
-DROP INDEX IF EXISTS idx_ai_eval_runs_run_at;
-DROP INDEX IF EXISTS idx_ai_eval_runs_prompt_version;
-DROP INDEX IF EXISTS idx_ai_eval_runs_workflow;
-DROP TABLE IF EXISTS ai_evaluation_runs;
-
 COMMIT;

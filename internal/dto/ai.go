@@ -89,6 +89,7 @@ type CustomerUpdateDraftInput struct {
 	LikelyReason    string `json:"likely_reason"`
 	Tone            string `json:"tone"`
 	Channel         string `json:"channel"`
+	BaselineDraft   string `json:"baseline_draft"`
 }
 
 type CustomerUpdateDraftOutput struct {
@@ -96,38 +97,57 @@ type CustomerUpdateDraftOutput struct {
 	ConfidenceScore     float64 `json:"confidence_score"`
 }
 
-type EvaluationCase struct {
-	CaseID                string          `json:"case_id"`
-	OrderID               int64           `json:"order_id,omitempty"`
-	SyntheticInput        *ExceptionInput `json:"synthetic_input,omitempty"`
-	ExpectedSeverity      string          `json:"expected_severity"`
-	ExpectedExceptionType string          `json:"expected_exception_type"`
+type TriggerEvaluationRequest struct {
+	DatasetName string `json:"dataset_name" validate:"required" example:"evaluation_cases.json"`
 }
 
-type EvaluationRequest struct {
+type TriggerEvaluationResponse struct {
+	RunID   int64  `json:"run_id"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
+
+type EvaluationCase struct {
+	CaseID                string         `json:"case_id"`
+	SyntheticInput        ExceptionInput `json:"synthetic_input"`
+	ExpectedSeverity      string         `json:"expected_severity"`
+	ExpectedExceptionType string         `json:"expected_exception_type"`
+}
+
+type EvaluationDataset struct {
 	RunBy       string           `json:"run_by"`
-	Environment string           `json:"environment,omitempty"`
+	Environment string           `json:"environment"`
 	Cases       []EvaluationCase `json:"cases"`
 }
 
-type EvaluationCaseResult struct {
-	CaseID              string  `json:"case_id"`
-	Passed              bool    `json:"passed"`
-	FallbackUsed        bool    `json:"fallback_used"`
-	ActualSeverity      string  `json:"actual_severity"`
-	ActualExceptionType string  `json:"actual_exception_type"`
-	ConfidenceScore     float64 `json:"confidence_score"`
-	FailReason          string  `json:"fail_reason,omitempty"`
+// GetEvaluationRunResponse trả về summary của 1 evaluation run.
+type GetEvaluationRunResponse struct {
+	RunID         int64   `json:"run_id"`
+	DatasetName   string  `json:"dataset_name"`
+	Status        string  `json:"status"`
+	TotalCases    int     `json:"total_cases"`
+	PassedCases   int     `json:"passed_cases"`
+	FailedCases   int     `json:"failed_cases"`
+	FallbackCount int     `json:"fallback_count"`
+	AccuracyRate  float64 `json:"accuracy_rate"`
+	AvgLatencyMs  int     `json:"avg_latency_ms"`
+	CreatedAt     string  `json:"created_at"`
+	UpdatedAt     string  `json:"updated_at"`
 }
 
-type EvaluationResponse struct {
-	WorkflowName  string                 `json:"workflow_name"`
-	TotalCases    int                    `json:"total_cases"`
-	PassedCases   int                    `json:"passed_cases"`
-	FailedCases   int                    `json:"failed_cases"`
-	FallbackCases int                    `json:"fallback_cases"`
-	PassRate      float64                `json:"pass_rate"`
-	AvgConfidence float64                `json:"avg_confidence"`
-	Results       []EvaluationCaseResult `json:"results"`
-	RunAt         time.Time              `json:"run_at"`
+// EvaluationDetailItem trả về kết quả PASS/FAIL của từng test case.
+type EvaluationDetailItem struct {
+	ID             int64   `json:"id"`
+	Status         string  `json:"status"`
+	LatencyMs      int     `json:"latency_ms"`
+	ExpectedOutput string  `json:"expected_output"`
+	ActualOutput   string  `json:"actual_output"`
+	ErrorMessage   *string `json:"error_message,omitempty"`
+}
+
+// GetEvaluationDetailsResponse chứa danh sách kết quả chi tiết của 1 run.
+type GetEvaluationDetailsResponse struct {
+	RunID   int64                  `json:"run_id"`
+	Status  string                 `json:"status"`
+	Details []EvaluationDetailItem `json:"details"`
 }

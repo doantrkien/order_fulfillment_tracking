@@ -9,10 +9,10 @@ import (
 
 func TestShouldFallback(t *testing.T) {
 	tests := []struct {
-		name           string
-		confidence     float64
-		wantFallback   bool
-		wantReason     string
+		name         string
+		confidence   float64
+		wantFallback bool
+		wantReason   string
 	}{
 		{
 			name:         "below_threshold_0.0",
@@ -68,4 +68,3 @@ func TestShouldFallback(t *testing.T) {
 		})
 	}
 }
-
