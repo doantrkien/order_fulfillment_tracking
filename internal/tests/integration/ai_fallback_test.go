@@ -50,7 +50,7 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 			ConfidenceScore:    0.92,
 		}
 
-		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString("{}"))
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString(`{"note": "test"}`))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
@@ -85,7 +85,7 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 
 		// Seed order that is stuck (packed and updated 30 hours ago) to trigger STUCK_ORDER fallback with HIGH severity (base severity)
 		order := seedOrder(t, 15000, models.ORDER_STATUS_PACKED)
-		thirtyHoursAgo := time.Now().Add(-30 * time.Hour)
+		thirtyHoursAgo := time.Now().Add(-55 * time.Hour)
 		err := db.Model(&order).Updates(map[string]interface{}{
 			"created_at": thirtyHoursAgo,
 			"updated_at": thirtyHoursAgo,
@@ -95,7 +95,7 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		// Setup connection error simulation
 		testFakeAIAdapter.SimulateConnectionError = true
 
-		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString("{}"))
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString(`{"note": "test"}`))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
@@ -126,7 +126,7 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		cleanAll()
 
 		order := seedOrder(t, 15000, models.ORDER_STATUS_PACKED)
-		thirtyHoursAgo := time.Now().Add(-30 * time.Hour)
+		thirtyHoursAgo := time.Now().Add(-55 * time.Hour)
 		err := db.Model(&order).Updates(map[string]interface{}{
 			"created_at": thirtyHoursAgo,
 			"updated_at": thirtyHoursAgo,
@@ -136,7 +136,7 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		// Setup timeout simulation
 		testFakeAIAdapter.SimulateTimeout = true
 
-		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString("{}"))
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString(`{"note": "test"}`))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
@@ -167,7 +167,7 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		cleanAll()
 
 		order := seedOrder(t, 15000, models.ORDER_STATUS_PACKED)
-		thirtyHoursAgo := time.Now().Add(-30 * time.Hour)
+		thirtyHoursAgo := time.Now().Add(-55 * time.Hour)
 		err := db.Model(&order).Updates(map[string]interface{}{
 			"created_at": thirtyHoursAgo,
 			"updated_at": thirtyHoursAgo,
@@ -177,7 +177,7 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		// Setup invalid JSON simulation
 		testFakeAIAdapter.SimulateInvalidResponse = true
 
-		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString("{}"))
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString(`{"note": "test"}`))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
@@ -208,7 +208,7 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		cleanAll()
 
 		order := seedOrder(t, 15000, models.ORDER_STATUS_PACKED)
-		thirtyHoursAgo := time.Now().Add(-30 * time.Hour)
+		thirtyHoursAgo := time.Now().Add(-55 * time.Hour)
 		err := db.Model(&order).Updates(map[string]interface{}{
 			"created_at": thirtyHoursAgo,
 			"updated_at": thirtyHoursAgo,
@@ -218,7 +218,7 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		// Setup low confidence simulation (confidence is 0.3, which is below the 0.5 threshold)
 		testFakeAIAdapter.SimulateLowConfidence = true
 
-		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString("{}"))
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString(`{"note": "test"}`))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
@@ -249,7 +249,7 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		cleanAll()
 
 		order := seedOrder(t, 15000, models.ORDER_STATUS_PACKED)
-		thirtyHoursAgo := time.Now().Add(-30 * time.Hour)
+		thirtyHoursAgo := time.Now().Add(-55 * time.Hour)
 		err := db.Model(&order).Updates(map[string]interface{}{
 			"created_at": thirtyHoursAgo,
 			"updated_at": thirtyHoursAgo,
@@ -259,7 +259,7 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		// Setup AI Disabled simulation on the fake adapter
 		testFakeAIAdapter.SimulateAIDisabled = true
 
-		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString("{}"))
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString(`{"note": "test"}`))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
@@ -289,7 +289,7 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resetFakeAIAdapter()
 		cleanAll()
 
-		req := httptest.NewRequest("POST", "/api/v1/ai/orders/999999/exception-analysis", bytes.NewBufferString("{}"))
+		req := httptest.NewRequest("POST", "/api/v1/ai/orders/999999/exception-analysis", bytes.NewBufferString(`{"note": "test"}`))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
