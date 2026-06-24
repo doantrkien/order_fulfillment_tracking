@@ -96,6 +96,14 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		tone = models.DraftToneNeutral
 	}
 
+	channel := strings.ToLower(strings.TrimSpace(req.Channel))
+	switch channel {
+	case "sms", "email", "push":
+	default:
+		channel = "email"
+	}
+
+
 	lastestException, err := s.aiRepo.GetLatestAnalysisByOrderID(ctx, req.OrderID)
 	if err != nil {
 		return nil, errs.ERR_NOT_FOUND
@@ -109,8 +117,9 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		LikelyReason:    lastestException.LikelyReason,
 		ExceptionType:   lastestException.ExceptionType,
 		Tone:            tone,
-		Channel:         req.Channel,
+		Channel:         channel,
 	}
+
 
 	result, err := s.draftGenerator.Generate(ctx, adapterInput)
 	if err != nil {
@@ -147,6 +156,7 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		AIExceptionResultID:   &lastestException.ID,
 		DraftMessage:          result.CustomerUpdateDraft,
 		Tone:                  tone,
+		Channel:               channel,
 		ConfidenceScore:       &confidence,
 		FallbackUsed:          result.FallbackUsed,
 		FallbackReason:        fallbackReason,
@@ -155,6 +165,7 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		DurationMs:            durationMs,
 		ReviewStatus:          models.DraftReviewStatusPending,
 	}
+
 	if saveErr := s.aiDraftRepo.Save(ctx, draft); saveErr != nil {
 		return nil, errs.ERR_INTERNAL_SERVER
 	}

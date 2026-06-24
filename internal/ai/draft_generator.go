@@ -3,11 +3,13 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
 	"main/internal/dto"
 )
+
 
 type DraftResult struct {
 	CustomerUpdateDraft string
@@ -103,25 +105,55 @@ func (dg *DraftGenerator) fallback(input dto.CustomerUpdateDraftInput, reason st
 	}
 }
 
-// shouldCallAI determines whether the AI is necessary for the given input.
-func shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
-	// 1. If exception type is OTHER, we need AI to explain the LikelyReason.
-	if input.ExceptionType == "OTHER" {
+// isInternalSystemError trả về true cho các loại lỗi hệ thống nội bộ.
+// Các loại lỗi này không cần AI diễn giải thêm — Template tĩnh đã đủ an toàn và trung lập.
+func isInternalSystemError(exceptionType string) bool {
+	switch exceptionType {
+	case "INVALID_TRANSITION", "SKIPPED_STATUS", "DUPLICATE_EVENT":
 		return true
 	}
-
-	// 2. If a specific tone is requested
-	tone := strings.ToLower(strings.TrimSpace(input.Tone))
-	if tone != "" && tone != "neutral" && tone != "informative" {
-		return true
-	}
-
-	// 3. If the channel is SMS
-	if strings.ToLower(strings.TrimSpace(input.Channel)) == "sms" {
-		return true
-	}
-
 	return false
+}
+
+// shouldCallAI quyết định có cần gọi AI hay dùng Template tĩnh.
+//
+// Ma trận quyết định:
+//   - OTHER → LUÔN gọi AI (LikelyReason là text tự do, Template không diễn giải được)
+//   - INVALID_TRANSITION / SKIPPED_STATUS / DUPLICATE_EVENT → KHÔNG gọi AI (Template đủ, an toàn)
+//   - STUCK_ORDER / DELIVERY_FAILURE + neutral/informative + email → Template
+//   - STUCK_ORDER / DELIVERY_FAILURE + apologetic/proactive → AI (cần giọng điệu)
+//   - Bất kỳ exception nào + channel=sms → AI (cần rút ngắn)
+func shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
+	channel := strings.ToLower(strings.TrimSpace(input.Channel))
+	tone := strings.ToLower(strings.TrimSpace(input.Tone))
+	var needAI bool
+
+	switch {
+	case input.ExceptionType == "OTHER":
+		// Template không thể diễn giải LikelyReason tự do từ exception analysis
+		needAI = true
+
+	case isInternalSystemError(input.ExceptionType):
+		// Lỗi kỹ thuật nội bộ — không để AI "sáng tác" thêm cho khách hàng
+		needAI = false
+
+	case channel == "sms":
+		// SMS cần rút ngắn mạnh, Template tĩnh quá dài
+		needAI = true
+
+	case tone != "" && tone != "neutral" && tone != "informative":
+		// Tone đặc biệt (apologetic, proactive) cần AI viết lại giọng điệu
+		needAI = true
+
+	default:
+		// Còn lại: lỗi vận hành (STUCK_ORDER/DELIVERY_FAILURE) + tone cơ bản + email
+		needAI = false
+	}
+
+	fmt.Printf("[DEBUG][shouldCallAI] ExceptionType: %s | Tone: %q | Channel: %q | NeedAI: %v\n",
+		input.ExceptionType, tone, channel, needAI)
+
+	return needAI
 }
 
 func buildFallbackDraftMessage(input dto.CustomerUpdateDraftInput) string {

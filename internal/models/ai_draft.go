@@ -13,6 +13,8 @@ type AICustomerUpdateDraft struct {
 	// Draft Content
 	DraftMessage string `gorm:"column:draft_message;type:text;not null" json:"draft_message"`
 	Tone         string `gorm:"column:tone;type:varchar(20);not null;default:'neutral'" json:"tone"`
+	Channel      string `gorm:"column:channel;type:varchar(20);not null;default:'email'" json:"channel"`
+
 
 	// Human Review State
 	ReviewStatus string     `gorm:"column:review_status;type:varchar(20);not null;default:'PENDING'" json:"review_status"`
