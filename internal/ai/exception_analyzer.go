@@ -12,6 +12,7 @@ import (
 const (
 	FallbackReasonDisabled           = "ai_disabled"
 	FallbackReasonNoDriverNote       = "no_driver_note"
+	FallbackReasonEarlyNoteIgnored   = "early_note_ignored_to_save_cost"
 	FallbackReasonTemplateSufficient = "template_sufficient"
 	FallbackReasonTimeout            = "ai_timeout"
 	FallbackReasonConnectionError    = "ai_connection_error"
@@ -64,6 +65,11 @@ func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContex
 			reason = FallbackReasonNoDriverNote
 		}
 		return ruleResultToAnalysis(ruleResult, reason, 0, ""), nil
+	}
+
+	// ── Step 3b: Skip AI if order is completely healthy (SLA not breached)
+	if ruleResult == nil {
+		return ea.fallbackWithRaw(aiCtx, FallbackReasonEarlyNoteIgnored, 0, "", now), nil
 	}
 
 	// ── Step 4: Call AI

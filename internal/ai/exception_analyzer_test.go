@@ -321,3 +321,33 @@ func TestBuildExceptionInput(t *testing.T) {
 	assert.Equal(t, "packed", input.EventHistory[0].FromStatus)
 	assert.Equal(t, "shipped", input.EventHistory[0].ToStatus)
 }
+
+func TestAnalyze_EarlyNoteIgnored(t *testing.T) {
+	// AI is enabled, but the order is completely healthy (SLA not breached)
+	// Even though there is a driver note, it should skip AI.
+	analyzer := NewExceptionAnalyzer(nil, ExceptionAnalyzerConfig{ // nil adapter means it will panic if called
+		AIEnabled: true,
+		AITimeout: 10 * time.Second,
+	})
+
+	now := time.Now()
+	aiCtx := &models.AIContext{
+		OrderID:       1001,
+		CreatedAt:     now.Add(-1 * time.Hour),
+		CurrentStatus: models.ORDER_STATUS_PAID, // completely healthy, within SLA
+		Events: []models.AIEvent{
+			{
+				EventAt:        now.Add(-30 * time.Minute),
+				PreviousStatus: models.ORDER_STATUS_CREATED,
+				NewStatus:      models.ORDER_STATUS_PAID,
+				UpdatedBy:      "admin_1",
+			},
+		},
+	}
+
+	result, err := analyzer.Analyze(context.Background(), aiCtx, "early driver note")
+
+	require.NoError(t, err)
+	assert.True(t, result.FallbackUsed)
+	assert.Equal(t, FallbackReasonEarlyNoteIgnored, result.FallbackReason)
+}
