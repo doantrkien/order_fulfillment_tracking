@@ -16,8 +16,6 @@ func TestGetFallbackTemplate(t *testing.T) {
 		{"INVALID_TRANSITION", "status mismatch during your order"},
 		{"SKIPPED_STATUS", "unusual update"},
 		{"DUPLICATE_EVENT", "recorded a duplicate"},
-		{"CANCELLATION_ANOMALY", "unusual cancellation"},
-		{"REFUND_ANOMALY", "refund request"},
 		{"OTHER", "issue that has arisen regarding your order"},
 		{"SOME_RANDOM_TYPE", "unexpected issue"}, // Dẫn về DEFAULT
 		{"", "unexpected issue"},                 // Dẫn về DEFAULT

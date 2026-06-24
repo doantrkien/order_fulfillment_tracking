@@ -123,8 +123,8 @@ func TestCalculateRunMetrics(t *testing.T) {
 	assert.Equal(t, 3, metrics.PassedCases)
 	assert.Equal(t, 2, metrics.FailedCases)
 	assert.Equal(t, 2, metrics.FallbackCount)
-	assert.Equal(t, 60.0, metrics.AccuracyRate)       // 3/5 = 60%
-	assert.Equal(t, 800, metrics.AvgLatencyMs)       // (1000+500+1500+200+800)/5 = 4000/5 = 800
+	assert.Equal(t, 60.0, metrics.AccuracyRate) // 3/5 = 60%
+	assert.Equal(t, 800, metrics.AvgLatencyMs)  // (1000+500+1500+200+800)/5 = 4000/5 = 800
 }
 
 func TestCalculateRunMetrics_Empty(t *testing.T) {

@@ -192,10 +192,19 @@ func TestBuildExceptionAnalysisPrompt_NoDriverNotes(t *testing.T) {
 
 // ── ClassifyDriverNote tests ─────────────────────────────────────────────────
 
+// kbTitles extracts the Title field from a slice of KnowledgeEntry for easy assertion.
+func kbTitles(entries []KnowledgeEntry) []string {
+	titles := make([]string, len(entries))
+	for i, e := range entries {
+		titles[i] = e.Title
+	}
+	return titles
+}
+
 func TestClassifyDriverNote_AlwaysIncludesStateMachine(t *testing.T) {
 	entries := ClassifyDriverNote("")
-	ids := kbIDs(entries)
-	assert.Contains(t, ids, "state_machine")
+	titles := kbTitles(entries)
+	assert.Contains(t, titles, "Order State Machine")
 }
 
 func TestClassifyDriverNote_DeliveryKeywords(t *testing.T) {
@@ -210,37 +219,39 @@ func TestClassifyDriverNote_DeliveryKeywords(t *testing.T) {
 	}
 	for _, note := range cases {
 		entries := ClassifyDriverNote(note)
-		ids := kbIDs(entries)
-		assert.Contains(t, ids, "delivery_failure", "note: %q", note)
+		titles := kbTitles(entries)
+		assert.Contains(t, titles, "Delivery Failure", "note: %q", note)
 	}
 }
 
-func TestClassifyDriverNote_CancellationKeywords(t *testing.T) {
-	entries := ClassifyDriverNote("khách hàng muốn hủy đơn hàng")
-	ids := kbIDs(entries)
-	assert.Contains(t, ids, "cancellation_anomaly")
+func TestClassifyDriverNote_DuplicateKeywords(t *testing.T) {
+	entries := ClassifyDriverNote("duplicate event received")
+	titles := kbTitles(entries)
+	assert.Contains(t, titles, "Duplicate Event")
 }
 
-func TestClassifyDriverNote_RefundKeywords(t *testing.T) {
-	entries := ClassifyDriverNote("khách yêu cầu hoàn tiền")
-	ids := kbIDs(entries)
-	assert.Contains(t, ids, "refund_anomaly")
+func TestClassifyDriverNote_SkippedKeywords(t *testing.T) {
+	entries := ClassifyDriverNote("skipped mandatory step")
+	titles := kbTitles(entries)
+	assert.Contains(t, titles, "Skipped Status")
 }
 
 func TestClassifyDriverNote_StuckKeywords(t *testing.T) {
 	entries := ClassifyDriverNote("order is delayed, no progress for 3 days")
-	ids := kbIDs(entries)
-	assert.Contains(t, ids, "stuck_order")
+	titles := kbTitles(entries)
+	assert.Contains(t, titles, "Stuck Order")
 }
 
-func TestClassifyDriverNote_UnknownNote_FallsBackToDeliveryAndDataIntegrity(t *testing.T) {
+func TestClassifyDriverNote_UnknownNote_FallsBackToAll(t *testing.T) {
 	// A non-empty note that matches no specific keyword should still get
-	// delivery_failure and data_integrity so the AI has useful context.
+	// all fallback domains so the AI has useful context.
 	entries := ClassifyDriverNote("driver arrived at destination")
-	ids := kbIDs(entries)
-	assert.Contains(t, ids, "state_machine")
-	assert.Contains(t, ids, "delivery_failure")
-	assert.Contains(t, ids, "data_integrity")
+	titles := kbTitles(entries)
+	assert.Contains(t, titles, "Order State Machine")
+	assert.Contains(t, titles, "Delivery Failure")
+	assert.Contains(t, titles, "Duplicate Event")
+	assert.Contains(t, titles, "Skipped Status")
+	assert.Contains(t, titles, "Stuck Order")
 }
 
 func TestBuildExceptionAnalysisPrompt_InjectsOnlyRelevantKB(t *testing.T) {
@@ -252,20 +263,13 @@ func TestBuildExceptionAnalysisPrompt_InjectsOnlyRelevantKB(t *testing.T) {
 	knowledge := ClassifyDriverNote(ctx.DriverNotes)
 	prompt := BuildExceptionAnalysisPrompt(ctx, knowledge)
 
-	// Delivery failure KB should be present
+	// Delivery failure KB should be present — note matches delivery keywords
 	assert.Contains(t, prompt, "Delivery Failure")
 	// State machine KB should always be present
 	assert.Contains(t, prompt, "Order State Machine")
-	// Cancellation and refund KB should NOT be present (not in note)
-	assert.NotContains(t, prompt, "Cancellation Anomaly")
-	assert.NotContains(t, prompt, "Refund Anomaly")
-}
-
-// kbIDs extracts the ID field from a slice of KnowledgeEntry for easy assertion.
-func kbIDs(entries []KnowledgeEntry) []string {
-	ids := make([]string, len(entries))
-	for i, e := range entries {
-		ids[i] = e.ID
-	}
-	return ids
+	// Unrelated KB entries (stuck, duplicate, skipped) should NOT appear
+	// because the note matched delivery_failure keywords specifically
+	assert.NotContains(t, prompt, "Stuck Order")
+	assert.NotContains(t, prompt, "Duplicate Event")
+	assert.NotContains(t, prompt, "Skipped Status")
 }

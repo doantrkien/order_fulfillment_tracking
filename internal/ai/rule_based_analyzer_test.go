@@ -54,7 +54,7 @@ func TestDetectInvalidTransitions(t *testing.T) {
 				assert.NotNil(t, result)
 				assert.Equal(t, tc.wantType, result.ExceptionType)
 				assert.Equal(t, "CRITICAL", result.Severity)
-				assert.Equal(t, 1.0, result.ConfidenceScore)
+				assert.Equal(t, 0.99, result.ConfidenceScore)
 			}
 		})
 	}
@@ -62,10 +62,12 @@ func TestDetectInvalidTransitions(t *testing.T) {
 
 func TestDetectDuplicateEvents(t *testing.T) {
 	tests := []struct {
-		name     string
-		events   []models.AIEvent
-		wantType string
-		wantNil  bool
+		name         string
+		events       []models.AIEvent
+		wantType     string
+		wantSeverity string
+		wantScore    float64
+		wantNil      bool
 	}{
 		{
 			name: "no duplicates",
@@ -76,12 +78,14 @@ func TestDetectDuplicateEvents(t *testing.T) {
 			wantNil: true,
 		},
 		{
-			name: "consecutive duplicate",
+			name: "consecutive duplicate paid",
 			events: []models.AIEvent{
 				{NewStatus: models.ORDER_STATUS_PAID},
 				{NewStatus: models.ORDER_STATUS_PAID},
 			},
-			wantType: "DUPLICATE_EVENT",
+			wantType:     "DUPLICATE_EVENT",
+			wantSeverity: "MEDIUM",
+			wantScore:    0.96,
 		},
 		{
 			name: "single event - no duplicate possible",
@@ -105,8 +109,8 @@ func TestDetectDuplicateEvents(t *testing.T) {
 			} else {
 				assert.NotNil(t, result)
 				assert.Equal(t, tc.wantType, result.ExceptionType)
-				assert.Equal(t, "LOW", result.Severity)
-				assert.Equal(t, 1.0, result.ConfidenceScore)
+				assert.Equal(t, tc.wantSeverity, result.Severity)
+				assert.Equal(t, tc.wantScore, result.ConfidenceScore)
 			}
 		})
 	}
@@ -114,39 +118,42 @@ func TestDetectDuplicateEvents(t *testing.T) {
 
 func TestDetectSkippedStatuses(t *testing.T) {
 	tests := []struct {
-		name     string
-		events   []models.AIEvent
-		wantType string
-		wantNil  bool
+		name         string
+		events       []models.AIEvent
+		wantType     string
+		wantSeverity string
+		wantNil      bool
 	}{
 		{
 			name: "normal progression - no skip",
 			events: []models.AIEvent{
-				{NewStatus: models.ORDER_STATUS_PAID},
-				{NewStatus: models.ORDER_STATUS_PACKED},
-				{NewStatus: models.ORDER_STATUS_SHIPPED},
+				{PreviousStatus: models.ORDER_STATUS_CREATED, NewStatus: models.ORDER_STATUS_PAID},
+				{PreviousStatus: models.ORDER_STATUS_PAID, NewStatus: models.ORDER_STATUS_PACKED},
+				{PreviousStatus: models.ORDER_STATUS_PACKED, NewStatus: models.ORDER_STATUS_SHIPPED},
 			},
 			wantNil: true,
 		},
 		{
 			name: "skipped packed status",
 			events: []models.AIEvent{
-				{NewStatus: models.ORDER_STATUS_PAID},
-				{NewStatus: models.ORDER_STATUS_SHIPPED},
+				{PreviousStatus: models.ORDER_STATUS_CREATED, NewStatus: models.ORDER_STATUS_PAID},
+				{PreviousStatus: models.ORDER_STATUS_PAID, NewStatus: models.ORDER_STATUS_SHIPPED},
 			},
-			wantType: "SKIPPED_STATUS",
+			wantType:     "SKIPPED_STATUS",
+			wantSeverity: "MEDIUM",
 		},
 		{
 			name: "skipped paid and packed",
 			events: []models.AIEvent{
-				{NewStatus: models.ORDER_STATUS_SHIPPED},
+				{PreviousStatus: models.ORDER_STATUS_CREATED, NewStatus: models.ORDER_STATUS_SHIPPED},
 			},
-			wantType: "SKIPPED_STATUS",
+			wantType:     "SKIPPED_STATUS",
+			wantSeverity: "HIGH",
 		},
 		{
 			name: "only paid - no skip",
 			events: []models.AIEvent{
-				{NewStatus: models.ORDER_STATUS_PAID},
+				{PreviousStatus: models.ORDER_STATUS_CREATED, NewStatus: models.ORDER_STATUS_PAID},
 			},
 			wantNil: true,
 		},
@@ -163,9 +170,10 @@ func TestDetectSkippedStatuses(t *testing.T) {
 			if tc.wantNil {
 				assert.Nil(t, result)
 			} else {
-				assert.NotNil(t, result)
-				assert.Equal(t, tc.wantType, result.ExceptionType)
-				assert.Equal(t, "HIGH", result.Severity)
+				if assert.NotNil(t, result) {
+					assert.Equal(t, tc.wantType, result.ExceptionType)
+					assert.Equal(t, tc.wantSeverity, result.Severity)
+				}
 			}
 		})
 	}
@@ -180,6 +188,7 @@ func TestDetectStuckOrder(t *testing.T) {
 		now          time.Time
 		wantType     string
 		wantSeverity string
+		wantScore    float64
 		wantNil      bool
 	}{
 		{
@@ -199,7 +208,8 @@ func TestDetectStuckOrder(t *testing.T) {
 			},
 			now:          baseTime.Add(25 * time.Hour),
 			wantType:     "STUCK_ORDER",
-			wantSeverity: "MEDIUM",
+			wantSeverity: "LOW",
+			wantScore:    0.85,
 		},
 		{
 			name: "created status - escalated (over 48h = 2×24h)",
@@ -209,7 +219,8 @@ func TestDetectStuckOrder(t *testing.T) {
 			},
 			now:          baseTime.Add(49 * time.Hour),
 			wantType:     "STUCK_ORDER",
-			wantSeverity: "CRITICAL",
+			wantSeverity: "HIGH",
+			wantScore:    0.94,
 		},
 		{
 			name: "shipped status - stuck (over 72h)",
@@ -220,9 +231,10 @@ func TestDetectStuckOrder(t *testing.T) {
 					{EventAt: baseTime.Add(1 * time.Hour), NewStatus: models.ORDER_STATUS_SHIPPED},
 				},
 			},
-			now:          baseTime.Add(74 * time.Hour),
+			now:          baseTime.Add(145 * time.Hour), // 144h age (2x threshold)
 			wantType:     "STUCK_ORDER",
-			wantSeverity: "HIGH",
+			wantSeverity: "MEDIUM",
+			wantScore:    0.90,
 		},
 		{
 			name: "delivered (terminal) - never stuck",
@@ -251,8 +263,6 @@ func TestDetectStuckOrder(t *testing.T) {
 					{EventAt: baseTime.Add(47 * time.Hour), NewStatus: models.ORDER_STATUS_PAID},
 				},
 			},
-			// 47h after creation, event happened. Now is 50h after creation.
-			// Age from last event = 3h, which is < 48h threshold → not stuck.
 			now:     baseTime.Add(50 * time.Hour),
 			wantNil: true,
 		},
@@ -262,9 +272,8 @@ func TestDetectStuckOrder(t *testing.T) {
 				CurrentStatus: models.ORDER_STATUS_CREATED,
 				CreatedAt:     baseTime,
 			},
-			now:          baseTime.Add(24 * time.Hour), // exactly at threshold
-			wantType:     "STUCK_ORDER",
-			wantSeverity: "MEDIUM",
+			now:     baseTime.Add(24 * time.Hour), // exactly at threshold
+			wantNil: true,                         // age <= threshold
 		},
 	}
 
@@ -274,10 +283,11 @@ func TestDetectStuckOrder(t *testing.T) {
 			if tc.wantNil {
 				assert.Nil(t, result)
 			} else {
-				assert.NotNil(t, result)
-				assert.Equal(t, tc.wantType, result.ExceptionType)
-				assert.Equal(t, tc.wantSeverity, result.Severity)
-				assert.Equal(t, 1.0, result.ConfidenceScore)
+				if assert.NotNil(t, result) {
+					assert.Equal(t, tc.wantType, result.ExceptionType)
+					assert.Equal(t, tc.wantSeverity, result.Severity)
+					assert.Equal(t, tc.wantScore, result.ConfidenceScore)
+				}
 			}
 		})
 	}
@@ -312,7 +322,6 @@ func TestAnalyzeByRules_PriorityOrder(t *testing.T) {
 				// Valid transition, then duplicate of the same status
 				{PreviousStatus: models.ORDER_STATUS_PAID, NewStatus: models.ORDER_STATUS_PACKED, EventAt: now.Add(-8 * time.Hour)},
 				{PreviousStatus: models.ORDER_STATUS_PAID, NewStatus: models.ORDER_STATUS_PACKED, EventAt: now.Add(-7 * time.Hour)},
-				// Skip shipped, go straight to delivered via shipped (would be SKIPPED_STATUS if not for duplicate)
 			},
 		}
 		result := AnalyzeByRules(aiCtx, now)

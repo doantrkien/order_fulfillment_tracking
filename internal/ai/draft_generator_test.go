@@ -118,7 +118,7 @@ func TestDraftGenerator_AIReturnsLowConfidence(t *testing.T) {
 
 	input := dto.CustomerUpdateDraftInput{
 		OrderID:       1005,
-		ExceptionType: "REFUND_ANOMALY",
+		ExceptionType: "SKIPPED_STATUS",
 		Tone:          "apologetic",
 	}
 
@@ -127,7 +127,7 @@ func TestDraftGenerator_AIReturnsLowConfidence(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonLowConfidence, result.FallbackReason)
-	assert.Contains(t, result.CustomerUpdateDraft, "refund request")
+	assert.Contains(t, result.CustomerUpdateDraft, "unusual update")
 	assert.Equal(t, 1.0, result.ConfidenceScore)
 }
 

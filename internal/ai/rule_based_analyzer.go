@@ -7,47 +7,21 @@ import (
 	"time"
 )
 
-// RuleBasedResult holds the output of the deterministic rule-based analyzer.
 type RuleBasedResult struct {
 	ExceptionType      string
 	Severity           string
 	LikelyReason       string
 	InternalNextAction string
-	ConfidenceScore    float64 // Always 1.0 for deterministic rules
+	ConfidenceScore    float64
 }
 
-// stuckThreshold defines per-status thresholds for stuck order detection.
-type stuckThreshold struct {
-	Duration         time.Duration
-	BaseSeverity     string
-	EscalateSeverity string // severity when age > 2× threshold
+var stuckThresholds = map[models.OrderStatus]time.Duration{
+	models.ORDER_STATUS_CREATED: 24 * time.Hour,
+	models.ORDER_STATUS_PAID:    48 * time.Hour,
+	models.ORDER_STATUS_PACKED:  24 * time.Hour,
+	models.ORDER_STATUS_SHIPPED: 72 * time.Hour,
 }
 
-// stuckThresholds maps each non-terminal status to its stuck-order threshold.
-var stuckThresholds = map[models.OrderStatus]stuckThreshold{
-	models.ORDER_STATUS_CREATED: {
-		Duration:         24 * time.Hour,
-		BaseSeverity:     "MEDIUM",
-		EscalateSeverity: "CRITICAL",
-	},
-	models.ORDER_STATUS_PAID: {
-		Duration:         48 * time.Hour,
-		BaseSeverity:     "MEDIUM",
-		EscalateSeverity: "CRITICAL",
-	},
-	models.ORDER_STATUS_PACKED: {
-		Duration:         24 * time.Hour,
-		BaseSeverity:     "HIGH",
-		EscalateSeverity: "CRITICAL",
-	},
-	models.ORDER_STATUS_SHIPPED: {
-		Duration:         72 * time.Hour,
-		BaseSeverity:     "HIGH",
-		EscalateSeverity: "CRITICAL",
-	},
-}
-
-// lifecycleOrder defines the expected forward path for the order lifecycle.
 var lifecycleOrder = []models.OrderStatus{
 	models.ORDER_STATUS_CREATED,
 	models.ORDER_STATUS_PAID,
@@ -56,199 +30,46 @@ var lifecycleOrder = []models.OrderStatus{
 	models.ORDER_STATUS_DELIVERED,
 }
 
-// deliveryFailureKeywords are keywords indicating a severe delivery failure (HIGH severity).
-// "not home", "customer not home" → MEDIUM severity (see mediumDeliveryKeywords)
-var deliveryFailureKeywords = []string{
-	"weather", "bad weather", "weather condition",
-	"accident", "vehicle breakdown", "xe hỏng", "tai nạn",
-	"failed", "failure", "lost", "package lost",
-	"cannot deliver", "could not deliver",
-	"giao thất bại", "thời tiết",
+var deliveryFailureCriticalKeywords = []string{
+	"package lost", "stolen", "cannot find package", "missing parcel",
+	"hàng bị mất", "không tìm thấy kiện hàng", "nghi thất lạc",
 }
 
-// mediumDeliveryKeywords are keywords indicating a softer delivery failure (MEDIUM severity).
-var mediumDeliveryKeywords = []string{
-	"not home", "customer not home", "no one home",
-	"wrong address", "address not found",
-	"không có nhà", "sai địa chỉ",
+var deliveryFailureHighKeywords = []string{
+	"vehicle breakdown", "accident on route", "bad weather", "road blocked",
+	"xe hỏng", "tai nạn giao thông", "thời tiết xấu",
 }
 
-// cancellationAfterShippedStatuses lists statuses from which cancellation is anomalous.
-var cancellationAfterShippedStatuses = map[models.OrderStatus]bool{
-	models.ORDER_STATUS_SHIPPED:   true,
-	models.ORDER_STATUS_DELIVERED: true,
+var deliveryFailureMediumKeywords = []string{
+	"customer not home", "no one available to receive package", "wrong address", "address not found",
+	"không có ai ở nhà", "sai địa chỉ", "không liên lạc được khách hàng",
 }
 
-// AnalyzeByRules runs deterministic rule-based exception detection on the order context.
-// Rules are evaluated in priority order. The first matching rule wins.
-// Returns nil if no exception is detected.
+var deliveryFailureLowKeywords = []string{
+	"customer temporarily unreachable", "no answer", "will retry call", "short delay at delivery point",
+	"khách không nghe máy tạm thời",
+}
+
 func AnalyzeByRules(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
-	// Priority 1: Cancellation anomaly (CRITICAL)
-	if r := detectCancellationAnomaly(aiCtx); r != nil {
-		return r
-	}
-
-	// Priority 2: Refund anomaly (HIGH/CRITICAL)
-	if r := detectRefundAnomaly(aiCtx); r != nil {
-		return r
-	}
-
-	// Priority 3: Delivery failure (MEDIUM/HIGH)
 	if r := detectDeliveryFailure(aiCtx); r != nil {
 		return r
 	}
-
-	// Priority 4: Duplicate events (LOW)
 	if r := detectDuplicateEvents(aiCtx.Events); r != nil {
 		return r
 	}
-
-	// Priority 5: Skipped statuses (HIGH)
 	if r := detectSkippedStatuses(aiCtx.Events); r != nil {
 		return r
 	}
-
-	// Priority 6: Invalid transitions (CRITICAL)
 	if r := detectInvalidTransitions(aiCtx.Events); r != nil {
 		return r
 	}
-
-	// Priority 7: Stuck order (severity varies by age)
 	if r := detectStuckOrder(aiCtx, now); r != nil {
 		return r
 	}
-
 	return nil
 }
 
-// detectInvalidTransitions checks if any event in the timeline has
-// a from→to transition that is not in the valid transitions map.
-func detectInvalidTransitions(events []models.AIEvent) *RuleBasedResult {
-	for _, e := range events {
-		if e.PreviousStatus == e.NewStatus {
-			continue // Handled by detectDuplicateEvents
-		}
-		if !models.IsValidTransition(e.PreviousStatus, e.NewStatus) {
-			return &RuleBasedResult{
-				ExceptionType:      "INVALID_TRANSITION",
-				Severity:           "CRITICAL",
-				LikelyReason:       fmt.Sprintf("Invalid status transition from '%s' to '%s'", e.PreviousStatus, e.NewStatus),
-				InternalNextAction: "Review the event source and block further invalid transitions. Escalate to engineering if automated.",
-				ConfidenceScore:    1.0,
-			}
-		}
-	}
-	return nil
-}
-
-// detectDuplicateEvents checks for consecutive events with the same new_status.
-func detectDuplicateEvents(events []models.AIEvent) *RuleBasedResult {
-	for i := 1; i < len(events); i++ {
-		if events[i].NewStatus == events[i-1].NewStatus {
-			return &RuleBasedResult{
-				ExceptionType:      "DUPLICATE_EVENT",
-				Severity:           "LOW",
-				LikelyReason:       fmt.Sprintf("Duplicate consecutive event detected: status '%s' recorded multiple times", events[i].NewStatus),
-				InternalNextAction: "Investigate the event source for duplicate submissions. No immediate action required.",
-				ConfidenceScore:    1.0,
-			}
-		}
-	}
-	return nil
-}
-
-// detectSkippedStatuses walks the event timeline and checks for skipped
-// statuses in the expected lifecycle path (created → paid → packed → shipped → delivered).
-func detectSkippedStatuses(events []models.AIEvent) *RuleBasedResult {
-	if len(events) == 0 {
-		return nil
-	}
-
-	seen := make(map[models.OrderStatus]bool)
-	for _, e := range events {
-		if e.PreviousStatus != "" {
-			seen[e.PreviousStatus] = true
-		}
-		if e.NewStatus != "" {
-			seen[e.NewStatus] = true
-		}
-	}
-
-	// Find the furthest lifecycle stage reached
-	maxIdx := -1
-	for i, status := range lifecycleOrder {
-		if seen[status] {
-			maxIdx = i
-		}
-	}
-
-	if maxIdx <= 0 {
-		// No meaningful forward progress to check skips
-		return nil
-	}
-
-	// Check if any intermediate status was skipped
-	for i := 1; i < maxIdx; i++ {
-		if !seen[lifecycleOrder[i]] {
-			return &RuleBasedResult{
-				ExceptionType:      "SKIPPED_STATUS",
-				Severity:           "HIGH",
-				LikelyReason:       fmt.Sprintf("Status '%s' was skipped in the order lifecycle", lifecycleOrder[i]),
-				InternalNextAction: "Verify the order processing pipeline. Missing status may indicate a system bypass or data integrity issue.",
-				ConfidenceScore:    1.0,
-			}
-		}
-	}
-
-	return nil
-}
-
-// detectStuckOrder calculates the time since the last event (or order creation)
-// and compares against per-status thresholds.
-func detectStuckOrder(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
-	currentStatus := aiCtx.CurrentStatus
-
-	threshold, exists := stuckThresholds[currentStatus]
-	if !exists {
-		// Terminal states (delivered, cancelled, refunded) cannot be "stuck"
-		return nil
-	}
-
-	// Determine the last activity time
-	lastActivityAt := aiCtx.CreatedAt
-	if len(aiCtx.Events) > 0 {
-		lastEvent := aiCtx.Events[len(aiCtx.Events)-1]
-		if lastEvent.EventAt.After(lastActivityAt) {
-			lastActivityAt = lastEvent.EventAt
-		}
-	}
-
-	age := now.Sub(lastActivityAt)
-	if age < threshold.Duration {
-		return nil
-	}
-
-	severity := threshold.BaseSeverity
-	if age >= 2*threshold.Duration {
-		severity = threshold.EscalateSeverity
-	}
-
-	hours := int(age.Hours())
-
-	return &RuleBasedResult{
-		ExceptionType:      "STUCK_ORDER",
-		Severity:           severity,
-		LikelyReason:       fmt.Sprintf("Order has been in '%s' status for %d hours without progressing", currentStatus, hours),
-		InternalNextAction: fmt.Sprintf("Investigate why order has not advanced from '%s'. Contact the responsible team.", currentStatus),
-		ConfidenceScore:    1.0,
-	}
-}
-
-// detectDeliveryFailure inspects DriverNotes for keywords that indicate a delivery failure.
-// Severity is HIGH for severe causes (weather, accident, vehicle breakdown, lost)
-// and MEDIUM for softer causes (customer not home, wrong address).
 func detectDeliveryFailure(aiCtx *models.AIContext) *RuleBasedResult {
-	// Only relevant when order is in "shipped" status
 	if aiCtx.CurrentStatus != models.ORDER_STATUS_SHIPPED {
 		return nil
 	}
@@ -265,28 +86,50 @@ func detectDeliveryFailure(aiCtx *models.AIContext) *RuleBasedResult {
 		return nil
 	}
 
-	// Check medium-severity keywords first (more specific)
-	for _, kw := range mediumDeliveryKeywords {
+	for _, kw := range deliveryFailureCriticalKeywords {
 		if strings.Contains(notes, kw) {
 			return &RuleBasedResult{
 				ExceptionType:      "DELIVERY_FAILURE",
-				Severity:           "MEDIUM",
-				LikelyReason:       fmt.Sprintf("Delivery failed: %s", rawNotes),
-				InternalNextAction: "Contact customer to reschedule delivery. Update delivery attempts log.",
-				ConfidenceScore:    1.0,
+				Severity:           "CRITICAL",
+				LikelyReason:       "Package is missing or potentially lost in transit",
+				InternalNextAction: "Escalate to logistics manager. Open lost-parcel investigation and notify finance for claim handling.",
+				ConfidenceScore:    0.92,
 			}
 		}
 	}
 
-	// Check high-severity keywords
-	for _, kw := range deliveryFailureKeywords {
+	for _, kw := range deliveryFailureHighKeywords {
 		if strings.Contains(notes, kw) {
 			return &RuleBasedResult{
 				ExceptionType:      "DELIVERY_FAILURE",
 				Severity:           "HIGH",
-				LikelyReason:       fmt.Sprintf("Delivery failed: %s", rawNotes),
-				InternalNextAction: "Escalate to logistics team. Arrange re-delivery or return to warehouse.",
-				ConfidenceScore:    1.0,
+				LikelyReason:       "Operational issue prevented delivery",
+				InternalNextAction: "Escalate to logistics team. Arrange re-delivery or return-to-warehouse.",
+				ConfidenceScore:    0.94,
+			}
+		}
+	}
+
+	for _, kw := range deliveryFailureMediumKeywords {
+		if strings.Contains(notes, kw) {
+			return &RuleBasedResult{
+				ExceptionType:      "DELIVERY_FAILURE",
+				Severity:           "MEDIUM",
+				LikelyReason:       "Customer not available at delivery location or address issue",
+				InternalNextAction: "Contact customer to reschedule delivery and log attempt",
+				ConfidenceScore:    0.95,
+			}
+		}
+	}
+
+	for _, kw := range deliveryFailureLowKeywords {
+		if strings.Contains(notes, kw) {
+			return &RuleBasedResult{
+				ExceptionType:      "DELIVERY_FAILURE",
+				Severity:           "LOW",
+				LikelyReason:       "Customer temporarily unreachable but delivery can be retried immediately",
+				InternalNextAction: "Retry contact customer and reattempt delivery",
+				ConfidenceScore:    0.90,
 			}
 		}
 	}
@@ -294,65 +137,194 @@ func detectDeliveryFailure(aiCtx *models.AIContext) *RuleBasedResult {
 	return nil
 }
 
-// detectCancellationAnomaly detects orders cancelled after being shipped or delivered.
-// These are CRITICAL because they represent high-impact operational anomalies.
-func detectCancellationAnomaly(aiCtx *models.AIContext) *RuleBasedResult {
-	if aiCtx.CurrentStatus != models.ORDER_STATUS_CANCELLED {
-		return nil
-	}
-
-	// Walk the event history looking for a transition INTO cancelled
-	// from a late-stage status (shipped or delivered)
-	for _, e := range aiCtx.Events {
-		if e.NewStatus == models.ORDER_STATUS_CANCELLED {
-			if cancellationAfterShippedStatuses[e.PreviousStatus] {
-				return &RuleBasedResult{
-					ExceptionType:      "CANCELLATION_ANOMALY",
-					Severity:           "CRITICAL",
-					LikelyReason:       fmt.Sprintf("Order was cancelled after reaching '%s' status — late-stage cancellation detected", e.PreviousStatus),
-					InternalNextAction: "Halt any ongoing delivery. Initiate return-to-warehouse procedure. Review refund eligibility.",
-					ConfidenceScore:    1.0,
+func detectDuplicateEvents(events []models.AIEvent) *RuleBasedResult {
+	seen := make(map[models.OrderStatus]bool)
+	for _, e := range events {
+		if e.NewStatus != "" {
+			if seen[e.NewStatus] {
+				switch e.NewStatus {
+				case models.ORDER_STATUS_DELIVERED:
+					return &RuleBasedResult{
+						ExceptionType:      "DUPLICATE_EVENT",
+						Severity:           "CRITICAL",
+						LikelyReason:       "Duplicate event caused incorrect financial operation: refund executed twice",
+						InternalNextAction: "Stop processing, rollback incorrect transactions, and audit event pipeline",
+						ConfidenceScore:    0.99,
+					}
+				case models.ORDER_STATUS_SHIPPED:
+					return &RuleBasedResult{
+						ExceptionType:      "DUPLICATE_EVENT",
+						Severity:           "HIGH",
+						LikelyReason:       "Duplicate event caused repeated external side effects (shipping notification)",
+						InternalNextAction: "Fix idempotency in downstream services and add deduplication layer",
+						ConfidenceScore:    0.97,
+					}
+				case models.ORDER_STATUS_PAID:
+					return &RuleBasedResult{
+						ExceptionType:      "DUPLICATE_EVENT",
+						Severity:           "MEDIUM",
+						LikelyReason:       "Duplicate event triggered unnecessary internal reprocessing for status 'paid'",
+						InternalNextAction: "Investigate consumer idempotency and reduce redundant processing",
+						ConfidenceScore:    0.96,
+					}
+				default:
+					return &RuleBasedResult{
+						ExceptionType:      "DUPLICATE_EVENT",
+						Severity:           "LOW",
+						LikelyReason:       fmt.Sprintf("Duplicate event detected: status '%s' received more than once with no side effect", e.NewStatus),
+						InternalNextAction: "Log and monitor event source for retry behavior",
+						ConfidenceScore:    0.98,
+					}
 				}
 			}
+			seen[e.NewStatus] = true
 		}
 	}
-
 	return nil
 }
 
-// detectRefundAnomaly detects anomalous refund scenarios:
-// - CRITICAL: refunded directly from "created" (order was never paid)
-// - HIGH: refunded directly from "paid" (skipped normal cancellation flow, potential double refund)
-func detectRefundAnomaly(aiCtx *models.AIContext) *RuleBasedResult {
-	if aiCtx.CurrentStatus != models.ORDER_STATUS_REFUNDED {
-		return nil
+func detectSkippedStatuses(events []models.AIEvent) *RuleBasedResult {
+	statusIdx := map[models.OrderStatus]int{
+		models.ORDER_STATUS_CREATED:   0,
+		models.ORDER_STATUS_PAID:      1,
+		models.ORDER_STATUS_PACKED:    2,
+		models.ORDER_STATUS_SHIPPED:   3,
+		models.ORDER_STATUS_DELIVERED: 4,
 	}
 
-	// Walk the event history looking for the transition INTO refunded
-	for _, e := range aiCtx.Events {
-		if e.NewStatus == models.ORDER_STATUS_REFUNDED {
-			switch e.PreviousStatus {
-			case models.ORDER_STATUS_CREATED:
-				// Refunded from created = order was never paid
-				return &RuleBasedResult{
-					ExceptionType:      "REFUND_ANOMALY",
-					Severity:           "CRITICAL",
-					LikelyReason:       "Refund was processed for an order that was never paid",
-					InternalNextAction: "Immediately investigate payment gateway logs. Reverse the refund transaction if fraudulent. Escalate to finance team.",
-					ConfidenceScore:    1.0,
+	for _, e := range events {
+		if e.PreviousStatus == "" || e.NewStatus == "" {
+			continue
+		}
+
+		if e.PreviousStatus == models.ORDER_STATUS_CREATED && e.NewStatus == models.ORDER_STATUS_REFUNDED {
+			return &RuleBasedResult{
+				ExceptionType:      "SKIPPED_STATUS",
+				Severity:           "CRITICAL",
+				LikelyReason:       "Order transitioned from 'created' directly to 'refunded', skipping required status 'paid'",
+				InternalNextAction: "Perform immediate data integrity audit and investigate the processing pipeline",
+				ConfidenceScore:    0.99,
+			}
+		}
+
+		prevIdx, prevOk := statusIdx[e.PreviousStatus]
+		newIdx, newOk := statusIdx[e.NewStatus]
+
+		if prevOk && newOk {
+			skipCount := newIdx - prevIdx - 1
+			if skipCount == 1 {
+				if e.PreviousStatus == models.ORDER_STATUS_CREATED && e.NewStatus == models.ORDER_STATUS_PACKED {
+					return &RuleBasedResult{
+						ExceptionType:      "SKIPPED_STATUS",
+						Severity:           "LOW",
+						LikelyReason:       "Order transitioned from 'created' directly to 'packed', skipping required status 'paid'",
+						InternalNextAction: "Review event logs and monitor for additional anomalies",
+						ConfidenceScore:    0.88,
+					}
+				} else {
+					return &RuleBasedResult{
+						ExceptionType:      "SKIPPED_STATUS",
+						Severity:           "MEDIUM",
+						LikelyReason:       fmt.Sprintf("Order transitioned from '%s' directly to '%s', skipping a required fulfillment status", e.PreviousStatus, e.NewStatus),
+						InternalNextAction: "Investigate the order processing pipeline and verify status generation",
+						ConfidenceScore:    0.92,
+					}
 				}
-			case models.ORDER_STATUS_PAID:
-				// Refunded directly from paid without going through cancellation
+			} else if skipCount == 2 {
 				return &RuleBasedResult{
-					ExceptionType:      "REFUND_ANOMALY",
+					ExceptionType:      "SKIPPED_STATUS",
 					Severity:           "HIGH",
-					LikelyReason:       "Refund was processed directly from paid status — potential double refund or bypassed cancellation flow",
-					InternalNextAction: "Verify refund legitimacy with payment team. Check for duplicate refund requests. Audit payment gateway records.",
-					ConfidenceScore:    1.0,
+					LikelyReason:       fmt.Sprintf("Order skipped multiple required statuses: '%s' to '%s'", e.PreviousStatus, e.NewStatus),
+					InternalNextAction: "Escalate to the responsible engineering team and investigate workflow integrity",
+					ConfidenceScore:    0.95,
+				}
+			} else if skipCount >= 3 {
+				return &RuleBasedResult{
+					ExceptionType:      "SKIPPED_STATUS",
+					Severity:           "CRITICAL",
+					LikelyReason:       fmt.Sprintf("Order transitioned from '%s' directly to '%s', skipping several mandatory lifecycle stages", e.PreviousStatus, e.NewStatus),
+					InternalNextAction: "Perform immediate data integrity audit and investigate the processing pipeline",
+					ConfidenceScore:    0.99,
 				}
 			}
 		}
 	}
-
 	return nil
+}
+
+func detectInvalidTransitions(events []models.AIEvent) *RuleBasedResult {
+	for _, e := range events {
+		if e.PreviousStatus == "" || e.NewStatus == "" || e.PreviousStatus == e.NewStatus {
+			continue
+		}
+		if !models.IsValidTransition(e.PreviousStatus, e.NewStatus) {
+			return &RuleBasedResult{
+				ExceptionType:      "INVALID_TRANSITION",
+				Severity:           "CRITICAL",
+				LikelyReason:       fmt.Sprintf("Attempted invalid transition from '%s' to '%s'", e.PreviousStatus, e.NewStatus),
+				InternalNextAction: "Block processing immediately and perform data consistency checks",
+				ConfidenceScore:    0.99,
+			}
+		}
+	}
+	return nil
+}
+
+func detectStuckOrder(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
+	currentStatus := aiCtx.CurrentStatus
+
+	threshold, exists := stuckThresholds[currentStatus]
+	if !exists {
+		return nil
+	}
+
+	lastActivityAt := aiCtx.CreatedAt
+	if len(aiCtx.Events) > 0 {
+		lastEvent := aiCtx.Events[len(aiCtx.Events)-1]
+		if lastEvent.EventAt.After(lastActivityAt) {
+			lastActivityAt = lastEvent.EventAt
+		}
+	}
+
+	age := now.Sub(lastActivityAt)
+	if age <= threshold {
+		return nil
+	}
+
+	ratio := float64(age) / float64(threshold)
+	hours := int(age.Hours())
+
+	if ratio <= 1.25 {
+		return &RuleBasedResult{
+			ExceptionType:      "STUCK_ORDER",
+			Severity:           "LOW",
+			LikelyReason:       fmt.Sprintf("Order has been in '%s' status for %d hours, slightly exceeding the normal threshold", currentStatus, hours),
+			InternalNextAction: "Monitor and notify the responsible team",
+			ConfidenceScore:    0.85,
+		}
+	} else if ratio <= 2.0 {
+		return &RuleBasedResult{
+			ExceptionType:      "STUCK_ORDER",
+			Severity:           "MEDIUM",
+			LikelyReason:       fmt.Sprintf("Order has been in '%s' status for %d hours without progressing", currentStatus, hours),
+			InternalNextAction: "Investigate the delay and contact the responsible team",
+			ConfidenceScore:    0.90,
+		}
+	} else if ratio <= 3.0 {
+		return &RuleBasedResult{
+			ExceptionType:      "STUCK_ORDER",
+			Severity:           "HIGH",
+			LikelyReason:       fmt.Sprintf("Order has been in '%s' status for %d hours, exceeding 2× the normal threshold", currentStatus, hours),
+			InternalNextAction: "Escalate to the team lead and investigate immediately",
+			ConfidenceScore:    0.94,
+		}
+	} else {
+		return &RuleBasedResult{
+			ExceptionType:      "STUCK_ORDER",
+			Severity:           "CRITICAL",
+			LikelyReason:       fmt.Sprintf("Order has been in '%s' status for %d hours, exceeding 3× the normal threshold", currentStatus, hours),
+			InternalNextAction: "Urgently escalate to operations management and investigate immediately",
+			ConfidenceScore:    0.97,
+		}
+	}
 }

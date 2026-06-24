@@ -229,8 +229,8 @@ func TestExceptionAnalyzer_FallbackProducesValidResult(t *testing.T) {
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonDisabled, result.FallbackReason)
 	assert.Equal(t, "SKIPPED_STATUS", result.ExceptionType)
-	assert.Equal(t, "HIGH", result.Severity)
-	assert.Equal(t, 1.0, result.ConfidenceScore)
+	assert.Equal(t, "CRITICAL", result.Severity)
+	assert.Equal(t, 0.99, result.ConfidenceScore)
 	assert.NotEmpty(t, result.LikelyReason)
 	assert.NotEmpty(t, result.InternalNextAction)
 }
