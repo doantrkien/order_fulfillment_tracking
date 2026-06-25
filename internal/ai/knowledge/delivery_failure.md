@@ -5,6 +5,10 @@ Exception Type: DELIVERY_FAILURE
 Applicable When:
 Order is in shipped status and a delivery attempt fails due to a driver-reported issue.
 
+Exceptions (Alternative Delivery Success):
+If the driver note indicates the customer was unreachable BUT the package was successfully left in a safe/approved location (e.g., reception desk, security guard, neighbor, front door), this is a SUCCESSFUL alternative delivery.
+DO NOT classify as DELIVERY_FAILURE. Classify as OTHER with LOW severity, and recommend monitoring or no action.
+
 ## Severity Classification
 ### LOW — Temporary / Minor Issue
 Condition

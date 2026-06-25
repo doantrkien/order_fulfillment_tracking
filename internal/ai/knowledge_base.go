@@ -21,6 +21,9 @@ var kbBodyDuplicateEvent string
 //go:embed knowledge/skipped_status.md
 var kbBodySkippedStatus string
 
+//go:embed knowledge/alternative_success.md
+var kbBodyAlternativeSuccess string
+
 type KnowledgeEntry struct {
 	Title string
 	Body  string
@@ -52,6 +55,11 @@ var kbSkippedStatus = KnowledgeEntry{
 	Body:  kbBodySkippedStatus,
 }
 
+var kbAlternativeSuccess = KnowledgeEntry{
+	Title: "Alternative Delivery Success",
+	Body:  kbBodyAlternativeSuccess,
+}
+
 var deliveryFailureKeywordsKB = []string{
 	"lost", "stolen", "cannot find", "missing parcel", "hàng bị mất", "nghi thất lạc",
 
@@ -77,12 +85,23 @@ var stuckKeywordsKB = []string{
 	"trễ", "chậm", "không tiến triển",
 }
 
+var successKeywordsKB = []string{
+	"reception", "lễ tân", "neighbor", "hàng xóm", "bảo vệ", "security", "front door", "trước cửa", "thành công", "delivered",
+}
+
 func ClassifyDriverNote(note string) []KnowledgeEntry {
 	lower := strings.ToLower(strings.TrimSpace(note))
 	entries := []KnowledgeEntry{kbStateMachine} // always present
 
 	matched := false
-	if containsAny(lower, deliveryFailureKeywordsKB) {
+	isSuccessAlternative := containsAny(lower, successKeywordsKB)
+
+	if isSuccessAlternative {
+		entries = append(entries, kbAlternativeSuccess)
+		matched = true
+	}
+
+	if containsAny(lower, deliveryFailureKeywordsKB) && !isSuccessAlternative {
 		entries = append(entries, kbDeliveryFailure)
 		matched = true
 	}
