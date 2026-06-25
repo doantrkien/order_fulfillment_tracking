@@ -3,7 +3,7 @@
 Exception Type: OTHER
 
 Applicable When:
-The driver note indicates the package was successfully left in a safe/approved location (e.g., reception desk, security guard, neighbor, front door) because the customer was temporarily unreachable.
+The driver note indicates the package was successfully left in a safe/approved location (e.g., reception desk, security guard, neighbor, front door) either per the customer's request or because the customer was temporarily unreachable.
 
 This is a SUCCESSFUL delivery, NOT a failure.
 
@@ -28,7 +28,7 @@ Output
 {
   "exception_type": "OTHER",
   "severity": "LOW",
-  "likely_reason": "[Summarize the driver note comprehensively, including whether the customer was contacted and the final package location. Do not copy this placeholder.]",
+  "likely_reason": "[Summarize the driver note comprehensively. State exactly whether the customer was contacted (if mentioned) and the final package location. DO NOT hallucinate that the customer was unreachable if the note says they were contacted. Do not copy this placeholder.]",
   "internal_next_action": "Log and monitor for future delivery attempts",
   "confidence_score": 0.95
 }
