@@ -10,7 +10,6 @@ import (
 	"main/internal/dto"
 )
 
-
 type DraftResult struct {
 	CustomerUpdateDraft string
 	ConfidenceScore     float64
@@ -157,7 +156,7 @@ func shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
 }
 
 func buildFallbackDraftMessage(input dto.CustomerUpdateDraftInput) string {
-	return GetFallbackTemplate(input.ExceptionType)
+	return GetFallbackTemplate(input.ExceptionType, input.CustomerName, input.ShippingAddress)
 }
 
 func stripDraftFences(s string) string {

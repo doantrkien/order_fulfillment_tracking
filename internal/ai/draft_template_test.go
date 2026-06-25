@@ -23,7 +23,7 @@ func TestGetFallbackTemplate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.exceptionType, func(t *testing.T) {
-			got := GetFallbackTemplate(tc.exceptionType)
+			got := GetFallbackTemplate(tc.exceptionType, "John Doe", "123 Main St")
 			assert.Contains(t, got, "[REDACTED_CUSTOMER_NAME]")
 			assert.Contains(t, got, tc.wantContains)
 		})

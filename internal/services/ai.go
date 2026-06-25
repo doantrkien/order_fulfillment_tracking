@@ -103,7 +103,6 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		channel = "email"
 	}
 
-
 	lastestException, err := s.aiRepo.GetLatestAnalysisByOrderID(ctx, req.OrderID)
 	if err != nil {
 		return nil, errs.ERR_NOT_FOUND
@@ -120,6 +119,7 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		Channel:         channel,
 	}
 
+	fmt.Println(adapterInput)
 
 	result, err := s.draftGenerator.Generate(ctx, adapterInput)
 	if err != nil {

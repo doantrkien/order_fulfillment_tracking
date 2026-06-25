@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"main/errs"
@@ -79,6 +80,8 @@ func (g *aiAdapter) DraftCustomerUpdate(
 	if err != nil {
 		return "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
 	}
+
+	fmt.Print(rawText)
 
 	return rawText, nil
 }
