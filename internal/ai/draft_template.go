@@ -1,6 +1,9 @@
 package ai
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 var CustomerUpdateFallbackTemplates = map[string]string{
 	// Group 1: Stuck Order
@@ -14,12 +17,21 @@ var CustomerUpdateFallbackTemplates = map[string]string{
 	"SKIPPED_STATUS":     "Hello %s, we noticed an unusual update in your order processing progress. We are checking internally and will provide you with the most accurate update as soon as possible.",
 	"DUPLICATE_EVENT":    "Hello %s, the system recorded a duplicate in your order status history. The operations department is resolving this inconsistency — your delivery progress will not be affected.",
 
-	// Group 4: Default Fallback
+	// Group 4: Delivered
+	"DELIVERED": "Hello %s, your order has been successfully delivered. Please check the delivery notes for more details.",
+
+	// Group 5: Default Fallback
 	"OTHER":   "Hello %s, we are processing an issue that has arisen regarding your order. We will update you with detailed information and the next steps as soon as possible.",
 	"DEFAULT": "Hello %s, we are verifying your order information due to an unexpected issue. Our support team will send you the latest update as soon as possible.",
 }
 
-func GetFallbackTemplate(exceptionType, customerName, shippingAddress string) string {
+func GetFallbackTemplate(exceptionType, customerName, shippingAddress, currentStatus string) string {
+	// If the order is already delivered, prioritize the DELIVERED template
+	// regardless of the exception type (e.g. "OTHER" with a driver note).
+	if strings.ToUpper(currentStatus) == "DELIVERED" || strings.ToUpper(currentStatus) == "COMPLETED" {
+		return fmt.Sprintf(CustomerUpdateFallbackTemplates["DELIVERED"], customerName)
+	}
+
 	template, exists := CustomerUpdateFallbackTemplates[exceptionType]
 	if !exists {
 		template = CustomerUpdateFallbackTemplates["DEFAULT"]

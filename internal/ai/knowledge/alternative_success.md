@@ -18,7 +18,7 @@ Giao cho hàng xóm
 Likely Impact
 Order is completed successfully.
 Internal Next Action
-Log and monitor for future delivery attempts
+No action required. Order is fulfilled successfully.
 
 # Example Output
 Input
@@ -29,6 +29,6 @@ Output
   "exception_type": "OTHER",
   "severity": "LOW",
   "likely_reason": "[Summarize the driver note comprehensively. State exactly whether the customer was contacted (if mentioned) and the final package location. DO NOT hallucinate that the customer was unreachable if the note says they were contacted. Do not copy this placeholder.]",
-  "internal_next_action": "Log and monitor for future delivery attempts",
+  "internal_next_action": "No action required. Order is fulfilled successfully.",
   "confidence_score": 0.95
 }

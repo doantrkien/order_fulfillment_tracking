@@ -156,7 +156,7 @@ func shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
 }
 
 func buildFallbackDraftMessage(input dto.CustomerUpdateDraftInput) string {
-	return GetFallbackTemplate(input.ExceptionType, input.CustomerName, input.ShippingAddress)
+	return GetFallbackTemplate(input.ExceptionType, input.CustomerName, input.ShippingAddress, input.CurrentStatus)
 }
 
 func stripDraftFences(s string) string {
