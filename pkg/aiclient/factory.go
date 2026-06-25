@@ -10,14 +10,6 @@ import (
 	"main/pkg/ollama"
 )
 
-// NewFromEnv reads the AI_PROVIDER environment variable and returns the
-// corresponding AIClient implementation.
-//
-// Supported values (case-insensitive):
-//
-//	AI_PROVIDER=GEMINI  → uses pkg/gemini  (default, requires GEMINI_API_KEY + GEMINI_AI_MODEL)
-//	AI_PROVIDER=GROQ    → uses pkg/groq    (requires GROQ_API_KEY, optional GROQ_MODEL)
-//	AI_PROVIDER=OLLAMA  → uses pkg/ollama  (requires OLLAMA_BASE_URL, OLLAMA_MODEL)
 func NewFromEnv() (AIClient, error) {
 	provider := strings.ToUpper(strings.TrimSpace(os.Getenv("AI_PROVIDER")))
 	if provider == "" {
@@ -40,4 +32,3 @@ func NewFromEnv() (AIClient, error) {
 		return nil, fmt.Errorf("unsupported AI_PROVIDER %q — supported values: GEMINI, GROQ, OLLAMA", provider)
 	}
 }
-
