@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/datatypes"
 )
 
@@ -154,6 +155,7 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 	}
 
 	confidence := result.ConfidenceScore
+	reqID := uuid.NewString()
 	draft := &models.AICustomerUpdateDraft{
 		OrderID:               req.OrderID,
 		AIExceptionResultID:   &lastestException.ID,
@@ -167,6 +169,7 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		PromptTemplateVersion: ai.PromptTemplateVersion,
 		DurationMs:            durationMs,
 		ReviewStatus:          models.DraftReviewStatusPending,
+		RequestID:             &reqID,
 	}
 
 	if saveErr := s.aiDraftRepo.Save(ctx, draft); saveErr != nil {
@@ -225,6 +228,8 @@ func mapResultToModel(orderID int64, result *ai.AnalysisResult) *models.AIExcept
 		}
 	}
 
+	reqID := uuid.NewString()
+
 	return &models.AIException{
 		OrderID:               orderID,
 		ExceptionType:         result.ExceptionType,
@@ -237,6 +242,7 @@ func mapResultToModel(orderID int64, result *ai.AnalysisResult) *models.AIExcept
 		PromptTemplateVersion: ai.PromptTemplateVersion,
 		DurationMs:            durationMs,
 		RawResponse:           rawResponse,
+		RequestID:             &reqID,
 		EvaluatedAt:           now,
 	}
 }

@@ -35,7 +35,7 @@ func NewClient() (*Client, error) {
 
 	modelName := os.Getenv("GROQ_MODEL")
 	if modelName == "" {
-		modelName = "llama-3.3-70b-versatile"
+		modelName = "meta-llama/llama-4-scout-17b-16e-instruct"
 	}
 	fmt.Printf("[DEBUG][groq.NewClient] Model: %s\n", modelName)
 
@@ -122,7 +122,7 @@ func (c *Client) GenerateContent(ctx context.Context, prompt string) (string, er
 
 		var chatEndpoint = os.Getenv("GROQ_ENDPOINT")
 		if chatEndpoint == "" {
-			chatEndpoint = "/v1/chat/completions"
+			chatEndpoint = "/openai/v1/chat/completions"
 		}
 
 		req, reqErr := http.NewRequestWithContext(
