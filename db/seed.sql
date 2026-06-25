@@ -23,9 +23,9 @@ BEGIN
     VALUES ('driver_demo', 'driver@demo.com', '$2a$10$w/lW8qT/51/AwaF877oIL.k9wykL.PMMDe1kFQpfmpQeW0I2URgIi', 'driver')
     RETURNING id INTO driver_user_id;
 
-    RAISE NOTICE 'Start seed 1,000,000 orders and events...';
+    RAISE NOTICE 'Start seed 50,000 orders and events...';
 
-    FOR i IN 1..1000000 LOOP
+    FOR i IN 1..50000 LOOP
         selected_status := statuses[floor(random() * 7) + 1];
         
         -- Create a base timestamp for this order (some time in the last 30 days)
@@ -42,35 +42,35 @@ BEGIN
         ) RETURNING id INTO new_order_id;
         
         -- Insert events sequentially to represent real transitions
-        -- Initial event: created
-        INSERT INTO order_events (order_id, new_status, event_at, created_at, updated_by)
-        VALUES (new_order_id, 'created', base_time, base_time, 'system');
+        -- Initial event: created (no previous status)
+        INSERT INTO order_events (order_id, previous_status, new_status, event_at, created_at, updated_by)
+        VALUES (new_order_id, 'none', 'created', base_time, base_time, 'system');
         
         -- Sequential events depending on selected_status
         IF selected_status = 'cancelled' THEN
-            INSERT INTO order_events (order_id, new_status, event_at, created_at, updated_by)
-            VALUES (new_order_id, 'cancelled', base_time + '10 minutes'::interval, base_time + '10 minutes'::interval, 'system');
+            INSERT INTO order_events (order_id, previous_status, new_status, event_at, created_at, updated_by)
+            VALUES (new_order_id, 'created', 'cancelled', base_time + '10 minutes'::interval, base_time + '10 minutes'::interval, 'system');
             
         ELSIF selected_status IN ('paid', 'packed', 'shipped', 'delivered', 'refunded') THEN
-            INSERT INTO order_events (order_id, new_status, event_at, created_at, updated_by)
-            VALUES (new_order_id, 'paid', base_time + '30 minutes'::interval, base_time + '30 minutes'::interval, 'system');
+            INSERT INTO order_events (order_id, previous_status, new_status, event_at, created_at, updated_by)
+            VALUES (new_order_id, 'created', 'paid', base_time + '30 minutes'::interval, base_time + '30 minutes'::interval, 'system');
             
             IF selected_status = 'refunded' THEN
-                INSERT INTO order_events (order_id, new_status, event_at, created_at, updated_by)
-                VALUES (new_order_id, 'refunded', base_time + '1 hour'::interval, base_time + '1 hour'::interval, 'system');
+                INSERT INTO order_events (order_id, previous_status, new_status, event_at, created_at, updated_by)
+                VALUES (new_order_id, 'paid', 'refunded', base_time + '1 hour'::interval, base_time + '1 hour'::interval, 'system');
             ELSIF selected_status IN ('packed', 'shipped', 'delivered') THEN
-                INSERT INTO order_events (order_id, new_status, event_at, created_at, updated_by)
-                VALUES (new_order_id, 'packed', base_time + '2 hours'::interval, base_time + '2 hours'::interval, 'system');
+                INSERT INTO order_events (order_id, previous_status, new_status, event_at, created_at, updated_by)
+                VALUES (new_order_id, 'paid', 'packed', base_time + '2 hours'::interval, base_time + '2 hours'::interval, 'system');
                 
                 IF selected_status IN ('shipped', 'delivered') THEN
                     -- Driver is assigned and updates status to shipped
-                    INSERT INTO order_events (order_id, new_status, event_at, created_at, updated_by, driver_id)
-                    VALUES (new_order_id, 'shipped', base_time + '4 hours'::interval, base_time + '4 hours'::interval, 'driver_demo', driver_user_id);
+                    INSERT INTO order_events (order_id, previous_status, new_status, event_at, created_at, updated_by, driver_id)
+                    VALUES (new_order_id, 'packed', 'shipped', base_time + '4 hours'::interval, base_time + '4 hours'::interval, 'driver_demo', driver_user_id);
                     
                     IF selected_status = 'delivered' THEN
                         -- Driver updates status to delivered
-                        INSERT INTO order_events (order_id, new_status, event_at, created_at, updated_by, driver_id)
-                        VALUES (new_order_id, 'delivered', base_time + '5 hours'::interval, base_time + '5 hours'::interval, 'driver_demo', driver_user_id);
+                        INSERT INTO order_events (order_id, previous_status, new_status, event_at, created_at, updated_by, driver_id)
+                        VALUES (new_order_id, 'shipped', 'delivered', base_time + '5 hours'::interval, base_time + '5 hours'::interval, 'driver_demo', driver_user_id);
                     END IF;
                 END IF;
             END IF;
