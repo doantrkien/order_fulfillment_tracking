@@ -33,7 +33,7 @@ type ExceptionInput struct {
 	CustomerName    string        `json:"customer_name"`
 	ShippingAddress string        `json:"shipping_address"`
 	CreatedAt       string        `json:"created_at"`
-	ErrorMessage    string        `json:"error_message"`
+	DriverNotes     string        `json:"driver_notes"`
 	EventHistory    []EventRecord `json:"event_history"`
 }
 

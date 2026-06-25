@@ -9,7 +9,6 @@ import (
 	"main/response"
 	"strconv"
 
-	"github.com/go-playground/validator"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -28,7 +27,6 @@ func NewAIHandler(aiService services.AIService) *AIHandler {
 // @Accept json
 // @Produce json
 // @Param id path int true "Order ID"
-// @Param request body dto.AnalyzeExceptionRequest false "Optional analysis context notes"
 // @Success 200 {object} response.ResponseStruct{data=dto.AnalyzeExceptionResponse}
 // @Failure 400 {object} response.ErrorBadReqResponse
 // @Failure 401 {object} response.ErrorUnauthenticatedResponse
@@ -44,14 +42,15 @@ func (h *AIHandler) AnalyzeException(c fiber.Ctx) error {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
 
-	var req dto.AnalyzeExceptionRequest
-	_ = c.Bind().Body(&req)
+	// var req dto.AnalyzeExceptionRequest
+	// _ = c.Bind().Body(&req)
 
-	if err := validator.New().Struct(req); err != nil {
-		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
-	}
+	// if err := validator.New().Struct(req); err != nil {
+	// 	return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	// }
 
-	result, err := h.aiService.AnalyzeException(c.Context(), orderID, req.Note)
+	// result, err := h.aiService.AnalyzeException(c.Context(), orderID, req.Note)
+	result, err := h.aiService.AnalyzeException(c.Context(), orderID)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) {
 			return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)

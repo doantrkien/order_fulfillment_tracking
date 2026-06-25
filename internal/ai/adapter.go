@@ -45,14 +45,16 @@ func (g *aiAdapter) AnalyzeException(
 		CustomerName:    input.CustomerName,
 		ShippingAddress: input.ShippingAddress,
 		CreatedAt:       input.CreatedAt,
-		DriverNotes:     input.ErrorMessage,
+		DriverNotes:     input.DriverNotes,
 		EventTimeline:   timeline,
 		AnalyzedAt:      time.Now().Format(time.RFC3339),
 	}
 
+	fmt.Println("Prompt Context:", promptCtx.DriverNotes)
+
 	SanitizePromptContext(&promptCtx)
 
-	knowledge := ClassifyDriverNote(input.ErrorMessage)
+	knowledge := ClassifyDriverNote(input.DriverNotes)
 	prompt := BuildExceptionAnalysisPrompt(promptCtx, knowledge)
 
 	rawText, err := g.client.GenerateContent(ctx, prompt)

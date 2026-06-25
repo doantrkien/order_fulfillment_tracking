@@ -86,7 +86,8 @@ func (w *EvaluationWorker) Run(runID int64, cases []dto.EvaluationCase) {
 				aiCtx := buildAIContextFromSyntheticInput(evalCase.SyntheticInput)
 
 				// 4.2 Run AI Analysis
-				analysisResult, err := w.analyzer.Analyze(ctx, aiCtx, "")
+				// analysisResult, err := w.analyzer.Analyze(ctx, aiCtx, "")
+				analysisResult, err := w.analyzer.Analyze(ctx, aiCtx)
 
 				// 4.3 Compare Result
 				var caseResult *ai.CaseResult

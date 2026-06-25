@@ -294,14 +294,6 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "Optional analysis context notes",
-                        "name": "request",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/dto.AnalyzeExceptionRequest"
-                        }
                     }
                 ],
                 "responses": {
@@ -1022,16 +1014,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "dto.AnalyzeExceptionRequest": {
-            "type": "object",
-            "properties": {
-                "note": {
-                    "type": "string",
-                    "maxLength": 500,
-                    "example": "Phân tích đơn hàng này hộ tôi"
-                }
-            }
-        },
         "dto.AnalyzeExceptionResponse": {
             "type": "object",
             "properties": {

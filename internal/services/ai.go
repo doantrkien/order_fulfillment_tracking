@@ -17,7 +17,8 @@ import (
 )
 
 type AIService interface {
-	AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
+	// AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
+	AnalyzeException(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error)
 	GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error)
 	GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIRequest) (*dto.GenerateDraftAPIResponse, error)
 	TriggerEvaluation(ctx context.Context, req dto.TriggerEvaluationRequest) (*dto.TriggerEvaluationResponse, error)
@@ -43,14 +44,16 @@ func NewAIService(aiRepo repositories.AIRepository, analyzer *ai.ExceptionAnalyz
 	}
 }
 
-func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error) {
+// func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error) {
+func (s *aiService) AnalyzeException(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error) {
 
 	aiCtx, err := s.aiRepo.GetAIContextByOrderID(ctx, orderID)
 	if err != nil {
 		return nil, errs.ERR_NOT_FOUND
 	}
 
-	result, err := s.analyzer.Analyze(ctx, aiCtx, notes)
+	// result, err := s.analyzer.Analyze(ctx, aiCtx, notes)
+	result, err := s.analyzer.Analyze(ctx, aiCtx)
 	if err != nil {
 		return nil, fmt.Errorf("Error in Analyze Service: %w", err)
 	}
