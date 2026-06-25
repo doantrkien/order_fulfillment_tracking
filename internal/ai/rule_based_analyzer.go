@@ -50,21 +50,21 @@ var deliveryFailureLowKeywords = []string{
 	"khách không nghe máy tạm thời",
 }
 
+type RuleFunc func(aiCtx *models.AIContext, now time.Time) *RuleBasedResult
+
+var rules = []RuleFunc{
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDeliveryFailure(ctx) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDuplicateEvents(ctx.Events) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectSkippedStatuses(ctx.Events) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectInvalidTransitions(ctx.Events) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectStuckOrder(ctx, now) },
+}
+
 func AnalyzeByRules(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
-	if r := detectDeliveryFailure(aiCtx); r != nil {
-		return r
-	}
-	if r := detectDuplicateEvents(aiCtx.Events); r != nil {
-		return r
-	}
-	if r := detectSkippedStatuses(aiCtx.Events); r != nil {
-		return r
-	}
-	if r := detectInvalidTransitions(aiCtx.Events); r != nil {
-		return r
-	}
-	if r := detectStuckOrder(aiCtx, now); r != nil {
-		return r
+	for _, rule := range rules {
+		if r := rule(aiCtx, now); r != nil {
+			return r
+		}
 	}
 	return nil
 }

@@ -68,11 +68,6 @@ func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContex
 		return ruleResultToAnalysis(ruleResult, reason, 0, ""), nil
 	}
 
-	// ── Step 3b: Skip AI if order is completely healthy
-	if ruleResult == nil {
-		return ea.fallbackWithRaw(aiCtx, FallbackReasonEarlyNoteIgnored, 0, "", now), nil
-	}
-
 	// ── Step 4: Call AI
 	// input := buildExceptionInput(aiCtx, notes)
 	input := buildExceptionInput(aiCtx)
