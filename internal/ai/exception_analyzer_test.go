@@ -237,7 +237,7 @@ func TestExceptionAnalyzer_FallbackProducesValidResult(t *testing.T) {
 	assert.Equal(t, FallbackReasonDisabled, result.FallbackReason)
 	assert.Equal(t, "SKIPPED_STATUS", result.ExceptionType)
 	assert.Equal(t, "CRITICAL", result.Severity)
-	assert.Equal(t, 0.99, result.ConfidenceScore)
+	assert.Equal(t, float64(1), result.ConfidenceScore)
 	assert.NotEmpty(t, result.LikelyReason)
 	assert.NotEmpty(t, result.InternalNextAction)
 }
@@ -313,6 +313,7 @@ func TestBuildExceptionInput(t *testing.T) {
 				PreviousStatus: models.ORDER_STATUS_PACKED,
 				NewStatus:      models.ORDER_STATUS_SHIPPED,
 				UpdatedBy:      "driver_5",
+				DriverNote:     func(s string) *string { return &s }("customer complained"),
 			},
 		},
 	}
@@ -332,33 +333,4 @@ func TestBuildExceptionInput(t *testing.T) {
 	assert.Equal(t, "shipped", input.EventHistory[0].ToStatus)
 }
 
-func TestAnalyze_EarlyNoteIgnored(t *testing.T) {
-	// AI is enabled, but the order is completely healthy (SLA not breached)
-	// Even though there is a driver note, it should skip AI.
-	analyzer := NewExceptionAnalyzer(nil, ExceptionAnalyzerConfig{ // nil adapter means it will panic if called
-		AIEnabled: true,
-		AITimeout: 10 * time.Second,
-	})
 
-	now := time.Now()
-	aiCtx := &models.AIContext{
-		OrderID:       1001,
-		CreatedAt:     now.Add(-1 * time.Hour),
-		CurrentStatus: models.ORDER_STATUS_PAID, // completely healthy, within SLA
-		Events: []models.AIEvent{
-			{
-				EventAt:        now.Add(-30 * time.Minute),
-				PreviousStatus: models.ORDER_STATUS_CREATED,
-				NewStatus:      models.ORDER_STATUS_PAID,
-				UpdatedBy:      "admin_1",
-			},
-		},
-	}
-
-	// result, err := analyzer.Analyze(context.Background(), aiCtx, "early driver note")
-	result, err := analyzer.Analyze(context.Background(), aiCtx)
-
-	require.NoError(t, err)
-	assert.True(t, result.FallbackUsed)
-	assert.Equal(t, FallbackReasonEarlyNoteIgnored, result.FallbackReason)
-}

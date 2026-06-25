@@ -12,7 +12,7 @@ func TestGetFallbackTemplate(t *testing.T) {
 		wantContains  string
 	}{
 		{"STUCK_ORDER", "slower than expected"},
-		{"DELIVERY_FAILURE", "order to [REDACTED_SHIPPING_ADDRESS]"},
+		{"DELIVERY_FAILURE", "order to 123 Main St"},
 		{"INVALID_TRANSITION", "status mismatch during your order"},
 		{"SKIPPED_STATUS", "unusual update"},
 		{"DUPLICATE_EVENT", "recorded a duplicate"},
@@ -24,7 +24,7 @@ func TestGetFallbackTemplate(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.exceptionType, func(t *testing.T) {
 			got := GetFallbackTemplate(tc.exceptionType, "John Doe", "123 Main St")
-			assert.Contains(t, got, "[REDACTED_CUSTOMER_NAME]")
+			assert.Contains(t, got, "John Doe")
 			assert.Contains(t, got, tc.wantContains)
 		})
 	}

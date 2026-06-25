@@ -26,6 +26,19 @@ func resetFakeAIAdapter() {
 	}
 }
 
+func seedOrderWithNote(t *testing.T, totalAmount int64, status models.OrderStatus, note string, eventAt time.Time) models.Order {
+	order := seedOrder(t, totalAmount, status)
+	err := db.Create(&models.OrderEvent{
+		OrderID:        order.ID,
+		PreviousStatus: "",
+		NewStatus:      status,
+		EventAt:        eventAt,
+		DriverNote:     &note,
+	}).Error
+	require.NoError(t, err)
+	return order
+}
+
 func TestIntegrationAIFallbackFlow(t *testing.T) {
 	t.Cleanup(func() {
 		resetFakeAIAdapter()
@@ -37,7 +50,7 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		cleanAll()
 
 		// Seed a fresh order
-		order := seedOrder(t, 10000, models.ORDER_STATUS_PACKED)
+		order := seedOrderWithNote(t, 10000, models.ORDER_STATUS_CREATED, "test", time.Now())
 
 		// Mock standard successful AI response (must use a valid exception type, e.g. STUCK_ORDER)
 		testFakeAIAdapter.ExpectedOutput = dto.ExceptionOutput{
@@ -83,9 +96,9 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resetFakeAIAdapter()
 		cleanAll()
 
-		// Seed order that is stuck (packed and updated 30 hours ago) to trigger STUCK_ORDER fallback with HIGH severity (base severity)
-		order := seedOrder(t, 15000, models.ORDER_STATUS_PACKED)
 		thirtyHoursAgo := time.Now().Add(-55 * time.Hour)
+		// Seed order that is stuck (packed and updated 30 hours ago) to trigger STUCK_ORDER fallback with HIGH severity (base severity)
+		order := seedOrderWithNote(t, 15000, models.ORDER_STATUS_CREATED, "test", thirtyHoursAgo)
 		err := db.Model(&order).Updates(map[string]interface{}{
 			"created_at": thirtyHoursAgo,
 			"updated_at": thirtyHoursAgo,
@@ -125,8 +138,8 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resetFakeAIAdapter()
 		cleanAll()
 
-		order := seedOrder(t, 15000, models.ORDER_STATUS_PACKED)
 		thirtyHoursAgo := time.Now().Add(-55 * time.Hour)
+		order := seedOrderWithNote(t, 15000, models.ORDER_STATUS_CREATED, "test", thirtyHoursAgo)
 		err := db.Model(&order).Updates(map[string]interface{}{
 			"created_at": thirtyHoursAgo,
 			"updated_at": thirtyHoursAgo,
@@ -166,8 +179,8 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resetFakeAIAdapter()
 		cleanAll()
 
-		order := seedOrder(t, 15000, models.ORDER_STATUS_PACKED)
 		thirtyHoursAgo := time.Now().Add(-55 * time.Hour)
+		order := seedOrderWithNote(t, 15000, models.ORDER_STATUS_CREATED, "test", thirtyHoursAgo)
 		err := db.Model(&order).Updates(map[string]interface{}{
 			"created_at": thirtyHoursAgo,
 			"updated_at": thirtyHoursAgo,
@@ -207,8 +220,8 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resetFakeAIAdapter()
 		cleanAll()
 
-		order := seedOrder(t, 15000, models.ORDER_STATUS_PACKED)
 		thirtyHoursAgo := time.Now().Add(-55 * time.Hour)
+		order := seedOrderWithNote(t, 15000, models.ORDER_STATUS_CREATED, "test", thirtyHoursAgo)
 		err := db.Model(&order).Updates(map[string]interface{}{
 			"created_at": thirtyHoursAgo,
 			"updated_at": thirtyHoursAgo,
@@ -248,8 +261,8 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resetFakeAIAdapter()
 		cleanAll()
 
-		order := seedOrder(t, 15000, models.ORDER_STATUS_PACKED)
 		thirtyHoursAgo := time.Now().Add(-55 * time.Hour)
+		order := seedOrderWithNote(t, 15000, models.ORDER_STATUS_CREATED, "test", thirtyHoursAgo)
 		err := db.Model(&order).Updates(map[string]interface{}{
 			"created_at": thirtyHoursAgo,
 			"updated_at": thirtyHoursAgo,

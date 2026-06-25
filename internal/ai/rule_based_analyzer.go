@@ -58,6 +58,7 @@ var rules = []RuleFunc{
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectSkippedStatuses(ctx.Events) },
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectInvalidTransitions(ctx.Events) },
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectStuckOrder(ctx, now) },
+	detectHealthyDelivered,
 }
 
 func AnalyzeByRules(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
@@ -134,6 +135,19 @@ func detectDeliveryFailure(aiCtx *models.AIContext) *RuleBasedResult {
 		}
 	}
 
+	return nil
+}
+
+func detectHealthyDelivered(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
+	if aiCtx.CurrentStatus == models.ORDER_STATUS_DELIVERED {
+		return &RuleBasedResult{
+			ExceptionType:      "NONE",
+			Severity:           "LOW",
+			LikelyReason:       "Order delivered successfully with no abnormal events.",
+			InternalNextAction: "Close order, no action required.",
+			ConfidenceScore:    1.0,
+		}
+	}
 	return nil
 }
 

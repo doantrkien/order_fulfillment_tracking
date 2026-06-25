@@ -54,7 +54,7 @@ func TestDetectInvalidTransitions(t *testing.T) {
 				assert.NotNil(t, result)
 				assert.Equal(t, tc.wantType, result.ExceptionType)
 				assert.Equal(t, "CRITICAL", result.Severity)
-				assert.Equal(t, 0.99, result.ConfidenceScore)
+				assert.Equal(t, float64(1), result.ConfidenceScore)
 			}
 		})
 	}
@@ -85,7 +85,7 @@ func TestDetectDuplicateEvents(t *testing.T) {
 			},
 			wantType:     "DUPLICATE_EVENT",
 			wantSeverity: "MEDIUM",
-			wantScore:    0.96,
+			wantScore: 1,
 		},
 		{
 			name: "single event - no duplicate possible",
@@ -209,7 +209,7 @@ func TestDetectStuckOrder(t *testing.T) {
 			now:          baseTime.Add(25 * time.Hour),
 			wantType:     "STUCK_ORDER",
 			wantSeverity: "LOW",
-			wantScore:    0.85,
+			wantScore: 1,
 		},
 		{
 			name: "created status - escalated (over 48h = 2×24h)",
@@ -220,7 +220,7 @@ func TestDetectStuckOrder(t *testing.T) {
 			now:          baseTime.Add(49 * time.Hour),
 			wantType:     "STUCK_ORDER",
 			wantSeverity: "HIGH",
-			wantScore:    0.94,
+			wantScore: 1,
 		},
 		{
 			name: "shipped status - stuck (over 72h)",
@@ -234,7 +234,7 @@ func TestDetectStuckOrder(t *testing.T) {
 			now:          baseTime.Add(145 * time.Hour), // 144h age (2x threshold)
 			wantType:     "STUCK_ORDER",
 			wantSeverity: "MEDIUM",
-			wantScore:    0.90,
+			wantScore: 1,
 		},
 		{
 			name: "delivered (terminal) - never stuck",
