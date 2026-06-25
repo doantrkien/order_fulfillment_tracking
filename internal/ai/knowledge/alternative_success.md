@@ -28,7 +28,7 @@ Output
 {
   "exception_type": "OTHER",
   "severity": "LOW",
-  "likely_reason": "Customer was unreachable but package was left at reception desk",
+  "likely_reason": "[Summarize the driver note comprehensively, including whether the customer was contacted and the final package location. Do not copy this placeholder.]",
   "internal_next_action": "Log and monitor for future delivery attempts",
   "confidence_score": 0.95
 }
