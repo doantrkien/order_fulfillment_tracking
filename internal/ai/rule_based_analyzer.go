@@ -139,16 +139,26 @@ func detectDeliveryFailure(aiCtx *models.AIContext) *RuleBasedResult {
 }
 
 func detectHealthyDelivered(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
-	if aiCtx.CurrentStatus == models.ORDER_STATUS_DELIVERED {
-		return &RuleBasedResult{
-			ExceptionType:      "NONE",
-			Severity:           "LOW",
-			LikelyReason:       "Order delivered successfully with no abnormal events.",
-			InternalNextAction: "Close order, no action required.",
-			ConfidenceScore:    1.0,
+	if aiCtx.CurrentStatus != models.ORDER_STATUS_DELIVERED {
+		return nil
+	}
+
+	// If there are driver notes, this is an alternative delivery (deviation from
+	// happy path). Return nil so AI can analyze and classify as ALTERNATIVE_DELIVERY.
+	for _, e := range aiCtx.Events {
+		if e.DriverNote != nil && strings.TrimSpace(*e.DriverNote) != "" {
+			return nil
 		}
 	}
-	return nil
+
+	// No driver notes — truly a happy-path delivery, no exception to report.
+	return &RuleBasedResult{
+		ExceptionType:      "NONE",
+		Severity:           "LOW",
+		LikelyReason:       "Order delivered successfully with no abnormal events.",
+		InternalNextAction: "Close order, no action required.",
+		ConfidenceScore:    1.0,
+	}
 }
 
 func detectDuplicateEvents(events []models.AIEvent) *RuleBasedResult {
