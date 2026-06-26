@@ -2,8 +2,10 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -80,14 +82,21 @@ func (w *EvaluationWorker) Run(runID int64, cases []dto.EvaluationCase) {
 			}()
 
 			for evalCase := range jobs {
+				// fmt.Println("Processing case:", evalCase)
 				startTime := time.Now()
 
 				// 4.1 Build AI Context from synthetic input
 				aiCtx := buildAIContextFromSyntheticInput(evalCase.SyntheticInput)
 
+				fmt.Printf("Processing case %s\n", evalCase.CaseID)
+				jsonBytes, _ := json.MarshalIndent(aiCtx, "", "  ")
+				fmt.Printf("AI Context: %s\n", string(jsonBytes))
+
 				// 4.2 Run AI Analysis
 				// analysisResult, err := w.analyzer.Analyze(ctx, aiCtx, "")
 				analysisResult, err := w.analyzer.Analyze(ctx, aiCtx)
+
+				fmt.Printf("Analysis Result: %+v\n", analysisResult)
 
 				// 4.3 Compare Result
 				var caseResult *ai.CaseResult
@@ -232,6 +241,13 @@ func buildAIContextFromSyntheticInput(input dto.ExceptionInput) *models.AIContex
 			UpdatedBy:      eh.UpdatedBy,
 		})
 	}
+
+	// Map top-level driver_notes into the last event's DriverNote so that
+	// hasAnyDriverNote() can detect it and allow AI analysis to run.
+	if note := strings.TrimSpace(input.DriverNotes); note != "" && len(events) > 0 {
+		events[len(events)-1].DriverNote = &note
+	}
+
 	aiCtx.Events = events
 
 	return aiCtx

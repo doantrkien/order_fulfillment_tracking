@@ -310,7 +310,6 @@ func detectInvalidTransitions(events []models.AIEvent) *RuleBasedResult {
 		if e.PreviousStatus == "" || e.NewStatus == "" || e.PreviousStatus == e.NewStatus {
 			continue
 		}
-		fmt.Println("DEBUG", e.PreviousStatus, e.NewStatus)
 		if !models.IsValidTransition(e.PreviousStatus, e.NewStatus) {
 			return &RuleBasedResult{
 				ExceptionType:      "INVALID_TRANSITION",

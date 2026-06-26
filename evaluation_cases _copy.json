@@ -1,0 +1,316 @@
+{
+    "cases": [
+        {
+            "case_id": "case_01_invalid_transition_reverse_paid_to_created",
+            "synthetic_input": {
+                "order_id": 1001,
+                "current_status": "created",
+                "total_amount": 500000,
+                "customer_name": "Nguyen Van A",
+                "shipping_address": "123 Le Loi, HCM",
+                "created_at": "2026-06-18T08:00:00Z",
+                "driver_notes": "",
+                "event_history": [
+                    {
+                        "from_status": "",
+                        "to_status": "created",
+                        "event_at": "2026-06-18T08:00:00Z",
+                        "updated_by": "system"
+                    },
+                    {
+                        "from_status": "created",
+                        "to_status": "paid",
+                        "event_at": "2026-06-18T08:05:00Z",
+                        "updated_by": "system"
+                    },
+                    {
+                        "from_status": "paid",
+                        "to_status": "created",
+                        "event_at": "2026-06-18T08:10:00Z",
+                        "updated_by": "system"
+                    }
+                ]
+            },
+            "expected_exception_type": "INVALID_TRANSITION",
+            "expected_severity": "CRITICAL"
+        },
+        {
+            "case_id": "case_02_invalid_transition_shipped_to_packed",
+            "synthetic_input": {
+                "order_id": 1002,
+                "current_status": "packed",
+                "total_amount": 850000,
+                "customer_name": "Tran Thi B",
+                "shipping_address": "456 Nguyen Hue, HCM",
+                "created_at": "2026-06-18T07:00:00Z",
+                "driver_notes": "Tôi đã lấy hàng từ kho và đang trên đường giao. Giữa đường app báo lỗi và tự động đổi trạng thái về packed. Hàng vẫn đang trên xe tôi.",
+                "event_history": [
+                    {
+                        "from_status": "paid",
+                        "to_status": "packed",
+                        "event_at": "2026-06-18T07:30:00Z",
+                        "updated_by": "warehouse"
+                    },
+                    {
+                        "from_status": "packed",
+                        "to_status": "shipped",
+                        "event_at": "2026-06-18T08:00:00Z",
+                        "updated_by": "carrier"
+                    },
+                    {
+                        "from_status": "shipped",
+                        "to_status": "packed",
+                        "event_at": "2026-06-18T08:45:00Z",
+                        "updated_by": "system"
+                    }
+                ]
+            },
+            "expected_exception_type": "INVALID_TRANSITION",
+            "expected_severity": "CRITICAL"
+        },
+        {
+            "case_id": "case_05_skipped_status_created_to_shipped",
+            "synthetic_input": {
+                "order_id": 1005,
+                "current_status": "shipped",
+                "total_amount": 300000,
+                "customer_name": "Pham D",
+                "shipping_address": "111 Ly Thuong Kiet, Hanoi",
+                "created_at": "2026-06-15T08:00:00Z",
+                "driver_notes": "Tôi nhận hàng trực tiếp từ kho lúc sáng sớm và được yêu cầu giao gấp trong ngày. Bỏ qua bước đóng gói vì hàng đã được đóng sẵn từ nhà cung cấp. Tôi lấy hàng và đi giao luôn không qua kho đóng gói.",
+                "event_history": [
+                    {
+                        "from_status": "",
+                        "to_status": "created",
+                        "event_at": "2026-06-15T08:00:00Z",
+                        "updated_by": "system"
+                    },
+                    {
+                        "from_status": "created",
+                        "to_status": "shipped",
+                        "event_at": "2026-06-15T09:00:00Z",
+                        "updated_by": "system"
+                    }
+                ]
+            },
+            "expected_exception_type": "SKIPPED_STATUS",
+            "expected_severity": "HIGH"
+        },
+        {
+            "case_id": "case_07_skipped_status_created_to_delivered",
+            "synthetic_input": {
+                "order_id": 1007,
+                "current_status": "delivered",
+                "total_amount": 450000,
+                "customer_name": "Vu F",
+                "shipping_address": "333 Ba Thang Hai, HCM",
+                "created_at": "2026-06-16T07:00:00Z",
+                "driver_notes": "Đây là đơn nội bộ khách đến tận kho nhận hàng. Nhân viên kho xác nhận giao tay trực tiếp và bấm delivered luôn trên hệ thống mà không đi qua các bước thông thường. Khách đã ký nhận đầy đủ.",
+                "event_history": [
+                    {
+                        "from_status": "",
+                        "to_status": "created",
+                        "event_at": "2026-06-16T07:00:00Z",
+                        "updated_by": "system"
+                    },
+                    {
+                        "from_status": "created",
+                        "to_status": "delivered",
+                        "event_at": "2026-06-16T08:00:00Z",
+                        "updated_by": "system"
+                    }
+                ]
+            },
+            "expected_exception_type": "SKIPPED_STATUS",
+            "expected_severity": "CRITICAL"
+        },
+        {
+            "case_id": "case_10_stuck_order_shipped_high",
+            "synthetic_input": {
+                "order_id": 1010,
+                "current_status": "shipped",
+                "total_amount": 5000000,
+                "customer_name": "Hoang H",
+                "shipping_address": "Singapore",
+                "created_at": "2026-06-10T10:00:00Z",
+                "driver_notes": "Tôi đã nhận đơn này từ đầu tuần nhưng địa chỉ giao hàng ở khu vực nước ngoài, chưa có hướng dẫn rõ về đơn vị vận chuyển quốc tế. Đơn đang nằm tại điểm trung chuyển, chưa được bàn giao cho carrier quốc tế.",
+                "event_history": [
+                    {
+                        "from_status": "packed",
+                        "to_status": "shipped",
+                        "event_at": "2026-06-15T10:00:00Z",
+                        "updated_by": "warehouse"
+                    }
+                ]
+            },
+            "expected_exception_type": "STUCK_ORDER",
+            "expected_severity": "HIGH"
+        },
+        {
+            "case_id": "case_14_duplicate_event_shipped_high",
+            "synthetic_input": {
+                "order_id": 1014,
+                "current_status": "shipped",
+                "total_amount": 1500000,
+                "customer_name": "Phan M",
+                "shipping_address": "999 Nguyen Trai, HCM",
+                "created_at": "2026-06-18T09:00:00Z",
+                "driver_notes": "Đã giao hàng và gửi thông báo cho khách. Hệ thống báo lỗi và yêu cầu gửi lại, thông báo shipped bị gửi 2 lần.",
+                "event_history": [
+                    {
+                        "from_status": "packed",
+                        "to_status": "shipped",
+                        "event_at": "2026-06-18T10:00:00Z",
+                        "updated_by": "carrier"
+                    },
+                    {
+                        "from_status": "shipped",
+                        "to_status": "shipped",
+                        "event_at": "2026-06-18T10:05:00Z",
+                        "updated_by": "carrier"
+                    }
+                ]
+            },
+            "expected_exception_type": "DUPLICATE_EVENT",
+            "expected_severity": "HIGH"
+        },
+        {
+            "case_id": "case_15_duplicate_event_delivered_critical",
+            "synthetic_input": {
+                "order_id": 1015,
+                "current_status": "delivered",
+                "total_amount": 1500000,
+                "customer_name": "Phan M2",
+                "shipping_address": "101 Le Van Sy, HCM",
+                "created_at": "2026-06-17T15:00:00Z",
+                "driver_notes": "Đã giao hàng thành công cho khách lúc 8:00. Ứng dụng báo lỗi kết nối, tôi bấm xác nhận lại, hệ thống ghi nhận delivered 2 lần.",
+                "event_history": [
+                    {
+                        "from_status": "shipped",
+                        "to_status": "delivered",
+                        "event_at": "2026-06-18T08:00:00Z",
+                        "updated_by": "carrier"
+                    },
+                    {
+                        "from_status": "delivered",
+                        "to_status": "delivered",
+                        "event_at": "2026-06-18T08:01:00Z",
+                        "updated_by": "carrier"
+                    }
+                ]
+            },
+            "expected_exception_type": "DUPLICATE_EVENT",
+            "expected_severity": "CRITICAL"
+        },
+        {
+            "case_id": "case_16_delivery_failure_low_temporarily_unreachable",
+            "synthetic_input": {
+                "order_id": 1016,
+                "current_status": "shipped",
+                "total_amount": 600000,
+                "customer_name": "Dinh I",
+                "shipping_address": "555 Dien Bien Phu, HCM",
+                "created_at": "2026-06-18T06:00:00Z",
+                "driver_notes": "Khách đang bận họp, nhờ gọi lại sau 30 phút. Tôi sẽ thử giao lại trong chiều nay.",
+                "event_history": [
+                    {
+                        "from_status": "packed",
+                        "to_status": "shipped",
+                        "event_at": "2026-06-18T06:30:00Z",
+                        "updated_by": "carrier"
+                    }
+                ]
+            },
+            "expected_exception_type": "DELIVERY_FAILURE",
+            "expected_severity": "LOW"
+        },
+        {
+            "case_id": "case_17_delivery_failure_medium_not_home",
+            "synthetic_input": {
+                "order_id": 1017,
+                "current_status": "shipped",
+                "total_amount": 250000,
+                "customer_name": "Trinh J",
+                "shipping_address": "666 Vo Van Kiet, HCM",
+                "created_at": "2026-06-18T09:50:00Z",
+                "driver_notes": "Đã gõ cửa và gọi điện 3 lần nhưng không có ai ở nhà. Không liên lạc được khách. Cần lên lịch giao lại.",
+                "event_history": [
+                    {
+                        "from_status": "packed",
+                        "to_status": "shipped",
+                        "event_at": "2026-06-18T10:00:00Z",
+                        "updated_by": "carrier"
+                    }
+                ]
+            },
+            "expected_exception_type": "DELIVERY_FAILURE",
+            "expected_severity": "MEDIUM"
+        },
+        {
+            "case_id": "case_18_delivery_failure_high_weather",
+            "synthetic_input": {
+                "order_id": 1018,
+                "current_status": "shipped",
+                "total_amount": 800000,
+                "customer_name": "Nguyen T",
+                "shipping_address": "303 Phan Dang Luu, HCM",
+                "created_at": "2026-06-18T06:00:00Z",
+                "driver_notes": "Mưa lớn, đường ngập nước nghiêm trọng, không thể tiếp cận địa chỉ giao hàng. Đã quay về kho chờ thời tiết cải thiện.",
+                "event_history": [
+                    {
+                        "from_status": "packed",
+                        "to_status": "shipped",
+                        "event_at": "2026-06-18T07:00:00Z",
+                        "updated_by": "carrier"
+                    }
+                ]
+            },
+            "expected_exception_type": "DELIVERY_FAILURE",
+            "expected_severity": "HIGH"
+        },
+        {
+            "case_id": "case_19_delivery_failure_critical_package_lost",
+            "synthetic_input": {
+                "order_id": 1019,
+                "current_status": "shipped",
+                "total_amount": 750000,
+                "customer_name": "Ton S",
+                "shipping_address": "505 Xo Viet Nghe Tinh, HCM",
+                "created_at": "2026-06-11T10:00:00Z",
+                "driver_notes": "Không tìm thấy kiện hàng trong xe sau khi kiểm tra toàn bộ. Nghi bị thất lạc tại điểm trung chuyển. Đã báo cáo quản lý kho.",
+                "event_history": [
+                    {
+                        "from_status": "packed",
+                        "to_status": "shipped",
+                        "event_at": "2026-06-13T10:00:00Z",
+                        "updated_by": "carrier"
+                    }
+                ]
+            },
+            "expected_exception_type": "DELIVERY_FAILURE",
+            "expected_severity": "CRITICAL"
+        },
+        {
+            "case_id": "case_20_alternative_delivery_low_left_at_security",
+            "synthetic_input": {
+                "order_id": 1020,
+                "current_status": "shipped",
+                "total_amount": 450000,
+                "customer_name": "Mai P",
+                "shipping_address": "202 Hoang Van Thu, HCM",
+                "created_at": "2026-06-18T08:00:00Z",
+                "driver_notes": "Khách không có ở nhà, đã liên hệ và được khách đồng ý gửi lại cho bảo vệ tầng trệt. Bảo vệ tên Minh đã ký nhận.",
+                "event_history": [
+                    {
+                        "from_status": "packed",
+                        "to_status": "shipped",
+                        "event_at": "2026-06-18T09:00:00Z",
+                        "updated_by": "carrier"
+                    }
+                ]
+            },
+            "expected_exception_type": "ALTERNATIVE_DELIVERY",
+            "expected_severity": "LOW"
+        }
+    ]
+}
