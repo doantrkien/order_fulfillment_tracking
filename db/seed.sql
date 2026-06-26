@@ -44,7 +44,7 @@ BEGIN
         -- Insert events sequentially to represent real transitions
         -- Initial event: created (no previous status)
         INSERT INTO order_events (order_id, previous_status, new_status, event_at, created_at, updated_by)
-        VALUES (new_order_id, 'none', 'created', base_time, base_time, 'system');
+        VALUES (new_order_id, NULL, 'created', base_time, base_time, 'system');
         
         -- Sequential events depending on selected_status
         IF selected_status = 'cancelled' THEN
