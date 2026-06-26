@@ -53,11 +53,14 @@ var deliveryFailureLowKeywords = []string{
 type RuleFunc func(aiCtx *models.AIContext, now time.Time) *RuleBasedResult
 
 var rules = []RuleFunc{
-	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDeliveryFailure(ctx) },
-	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDuplicateEvents(ctx.Events) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult {
+		return detectInvalidTransitions(ctx.Events)
+	},
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectSkippedStatuses(ctx.Events) },
-	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectInvalidTransitions(ctx.Events) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDuplicateEvents(ctx.Events) },
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectStuckOrder(ctx, now) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDeliveryFailure(ctx) },
+
 	detectHealthyDelivered,
 }
 
@@ -216,63 +219,89 @@ func detectSkippedStatuses(events []models.AIEvent) *RuleBasedResult {
 		models.ORDER_STATUS_DELIVERED: 4,
 	}
 
+	// ---------- Rule 1: Detect skip inside a single event ----------
 	for _, e := range events {
 		if e.PreviousStatus == "" || e.NewStatus == "" {
 			continue
 		}
 
-		if e.PreviousStatus == models.ORDER_STATUS_CREATED && e.NewStatus == models.ORDER_STATUS_REFUNDED {
-			return &RuleBasedResult{
-				ExceptionType:      "SKIPPED_STATUS",
-				Severity:           "CRITICAL",
-				LikelyReason:       "Order transitioned from 'created' directly to 'refunded', skipping required status 'paid'",
-				InternalNextAction: "Perform immediate data integrity audit and investigate the processing pipeline",
-				ConfidenceScore:    1,
-			}
-		}
-
 		prevIdx, prevOk := statusIdx[e.PreviousStatus]
 		newIdx, newOk := statusIdx[e.NewStatus]
 
-		if prevOk && newOk {
-			skipCount := newIdx - prevIdx - 1
-			if skipCount == 1 {
-				if e.PreviousStatus == models.ORDER_STATUS_CREATED && e.NewStatus == models.ORDER_STATUS_PACKED {
-					return &RuleBasedResult{
-						ExceptionType:      "SKIPPED_STATUS",
-						Severity:           "LOW",
-						LikelyReason:       "Order transitioned from 'created' directly to 'packed', skipping required status 'paid'",
-						InternalNextAction: "Review event logs and monitor for additional anomalies",
-						ConfidenceScore:    1,
-					}
-				} else {
-					return &RuleBasedResult{
-						ExceptionType:      "SKIPPED_STATUS",
-						Severity:           "MEDIUM",
-						LikelyReason:       fmt.Sprintf("Order transitioned from '%s' directly to '%s', skipping a required fulfillment status", e.PreviousStatus, e.NewStatus),
-						InternalNextAction: "Investigate the order processing pipeline and verify status generation",
-						ConfidenceScore:    1,
-					}
+		if !prevOk || !newOk {
+			continue
+		}
+
+		skipCount := newIdx - prevIdx - 1
+
+		if skipCount > 0 {
+			switch {
+			case skipCount == 1:
+				return &RuleBasedResult{
+					ExceptionType:      "SKIPPED_STATUS",
+					Severity:           "MEDIUM",
+					LikelyReason:       fmt.Sprintf("Order transitioned directly from '%s' to '%s', skipping one required status.", e.PreviousStatus, e.NewStatus),
+					InternalNextAction: "Review order event generation.",
+					ConfidenceScore:    1,
 				}
-			} else if skipCount == 2 {
+
+			case skipCount == 2:
 				return &RuleBasedResult{
 					ExceptionType:      "SKIPPED_STATUS",
 					Severity:           "HIGH",
-					LikelyReason:       fmt.Sprintf("Order skipped multiple required statuses: '%s' to '%s'", e.PreviousStatus, e.NewStatus),
-					InternalNextAction: "Escalate to the responsible engineering team and investigate workflow integrity",
+					LikelyReason:       fmt.Sprintf("Order skipped multiple statuses: '%s' -> '%s'.", e.PreviousStatus, e.NewStatus),
+					InternalNextAction: "Investigate workflow integrity.",
 					ConfidenceScore:    1,
 				}
-			} else if skipCount >= 3 {
+
+			default:
 				return &RuleBasedResult{
 					ExceptionType:      "SKIPPED_STATUS",
 					Severity:           "CRITICAL",
-					LikelyReason:       fmt.Sprintf("Order transitioned from '%s' directly to '%s', skipping several mandatory lifecycle stages", e.PreviousStatus, e.NewStatus),
-					InternalNextAction: "Perform immediate data integrity audit and investigate the processing pipeline",
+					LikelyReason:       fmt.Sprintf("Order skipped several mandatory statuses: '%s' -> '%s'.", e.PreviousStatus, e.NewStatus),
+					InternalNextAction: "Immediate investigation required.",
 					ConfidenceScore:    1,
 				}
 			}
 		}
 	}
+
+	// ---------- Rule 2: Detect missing event between consecutive events ----------
+	for i := 1; i < len(events); i++ {
+
+		prevEvent := events[i-1]
+		currEvent := events[i]
+
+		if prevEvent.NewStatus == "" || currEvent.PreviousStatus == "" {
+			continue
+		}
+
+		// trạng thái không nối tiếp nhau
+		if prevEvent.NewStatus != currEvent.PreviousStatus {
+
+			prevIdx, ok1 := statusIdx[prevEvent.NewStatus]
+			currIdx, ok2 := statusIdx[currEvent.PreviousStatus]
+
+			if !ok1 || !ok2 {
+				continue
+			}
+
+			if currIdx > prevIdx {
+				return &RuleBasedResult{
+					ExceptionType: "SKIPPED_STATUS",
+					Severity:      "MEDIUM",
+					LikelyReason: fmt.Sprintf(
+						"Missing event detected between '%s' and '%s'.",
+						prevEvent.NewStatus,
+						currEvent.PreviousStatus,
+					),
+					InternalNextAction: "Verify missing order events or event ingestion pipeline.",
+					ConfidenceScore:    1,
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -281,6 +310,7 @@ func detectInvalidTransitions(events []models.AIEvent) *RuleBasedResult {
 		if e.PreviousStatus == "" || e.NewStatus == "" || e.PreviousStatus == e.NewStatus {
 			continue
 		}
+		fmt.Println("DEBUG", e.PreviousStatus, e.NewStatus)
 		if !models.IsValidTransition(e.PreviousStatus, e.NewStatus) {
 			return &RuleBasedResult{
 				ExceptionType:      "INVALID_TRANSITION",
