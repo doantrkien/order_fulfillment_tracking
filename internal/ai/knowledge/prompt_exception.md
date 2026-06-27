@@ -21,7 +21,7 @@ Focus on anomalies mentioned in the driver note as the primary signal.
 [OUTPUT FORMAT]
 Respond with EXACTLY this JSON structure (no additional fields, no wrapping):
 {
-  "exception_type": "<string: one of INVALID_TRANSITION | STUCK_ORDER | SKIPPED_STATUS | DUPLICATE_EVENT | DELIVERY_FAILURE | CANCELLATION_ANOMALY | REFUND_ANOMALY | OTHER>",
+  "exception_type": "<string: one of INVALID_TRANSITION | STUCK_ORDER | SKIPPED_STATUS | DUPLICATE_EVENT | DELIVERY_FAILURE | ALTERNATIVE_DELIVERY | CANCELLATION_ANOMALY | REFUND_ANOMALY | OTHER>",
   "severity": "<string: one of LOW | MEDIUM | HIGH | CRITICAL>",
   "likely_reason": "<string: concise root cause explanation in English, max 200 chars>",
   "internal_next_action": "<string: recommended internal action for the fulfillment team, max 200 chars>",

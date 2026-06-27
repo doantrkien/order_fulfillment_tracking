@@ -6,19 +6,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"main/errs"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"main/errs"
 )
 
-// Client implements aiclient.AIClient for a locally running Ollama instance.
 type Client struct {
-	baseURL      string
+	apiKey       string
 	modelName    string
+	baseURL      string
 	timeout      time.Duration
 	retryLimit   int
 	enabled      bool
@@ -26,31 +25,27 @@ type Client struct {
 	httpClient   *http.Client
 }
 
-// NewClient reads configuration from environment variables and returns a
-// ready-to-use Ollama Client.
-//
-// Environment variables:
-//
-//	OLLAMA_BASE_URL   – base URL of the Ollama server (default: http://localhost:11434)
-//	OLLAMA_MODEL      – model tag to use              (default: qwen3.5:latest)
-//	AI_TIMEOUT_MS     – per-request timeout in ms     (default: 30000)
-//	AI_RETRY_LIMIT    – max retry attempts             (default: 3)
-//	AI_ENABLED        – enable/disable AI calls        (default: true)
-//	AI_MAX_INPUT_SIZE – max allowed prompt length      (default: 4000)
 func NewClient() (*Client, error) {
-	baseURL := os.Getenv("OLLAMA_BASE_URL")
-	if baseURL == "" {
-		baseURL = "http://localhost:11434"
+	apiKey := os.Getenv("OLLAMA_API_KEY")
+	fmt.Printf("[DEBUG][ollama.NewClient] OLLAMA_API_KEY set: %v\n", apiKey != "")
+	if apiKey == "" {
+		fmt.Println("[DEBUG][ollama.NewClient] ERROR: OLLAMA_API_KEY is empty")
+		return nil, errs.ERR_GEMINI_API_KEY_EMPTY
 	}
-	fmt.Printf("[DEBUG][ollama.NewClient] OLLAMA_BASE_URL: %s\n", baseURL)
 
 	modelName := os.Getenv("OLLAMA_MODEL")
 	if modelName == "" {
-		modelName = "qwen3.5:latest"
+		modelName = "llama3"
 	}
 	fmt.Printf("[DEBUG][ollama.NewClient] Model: %s\n", modelName)
 
-	timeout := 30 * time.Second
+	baseURL := os.Getenv("OLLAMA_BASE_URL")
+	if baseURL == "" {
+		baseURL = "https://ollama.com"
+	}
+	fmt.Printf("[DEBUG][ollama.NewClient] BaseURL: %s\n", baseURL)
+
+	timeout := 60 * time.Second
 	if v := os.Getenv("AI_TIMEOUT_MS"); v != "" {
 		if ms, err := strconv.Atoi(v); err == nil {
 			timeout = time.Duration(ms) * time.Millisecond
@@ -87,8 +82,9 @@ func NewClient() (*Client, error) {
 	fmt.Println("[DEBUG][ollama.NewClient] ollama client created successfully")
 
 	return &Client{
-		baseURL:      baseURL,
+		apiKey:       apiKey,
 		modelName:    modelName,
+		baseURL:      baseURL,
 		timeout:      timeout,
 		retryLimit:   retryLimit,
 		enabled:      enabled,
@@ -97,24 +93,6 @@ func NewClient() (*Client, error) {
 	}, nil
 }
 
-// generateRequest is the JSON payload sent to POST /api/generate.
-type generateRequest struct {
-	Model  string `json:"model"`
-	Prompt string `json:"prompt"`
-	Stream bool   `json:"stream"`
-	Format string `json:"format"`
-}
-
-// generateResponse is the JSON response body returned by Ollama.
-type generateResponse struct {
-	Response string `json:"response"`
-	Done     bool   `json:"done"`
-	Error    string `json:"error,omitempty"`
-}
-
-// GenerateContent sends prompt to the Ollama /api/generate endpoint and
-// returns the raw text response. It respects the context passed by the caller
-// for timeout and cancellation — matching the Groq/Gemini retry pattern.
 func (c *Client) GenerateContent(ctx context.Context, prompt string) (string, error) {
 	fmt.Printf("[DEBUG][ollama.GenerateContent] Called. Enabled: %v, Model: %s, PromptLen: %d\n",
 		c.enabled, c.modelName, len(prompt))
@@ -129,33 +107,34 @@ func (c *Client) GenerateContent(ctx context.Context, prompt string) (string, er
 		return "", errs.ERR_AI_INPUT_TOO_LARGE
 	}
 
-	body, err := json.Marshal(generateRequest{
-		Model:  c.modelName,
-		Prompt: prompt,
-		Stream: false,
+	body, err := json.Marshal(map[string]any{
+		"model": c.modelName,
+		"messages": []map[string]string{
+			{"role": "user", "content": prompt},
+		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("ollama marshal request: %w", err)
+		return "", errs.ERR_INTERNAL_SERVER
 	}
 
-	endpoint := c.baseURL + "/api/generate"
+	// Ollama REST API — OpenAI-compatible; allow override via OLLAMA_ENDPOINT
+	endpoint := os.Getenv("OLLAMA_ENDPOINT")
+	if endpoint == "" {
+		endpoint = "/v1/chat/completions"
+	}
 
 	for attempt := 0; attempt <= c.retryLimit; attempt++ {
-		fmt.Printf("[DEBUG][ollama.GenerateContent] Attempt %d/%d, timeout: %v\n",
-			attempt+1, c.retryLimit+1, c.timeout)
-
-		timeoutCtx, cancel := context.WithTimeout(ctx, c.timeout)
+		fmt.Printf("[DEBUG][ollama.GenerateContent] Attempt %d/%d, timeout: %v\n", attempt+1, c.retryLimit+1, c.timeout)
+		timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 
 		req, reqErr := http.NewRequestWithContext(
-			timeoutCtx,
-			http.MethodPost,
-			endpoint,
+			timeoutCtx, http.MethodPost,
+			c.baseURL+endpoint,
 			bytes.NewReader(body),
 		)
 		if reqErr != nil {
 			cancel()
-			fmt.Printf("[DEBUG][ollama.GenerateContent] Attempt %d ERROR building request: %v\n",
-				attempt+1, reqErr)
+			fmt.Printf("[DEBUG][ollama.GenerateContent] Attempt %d ERROR building request: %v\n", attempt+1, reqErr)
 			if attempt < c.retryLimit {
 				fmt.Println("[DEBUG][ollama.GenerateContent] Retrying in 1s...")
 				time.Sleep(time.Second)
@@ -163,11 +142,12 @@ func (c *Client) GenerateContent(ctx context.Context, prompt string) (string, er
 			continue
 		}
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 
 		resp, doErr := c.httpClient.Do(req)
+		cancel()
 
 		if doErr != nil {
-			cancel()
 			fmt.Printf("[DEBUG][ollama.GenerateContent] Attempt %d ERROR: %v\n", attempt+1, doErr)
 			if attempt < c.retryLimit {
 				fmt.Println("[DEBUG][ollama.GenerateContent] Retrying in 1s...")
@@ -177,7 +157,6 @@ func (c *Client) GenerateContent(ctx context.Context, prompt string) (string, er
 		}
 
 		if resp == nil {
-			cancel()
 			fmt.Printf("[DEBUG][ollama.GenerateContent] Attempt %d: resp is nil\n", attempt+1)
 			if attempt < c.retryLimit {
 				time.Sleep(time.Second)
@@ -187,48 +166,68 @@ func (c *Client) GenerateContent(ctx context.Context, prompt string) (string, er
 
 		rawBody, readErr := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		cancel() // Safe to cancel now since we've read the body
-
 
 		if readErr != nil || resp.StatusCode != http.StatusOK {
-			fmt.Printf("[DEBUG][ollama.GenerateContent] Attempt %d: bad status=%d, readErr=%v\n",
-				attempt+1, resp.StatusCode, readErr)
+			fmt.Printf("[DEBUG][ollama.GenerateContent] Attempt %d: bad status=%d body=%s\n", attempt+1, resp.StatusCode, string(rawBody))
 			if attempt < c.retryLimit {
-				time.Sleep(time.Second)
+				waitSec := 2
+				if resp.StatusCode == http.StatusTooManyRequests {
+					if ra := resp.Header.Get("Retry-After"); ra != "" {
+						if secs, err := strconv.Atoi(strings.TrimSpace(ra)); err == nil && secs > 0 {
+							waitSec = secs + 1
+						}
+					} else {
+						waitSec = 10
+					}
+					fmt.Printf("[DEBUG][ollama.GenerateContent] Rate limited (429), waiting %ds before retry...\n", waitSec)
+				}
+				time.Sleep(time.Duration(waitSec) * time.Second)
 			}
 			continue
 		}
 
-		var parsed generateResponse
+		// Parse OpenAI-compatible response
+		var parsed struct {
+			Choices []struct {
+				Message struct {
+					Content string `json:"content"`
+				} `json:"message"`
+			} `json:"choices"`
+			Error *struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		}
 		if jsonErr := json.Unmarshal(rawBody, &parsed); jsonErr != nil {
-			fmt.Printf("[DEBUG][ollama.GenerateContent] Attempt %d: JSON parse error: %v\n",
-				attempt+1, jsonErr)
+			fmt.Printf("[DEBUG][ollama.GenerateContent] Attempt %d: JSON parse error: %v\n", attempt+1, jsonErr)
 			if attempt < c.retryLimit {
 				time.Sleep(time.Second)
 			}
 			continue
 		}
 
-		if parsed.Error != "" {
-			fmt.Printf("[DEBUG][ollama.GenerateContent] Attempt %d: Ollama API error: %s\n",
-				attempt+1, parsed.Error)
+		if parsed.Error != nil {
+			fmt.Printf("[DEBUG][ollama.GenerateContent] Attempt %d: Ollama API error: %s\n", attempt+1, parsed.Error.Message)
 			if attempt < c.retryLimit {
 				time.Sleep(time.Second)
 			}
 			continue
 		}
 
-		if parsed.Response == "" {
-			fmt.Printf("[DEBUG][ollama.GenerateContent] Attempt %d: response is empty\n", attempt+1)
+		text := ""
+		if len(parsed.Choices) > 0 {
+			text = parsed.Choices[0].Message.Content
+		}
+
+		if text == "" {
+			fmt.Printf("[DEBUG][ollama.GenerateContent] Attempt %d: response content is empty\n", attempt+1)
 			if attempt < c.retryLimit {
 				time.Sleep(time.Second)
 			}
 			continue
 		}
 
-		fmt.Printf("[DEBUG][ollama.GenerateContent] Success on attempt %d, responseLen: %d\n",
-			attempt+1, len(parsed.Response))
-		return parsed.Response, nil
+		fmt.Printf("[DEBUG][ollama.GenerateContent] Success on attempt %d, responseLen: %d\n", attempt+1, len(text))
+		return text, nil
 	}
 
 	fmt.Println("[DEBUG][ollama.GenerateContent] All attempts exhausted, returning ERR_GEMINI_GENERATE_CONTENT_FAILED")

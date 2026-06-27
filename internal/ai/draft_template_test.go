@@ -13,6 +13,7 @@ func TestGetFallbackTemplate(t *testing.T) {
 	}{
 		{"STUCK_ORDER", "slower than expected"},
 		{"DELIVERY_FAILURE", "order to 123 Main St"},
+		{"ALTERNATIVE_DELIVERY", "alternative location"},
 		{"INVALID_TRANSITION", "status mismatch during your order"},
 		{"SKIPPED_STATUS", "unusual update"},
 		{"DUPLICATE_EVENT", "recorded a duplicate"},

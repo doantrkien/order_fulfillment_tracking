@@ -56,7 +56,6 @@ func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContex
 	ruleResult := AnalyzeByRules(aiCtx, now)
 
 	// ── Step 2: Check for driver notes
-	// hasDriverNote := hasAnyDriverNote(aiCtx) || strings.TrimSpace(notes) != ""
 	hasDriverNote := hasAnyDriverNote(aiCtx)
 
 	// ── Step 3: Skip AI when disabled or no driver note

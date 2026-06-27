@@ -119,6 +119,7 @@ func isInternalSystemError(exceptionType string) bool {
 // Ma trận quyết định:
 //   - OTHER → LUÔN gọi AI (LikelyReason là text tự do, Template không diễn giải được)
 //   - INVALID_TRANSITION / SKIPPED_STATUS / DUPLICATE_EVENT → KHÔNG gọi AI (Template đủ, an toàn)
+//   - ALTERNATIVE_DELIVERY → KHÔNG gọi AI (Giao thành công, Template FYI đủ)
 //   - STUCK_ORDER / DELIVERY_FAILURE + neutral/informative + email → Template
 //   - STUCK_ORDER / DELIVERY_FAILURE + apologetic/proactive → AI (cần giọng điệu)
 //   - Bất kỳ exception nào + channel=sms → AI (cần rút ngắn)
@@ -134,6 +135,10 @@ func shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
 
 	case isInternalSystemError(input.ExceptionType):
 		// Lỗi kỹ thuật nội bộ — không để AI "sáng tác" thêm cho khách hàng
+		needAI = false
+
+	case input.ExceptionType == "ALTERNATIVE_DELIVERY":
+		// Giao thay thế thành công — Template FYI đủ an toàn cho khách hàng
 		needAI = false
 
 	case channel == "sms":

@@ -12,7 +12,10 @@ var CustomerUpdateFallbackTemplates = map[string]string{
 	// Group 2: Delivery Failure
 	"DELIVERY_FAILURE": "Hello %s, we regret to inform you that an issue occurred during the shipment of your order to %s. The delivery team is currently investigating and will contact you as soon as possible.",
 
-	// Group 3: Status Anomalies
+	// Group 3: Alternative Delivery
+	"ALTERNATIVE_DELIVERY": "Hello %s, your order has been delivered and left at an alternative location. Please check with the reception or the person who received it on your behalf. If you have any concerns, please contact our support team.",
+
+	// Group 4: Status Anomalies
 	"INVALID_TRANSITION": "Hello %s, the system detected a status mismatch during your order update. Our technical team is verifying the information to ensure an accurate delivery route.",
 	"SKIPPED_STATUS":     "Hello %s, we noticed an unusual update in your order processing progress. We are checking internally and will provide you with the most accurate update as soon as possible.",
 	"DUPLICATE_EVENT":    "Hello %s, the system recorded a duplicate in your order status history. The operations department is resolving this inconsistency — your delivery progress will not be affected.",
