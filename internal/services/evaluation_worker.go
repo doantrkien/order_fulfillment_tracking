@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -88,9 +87,9 @@ func (w *EvaluationWorker) Run(runID int64, cases []dto.EvaluationCase) {
 				// 4.1 Build AI Context from synthetic input
 				aiCtx := buildAIContextFromSyntheticInput(evalCase.SyntheticInput)
 
-				fmt.Printf("Processing case %s\n", evalCase.CaseID)
-				jsonBytes, _ := json.MarshalIndent(aiCtx, "", "  ")
-				fmt.Printf("AI Context: %s\n", string(jsonBytes))
+				// fmt.Printf("Processing case %s\n", evalCase.CaseID)
+				// jsonBytes, _ := json.MarshalIndent(aiCtx, "", "  ")
+				// fmt.Printf("AI Context: %s\n", string(jsonBytes))
 
 				// 4.2 Run AI Analysis
 				// analysisResult, err := w.analyzer.Analyze(ctx, aiCtx, "")

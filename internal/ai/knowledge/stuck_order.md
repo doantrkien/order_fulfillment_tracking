@@ -16,6 +16,11 @@ shipped	72 hours
 
 Severity is determined based on the ratio between the current stuck time and the configured threshold for the order's current status.
 
+For STUCK_ORDER analysis:
+- Treat analysis_time as the current system time.
+- Calculate the time elapsed since the most recent event in event_history.
+- Compare it against the configured threshold to determine severity.
+
 ## LOW
 
 Condition

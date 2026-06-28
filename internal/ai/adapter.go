@@ -48,6 +48,7 @@ func (g *aiAdapter) AnalyzeException(
 		EventTimeline:   timeline,
 		AnalyzedAt:      time.Now().Format(time.RFC3339),
 	}
+	// fmt.Println("Prmot", promptCtx)
 
 	SanitizePromptContext(&promptCtx)
 
@@ -55,6 +56,7 @@ func (g *aiAdapter) AnalyzeException(
 	prompt := BuildExceptionAnalysisPrompt(promptCtx, knowledge)
 
 	rawText, err := g.client.GenerateContent(ctx, prompt)
+	// fmt.Println("Raw Text Ai", rawText)
 	if err != nil {
 		return dto.ExceptionOutput{}, "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
 	}
