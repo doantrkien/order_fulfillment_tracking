@@ -59,12 +59,23 @@ func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContex
 	hasDriverNote := hasAnyDriverNote(aiCtx)
 
 	// ── Step 3: Skip AI when disabled or no driver note
-	if !ea.config.AIEnabled || !hasDriverNote {
+	// Exception: CANCELLED and REFUNDED are terminal states handled entirely by
+	// rule-based logic — they must bypass the driver-note gate so they are never
+	// silently downgraded to "OTHER".
+	isTerminalAnomaly := aiCtx.CurrentStatus == models.ORDER_STATUS_CANCELLED ||
+		aiCtx.CurrentStatus == models.ORDER_STATUS_REFUNDED
+	if !ea.config.AIEnabled || (!hasDriverNote && !isTerminalAnomaly) {
 		reason := FallbackReasonDisabled
 		if ea.config.AIEnabled && !hasDriverNote {
 			reason = FallbackReasonNoDriverNote
 		}
 		return ruleResultToAnalysis(ruleResult, reason, 0, ""), nil
+	}
+
+	// For terminal anomaly statuses with no driver note, rule-based result is sufficient —
+	// skip the AI call to avoid unnecessary cost and latency.
+	if isTerminalAnomaly && !hasDriverNote {
+		return ruleResultToAnalysis(ruleResult, FallbackReasonNoDriverNote, 0, ""), nil
 	}
 
 	// ── Step 4: Call AI

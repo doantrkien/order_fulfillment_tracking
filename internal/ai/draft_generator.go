@@ -118,7 +118,7 @@ func isInternalSystemError(exceptionType string) bool {
 func shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
 	channel := strings.ToLower(strings.TrimSpace(input.Channel))
 	tone := strings.ToLower(strings.TrimSpace(input.Tone))
-	
+
 	// 1. HARD RULES (Veto - Phủ quyết tuyệt đối)
 	if isInternalSystemError(input.ExceptionType) {
 		fmt.Printf("[DEBUG][shouldCallAI] VETO: Internal System Error (%s)\n", input.ExceptionType)
@@ -138,22 +138,17 @@ func shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
 	// 3. SCORING SYSTEM
 	score := 0
 
-	// Yếu tố Channel
 	if channel == "sms" {
 		score += 2
 	}
 
-	// Yếu tố Tone
 	if tone == "apologetic" || tone == "proactive" {
 		score += 3
 	}
-
-	// Yếu tố Complexity (Ví dụ: LikelyReason dài)
 	if len(input.LikelyReason) > 50 {
 		score += 1
 	}
 
-	// Tạm thời hardcode threshold = 3 (sau này có thể đưa vào config/DraftGeneratorConfig)
 	threshold := 3
 	needAI := score >= threshold
 
