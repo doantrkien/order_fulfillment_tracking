@@ -23,7 +23,7 @@ services:
     image: postgres:16
     container_name: postgres
     ports:
-      - "5434:5432"
+      - "5432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 12345
@@ -42,7 +42,7 @@ services:
     image: adminer
     container_name: adminer
     ports:
-      - "8081:8080"
+      - "8080:8080"
     depends_on:
       - postgres
     restart: unless-stopped

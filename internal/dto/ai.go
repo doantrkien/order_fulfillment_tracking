@@ -102,8 +102,8 @@ type TriggerEvaluationRequest struct {
 }
 
 type TriggerEvaluationResponse struct {
-	RunID   int64  `json:"run_id"`
-	Status  string `json:"status"`
+	RunID int64 `json:"run_id"`
+	// Status  string `json:"status"`
 	Message string `json:"message"`
 }
 
@@ -115,9 +115,7 @@ type EvaluationCase struct {
 }
 
 type EvaluationDataset struct {
-	RunBy       string           `json:"run_by"`
-	Environment string           `json:"environment"`
-	Cases       []EvaluationCase `json:"cases"`
+	Cases []EvaluationCase `json:"cases"`
 }
 
 // GetEvaluationRunResponse trả về summary của 1 evaluation run.

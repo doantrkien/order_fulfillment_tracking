@@ -3,7 +3,10 @@
 Exception Type: INVALID_TRANSITION
 
 Applicable When:
-An order transitions from one status to another status that is not allowed by the defined state machine.
+
+An order transitions to a status that is impossible according to the defined state machine, excluding cases where the transition can be explained solely by skipped intermediate statuses.
+
+If the primary anomaly is one or more missing lifecycle statuses, classify it as **SKIPPED_STATUS** instead.
 
 # Valid Order Statuses
 created
@@ -15,117 +18,110 @@ cancelled
 refunded
 
 # Valid State Transitions
-created  -> paid, cancelled
-paid     -> packed, refunded
-packed   -> shipped
-shipped  -> delivered
+created → paid, cancelled
+paid → packed, refunded
+packed → shipped
+shipped → delivered
 
 # Severity Classification
-LOW
+## MEDIUM
 Condition
-A transition event is received but the destination status is identical to the current status.
-## Examples:
-created -> created
-paid -> paid
-shipped -> shipped
+A transition violates the state machine but does not originate from a terminal state and is not a reverse transition.
+Examples
+created → refunded
+packed → cancelled
+shipped → refunded
 Description
-Likely caused by duplicate events or retry mechanisms.
+The order entered a business state that is not reachable from the current status.
 Recommended Action
-Log and monitor for duplicate processing.
+Investigate workflow validation and service integration logic.
 
-# MEDIUM
+## HIGH
 Condition
-The transition skips exactly one expected step in the workflow.
-## Examples:
-created -> packed
-paid -> shipped
-packed -> delivered
+A reverse transition occurs.
+Examples
+packed → paid
+shipped → packed
 Description
-Possible synchronization issue or missing event.
+The order moved backwards in the lifecycle, indicating possible event ordering problems or data inconsistency.
 Recommended Action
-Investigate event ordering and processing logic.
+Escalate to engineering and verify event ordering and state synchronization.
 
-# HIGH
+## CRITICAL
 Condition
-The transition skips multiple workflow stages.
-## Examples:
-created -> shipped
-created -> delivered
-paid -> delivered
+The transition originates from a terminal state.
+Examples
+delivered → shipped
+delivered → packed
+cancelled → paid
+cancelled → shipped
+refunded → packed
+refunded → delivered
 Description
-Strong indication of workflow corruption or service integration failure.
+A terminal order state was modified after completion. Data integrity may be compromised.
 Recommended Action
-Escalate to the responsible engineering team.
+Immediately block processing, investigate the root cause, and perform data consistency checks.
 
-# CRITICAL
-Condition
-Any of the following:
-## Transition originates from a terminal state
-delivered -> shipped
-cancelled -> paid
-refunded -> packed
-## Reverse transition
-packed -> paid
-shipped -> packed
-delivered -> shipped
-## Transition to an unrelated state that violates business rules
-created -> refunded
-packed -> cancelled
-shipped -> refunded
-Description
-The order state machine has been violated. Data integrity may be compromised.
-Recommended Action
-Immediately block processing, investigate root cause, and perform data consistency checks.
+# Important Rule
+Do NOT classify the following as INVALID_TRANSITION:
+created → packed
+paid → shipped
+packed → delivered
+created → shipped
+created → delivered
+paid → delivered
+These cases represent missing mandatory lifecycle stages and MUST be classified as SKIPPED_STATUS.
+
 
 # Example Outputs
-Example 1 — LOW
+## Example 1 — LOW
 Input
 Current status: paid
 New status: paid
 Output
 {
-  "exception_type": "INVALID_TRANSITION",
-  "severity": "LOW",
-  "likely_reason": "Duplicate transition event received for status 'paid'",
-  "internal_next_action": "Log duplicate event and monitor retry behavior",
-  "confidence_score": 0.95
+"exception_type": "INVALID_TRANSITION",
+"severity": "LOW",
+"likely_reason": "Duplicate transition event received for status 'paid'",
+"internal_next_action": "Log duplicate event and monitor retry behavior",
+"confidence_score": 0.96
 }
 
-# Example 2 — MEDIUM
+## Example 2 — MEDIUM
 Input
-Current status: created
+Current status: packed
+New status: cancelled
+Output
+{
+"exception_type": "INVALID_TRANSITION",
+"severity": "MEDIUM",
+"likely_reason": "Transition from 'packed' to 'cancelled' is not allowed by the state machine",
+"internal_next_action": "Investigate workflow validation and service integration",
+"confidence_score": 0.95
+}
+
+## Example 3 — HIGH
+Input
+Current status: shipped
 New status: packed
 Output
 {
-  "exception_type": "INVALID_TRANSITION",
-  "severity": "MEDIUM",
-  "likely_reason": "Transition skipped expected status 'paid'",
-  "internal_next_action": "Investigate event ordering and synchronization issues",
-  "confidence_score": 0.93
+"exception_type": "INVALID_TRANSITION",
+"severity": "HIGH",
+"likely_reason": "Reverse transition detected from 'shipped' to 'packed'",
+"internal_next_action": "Escalate to engineering and verify event ordering",
+"confidence_score": 0.98
 }
 
-# Example 3 — HIGH
-Input
-Current status: created
-New status: delivered
-Output
-{
-  "exception_type": "INVALID_TRANSITION",
-  "severity": "HIGH",
-  "likely_reason": "Transition skipped multiple workflow stages",
-  "internal_next_action": "Escalate to engineering team and investigate workflow integrity",
-  "confidence_score": 0.97
-}
-
-# Example 4 — CRITICAL
+## Example 4 — CRITICAL
 Input
 Current status: delivered
 New status: shipped
 Output
 {
-  "exception_type": "INVALID_TRANSITION",
-  "severity": "CRITICAL",
-  "likely_reason": "Attempted transition from terminal state 'delivered'",
-  "internal_next_action": "Block processing immediately and perform data consistency checks",
-  "confidence_score": 0.99
+"exception_type": "INVALID_TRANSITION",
+"severity": "CRITICAL",
+"likely_reason": "Attempted transition from terminal state 'delivered'",
+"internal_next_action": "Immediately block processing and perform data consistency checks",
+"confidence_score": 0.99
 }

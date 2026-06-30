@@ -60,6 +60,8 @@ var rules = []RuleFunc{
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDuplicateEvents(ctx.Events) },
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectStuckOrder(ctx, now) },
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDeliveryFailure(ctx) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectCancellationAnomaly(ctx) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectRefundAnomaly(ctx) },
 
 	detectHealthyDelivered,
 }
@@ -310,7 +312,6 @@ func detectInvalidTransitions(events []models.AIEvent) *RuleBasedResult {
 		if e.PreviousStatus == "" || e.NewStatus == "" || e.PreviousStatus == e.NewStatus {
 			continue
 		}
-		fmt.Println("DEBUG", e.PreviousStatus, e.NewStatus)
 		if !models.IsValidTransition(e.PreviousStatus, e.NewStatus) {
 			return &RuleBasedResult{
 				ExceptionType:      "INVALID_TRANSITION",
@@ -380,5 +381,108 @@ func detectStuckOrder(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
 			InternalNextAction: "Urgently escalate to operations management and investigate immediately",
 			ConfidenceScore:    1,
 		}
+	}
+}
+
+// cancellationSeverity maps the last meaningful status before cancellation to a severity level.
+// Per the state machine, only created → cancelled is a valid transition.
+// Cancellations from any other status are caught earlier as INVALID_TRANSITION.
+var cancellationSeverity = map[models.OrderStatus]string{
+	models.ORDER_STATUS_CREATED: "LOW",
+}
+
+// refundSeverity maps the last meaningful status before refund to a severity level.
+var refundSeverity = map[models.OrderStatus]string{
+	models.ORDER_STATUS_PAID:      "LOW",
+	models.ORDER_STATUS_PACKED:    "MEDIUM",
+	models.ORDER_STATUS_SHIPPED:   "HIGH",
+	models.ORDER_STATUS_DELIVERED: "CRITICAL",
+}
+
+func detectCancellationAnomaly(aiCtx *models.AIContext) *RuleBasedResult {
+	if aiCtx.CurrentStatus != models.ORDER_STATUS_CANCELLED {
+		return nil
+	}
+
+	// Find the status immediately before the cancel event.
+	var prevStatus models.OrderStatus
+	for _, e := range aiCtx.Events {
+		if e.NewStatus == models.ORDER_STATUS_CANCELLED {
+			prevStatus = e.PreviousStatus
+			break
+		}
+	}
+
+	severity, ok := cancellationSeverity[prevStatus]
+	if !ok {
+		severity = "LOW"
+	}
+
+	var reason, action string
+	switch severity {
+	case "LOW":
+		reason = fmt.Sprintf("Order was cancelled early at stage '%s', minimal operational impact", prevStatus)
+		action = "Log the cancellation and notify the customer support team for record keeping"
+	case "MEDIUM":
+		reason = fmt.Sprintf("Order was cancelled after payment at stage '%s', refund processing may be required", prevStatus)
+		action = "Verify refund status and notify finance team to process any pending refund"
+	case "HIGH":
+		reason = fmt.Sprintf("Order was cancelled after packing at stage '%s', warehouse resources were already consumed", prevStatus)
+		action = "Notify warehouse to restock items and finance to process refund; review cancellation policy"
+	case "CRITICAL":
+		reason = fmt.Sprintf("Order was cancelled after shipping at stage '%s', recall from carrier required", prevStatus)
+		action = "Immediately contact the carrier to intercept and return the shipment; escalate to operations manager"
+	}
+
+	return &RuleBasedResult{
+		ExceptionType:      "CANCELLATION_ANOMALY",
+		Severity:           severity,
+		LikelyReason:       reason,
+		InternalNextAction: action,
+		ConfidenceScore:    1.0,
+	}
+}
+
+func detectRefundAnomaly(aiCtx *models.AIContext) *RuleBasedResult {
+	if aiCtx.CurrentStatus != models.ORDER_STATUS_REFUNDED {
+		return nil
+	}
+
+	// Find the status immediately before the refund event.
+	var prevStatus models.OrderStatus
+	for _, e := range aiCtx.Events {
+		if e.NewStatus == models.ORDER_STATUS_REFUNDED {
+			prevStatus = e.PreviousStatus
+			break
+		}
+	}
+
+	severity, ok := refundSeverity[prevStatus]
+	if !ok {
+		severity = "LOW"
+	}
+
+	var reason, action string
+	switch severity {
+	case "LOW":
+		reason = fmt.Sprintf("Refund was issued early at stage '%s', likely a payment error or duplicate charge", prevStatus)
+		action = "Verify payment records and confirm the refund amount with the finance team"
+	case "MEDIUM":
+		reason = fmt.Sprintf("Refund issued at stage '%s' while items were already packed, logistics coordination needed", prevStatus)
+		action = "Notify warehouse to halt packing/dispatch and confirm refund with finance team"
+	case "HIGH":
+		reason = fmt.Sprintf("Refund issued at stage '%s' while order is in transit, carrier recall required", prevStatus)
+		action = "Contact carrier to intercept shipment; coordinate with finance for refund and logistics for return"
+	case "CRITICAL":
+		reason = fmt.Sprintf("Refund issued at stage '%s' after successful delivery, possible fraud or system error", prevStatus)
+		action = "Freeze the refund transaction, escalate to fraud/risk team, and initiate investigation immediately"
+	}
+
+	return &RuleBasedResult{
+		ExceptionType:      "REFUND_ANOMALY",
+		Severity:           severity,
+		LikelyReason:       reason,
+		InternalNextAction: action,
+		ConfidenceScore:    1.0,
 	}
 }

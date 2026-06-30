@@ -94,7 +94,6 @@ func (h *OrderHandler) GetOrderDetail(c fiber.Ctx) error {
 	if err != nil {
 		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
 	}
-	fmt.Printf("GetOrderDetail: id=%d\n", id)
 
 	// Check driver authorization: driver can only view orders assigned to them
 	role, _ := c.Locals("role").(string)

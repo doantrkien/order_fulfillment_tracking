@@ -5,7 +5,7 @@ Exception Type: ALTERNATIVE_DELIVERY
 Applicable When:
 The driver note indicates the package was successfully left in a safe/approved location (e.g., reception desk, security guard, neighbor, front door) either per the customer's request or because the customer was temporarily unreachable.
 
-This is a SUCCESSFUL delivery, NOT a failure. However, it deviates from the standard happy-path delivery (direct handoff to the customer) and must be recorded for audit, risk mitigation, and driver KPI evaluation.
+This is a SUCCESSFUL delivery, NOT a failure. However, it deviates from the standard happy-path delivery (direct handoff to the customer) and must be recorded for audit, risk mitigation, and driver KPI evaluation. A successful standard delivery or repeated confirmation of delivery is NOT an ALTERNATIVE_DELIVERY exception.
 
 ## Severity Classification
 ### LOW

@@ -3,7 +3,6 @@ package ai
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"main/errs"
@@ -49,8 +48,7 @@ func (g *aiAdapter) AnalyzeException(
 		EventTimeline:   timeline,
 		AnalyzedAt:      time.Now().Format(time.RFC3339),
 	}
-
-	fmt.Println("Prompt Context:", promptCtx.DriverNotes)
+	// fmt.Println("Prmot", promptCtx)
 
 	SanitizePromptContext(&promptCtx)
 
@@ -58,6 +56,7 @@ func (g *aiAdapter) AnalyzeException(
 	prompt := BuildExceptionAnalysisPrompt(promptCtx, knowledge)
 
 	rawText, err := g.client.GenerateContent(ctx, prompt)
+	// fmt.Println("Raw Text Ai", rawText)
 	if err != nil {
 		return dto.ExceptionOutput{}, "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
 	}
@@ -82,8 +81,6 @@ func (g *aiAdapter) DraftCustomerUpdate(
 	if err != nil {
 		return "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
 	}
-
-	fmt.Print(rawText)
 
 	return rawText, nil
 }

@@ -16,7 +16,6 @@ Apply the following domain rules when classifying and rating the exception:
 [TASK]
 Analyze the order context and the driver note above.
 Identify the exception type and assign severity using ONLY the [KNOWLEDGE BASE] rules.
-Focus on anomalies mentioned in the driver note as the primary signal.
 
 [OUTPUT FORMAT]
 Respond with EXACTLY this JSON structure (no additional fields, no wrapping):
@@ -36,3 +35,5 @@ Respond with EXACTLY this JSON structure (no additional fields, no wrapping):
 4. Your role is ANALYSIS ONLY — observe, diagnose, and recommend internal actions.
 5. If you cannot determine the exception with reasonable confidence, set confidence_score below 0.5.
 6. Do NOT output anything other than the JSON object. No markdown fences, no explanations.
+7. This exception should NOT be selected if the primary issue is simply that one or more workflow stages were skipped. In those cases, prefer SKIPPED_STATUS.
+8. Severity MUST be determined ONLY from the order lifecycle history.

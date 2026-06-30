@@ -115,47 +115,45 @@ func isInternalSystemError(exceptionType string) bool {
 }
 
 // shouldCallAI quyết định có cần gọi AI hay dùng Template tĩnh.
-//
-// Ma trận quyết định:
-//   - OTHER → LUÔN gọi AI (LikelyReason là text tự do, Template không diễn giải được)
-//   - INVALID_TRANSITION / SKIPPED_STATUS / DUPLICATE_EVENT → KHÔNG gọi AI (Template đủ, an toàn)
-//   - ALTERNATIVE_DELIVERY → KHÔNG gọi AI (Giao thành công, Template FYI đủ)
-//   - STUCK_ORDER / DELIVERY_FAILURE + neutral/informative + email → Template
-//   - STUCK_ORDER / DELIVERY_FAILURE + apologetic/proactive → AI (cần giọng điệu)
-//   - Bất kỳ exception nào + channel=sms → AI (cần rút ngắn)
 func shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
 	channel := strings.ToLower(strings.TrimSpace(input.Channel))
 	tone := strings.ToLower(strings.TrimSpace(input.Tone))
-	var needAI bool
 
-	switch {
-	case input.ExceptionType == "OTHER":
-		// Template không thể diễn giải LikelyReason tự do từ exception analysis
-		needAI = true
-
-	case isInternalSystemError(input.ExceptionType):
-		// Lỗi kỹ thuật nội bộ — không để AI "sáng tác" thêm cho khách hàng
-		needAI = false
-
-	case input.ExceptionType == "ALTERNATIVE_DELIVERY":
-		// Giao thay thế thành công — Template FYI đủ an toàn cho khách hàng
-		needAI = false
-
-	case channel == "sms":
-		// SMS cần rút ngắn mạnh, Template tĩnh quá dài
-		needAI = true
-
-	case tone != "" && tone != "neutral" && tone != "informative":
-		// Tone đặc biệt (apologetic, proactive) cần AI viết lại giọng điệu
-		needAI = true
-
-	default:
-		// Còn lại: lỗi vận hành (STUCK_ORDER/DELIVERY_FAILURE) + tone cơ bản + email
-		needAI = false
+	// 1. HARD RULES (Veto - Phủ quyết tuyệt đối)
+	if isInternalSystemError(input.ExceptionType) {
+		fmt.Printf("[DEBUG][shouldCallAI] VETO: Internal System Error (%s)\n", input.ExceptionType)
+		return false
+	}
+	if input.ExceptionType == "ALTERNATIVE_DELIVERY" {
+		fmt.Printf("[DEBUG][shouldCallAI] VETO: Alternative Delivery\n")
+		return false
 	}
 
-	fmt.Printf("[DEBUG][shouldCallAI] ExceptionType: %s | Tone: %q | Channel: %q | NeedAI: %v\n",
-		input.ExceptionType, tone, channel, needAI)
+	// 2. MUST-HAVE RULES (Bắt buộc dùng AI)
+	if input.ExceptionType == "OTHER" {
+		fmt.Printf("[DEBUG][shouldCallAI] MUST: Exception Type is OTHER\n")
+		return true
+	}
+
+	// 3. SCORING SYSTEM
+	score := 0
+
+	if channel == "sms" {
+		score += 2
+	}
+
+	if tone == "apologetic" || tone == "proactive" {
+		score += 3
+	}
+	if len(input.LikelyReason) > 50 {
+		score += 1
+	}
+
+	threshold := 3
+	needAI := score >= threshold
+
+	fmt.Printf("[DEBUG][shouldCallAI] ExceptionType: %s | Tone: %q | Channel: %q | Score: %d/%d | NeedAI: %v\n",
+		input.ExceptionType, tone, channel, score, threshold, needAI)
 
 	return needAI
 }

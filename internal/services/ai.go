@@ -123,8 +123,6 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		Channel:         channel,
 	}
 
-	fmt.Println(adapterInput)
-
 	result, err := s.draftGenerator.Generate(ctx, adapterInput)
 	if err != nil {
 		return nil, errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
@@ -275,8 +273,9 @@ func (s *aiService) TriggerEvaluation(ctx context.Context, req dto.TriggerEvalua
 		return nil, fmt.Errorf("could not parse dataset JSON: %w", err)
 	}
 
-	// Optionally validate if the dataset matches what was requested
-	// But usually, since it's hardcoded for this feature, it's fine.
+	// fmt.Printf("Number of cases: %d\n", len(dataset.Cases))
+	// jsonBytes, _ := json.MarshalIndent(dataset, "", "  ")
+	// fmt.Printf("Cases: %s\n", string(jsonBytes))
 
 	// 2. Create Run Record in DB (Status = PENDING)
 	runRecord := &models.AIEvaluationRun{
@@ -289,9 +288,7 @@ func (s *aiService) TriggerEvaluation(ctx context.Context, req dto.TriggerEvalua
 	}
 
 	// 3. Initialize Worker
-	// Use 1 worker to avoid hitting Groq API rate limits when running batch evaluation.
-	// Can be increased if using a paid tier with higher RPM limits.
-	maxWorkers := 1
+	maxWorkers := 5
 	worker := NewEvaluationWorker(s.analyzer, s.evalRepo, maxWorkers)
 
 	// 4. Trigger Worker in background goroutine
@@ -299,8 +296,8 @@ func (s *aiService) TriggerEvaluation(ctx context.Context, req dto.TriggerEvalua
 
 	// 5. Return immediate response
 	return &dto.TriggerEvaluationResponse{
-		RunID:   runRecord.ID,
-		Status:  string(runRecord.Status),
+		RunID: runRecord.ID,
+		// Status:  string(runRecord.Status),
 		Message: "Batch evaluation started in background",
 	}, nil
 }
