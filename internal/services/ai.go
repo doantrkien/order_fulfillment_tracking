@@ -10,6 +10,7 @@ import (
 	"main/internal/models"
 	"main/internal/repositories"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -288,7 +289,7 @@ func (s *aiService) TriggerEvaluation(ctx context.Context, req dto.TriggerEvalua
 	}
 
 	// 3. Initialize Worker
-	maxWorkers := 5
+	maxWorkers, _ := strconv.Atoi(os.Getenv("EVAL_MAX_WORKERS"))
 	worker := NewEvaluationWorker(s.analyzer, s.evalRepo, maxWorkers)
 
 	// 4. Trigger Worker in background goroutine
