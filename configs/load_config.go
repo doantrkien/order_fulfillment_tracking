@@ -13,18 +13,39 @@ import (
 type AIConfig struct {
 	Enabled   bool // Whether AI is enabled (default: true). Set AI_ENABLED=false to disable.
 	TimeoutMs int  // AI call timeout in milliseconds (default: 10000).
+
+	// Scoring parameters
+	ScoreChannelSMS              int
+	ScoreToneApologeticProactive int
+	ScoreLongReason              int
+	LikelyReasonLengthThreshold  int
+	AIScoreThreshold             int
+}
+
+// getEnvInt reads an integer from the environment, returning defaultVal if empty or invalid.
+func getEnvInt(key string, defaultVal int) int {
+	if v := os.Getenv(key); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil {
+			return parsed
+		}
+	}
+	return defaultVal
 }
 
 // LoadAIConfig reads AI configuration from environment variables.
 func LoadAIConfig() AIConfig {
 	enabled := os.Getenv("AI_ENABLED") != "false" // default: true
-	timeoutMs := 10000                             // default: 10 seconds
-	if v := os.Getenv("AI_TIMEOUT_MS"); v != "" {
-		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
-			timeoutMs = parsed
-		}
+	timeoutMs := getEnvInt("AI_TIMEOUT_MS", 10000)
+	
+	return AIConfig{
+		Enabled:                      enabled,
+		TimeoutMs:                    timeoutMs,
+		ScoreChannelSMS:              getEnvInt("AI_SCORE_CHANNEL_SMS", 3),
+		ScoreToneApologeticProactive: getEnvInt("AI_SCORE_TONE_APOLOGETIC_PROACTIVE", 3),
+		ScoreLongReason:              getEnvInt("AI_SCORE_LONG_REASON", 1),
+		LikelyReasonLengthThreshold:  getEnvInt("AI_REASON_LENGTH_THRESHOLD", 50),
+		AIScoreThreshold:             getEnvInt("AI_SCORE_THRESHOLD", 3),
 	}
-	return AIConfig{Enabled: enabled, TimeoutMs: timeoutMs}
 }
 
 func LoadConfig() error {

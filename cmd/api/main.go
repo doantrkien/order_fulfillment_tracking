@@ -91,8 +91,13 @@ func main() {
 	})
 
 	draftGenerator := ai.NewDraftGenerator(aiAdapter, ai.DraftGeneratorConfig{
-		AIEnabled: aiConfig.Enabled,
-		AITimeout: time.Duration(aiConfig.TimeoutMs) * time.Millisecond,
+		AIEnabled:                    aiConfig.Enabled,
+		AITimeout:                    time.Duration(aiConfig.TimeoutMs) * time.Millisecond,
+		ScoreChannelSMS:              aiConfig.ScoreChannelSMS,
+		ScoreToneApologeticProactive: aiConfig.ScoreToneApologeticProactive,
+		ScoreLongReason:              aiConfig.ScoreLongReason,
+		LikelyReasonLengthThreshold:  aiConfig.LikelyReasonLengthThreshold,
+		AIScoreThreshold:             aiConfig.AIScoreThreshold,
 	})
 
 	aiDraftRepo := repositories.NewAIDraftRepository(db)

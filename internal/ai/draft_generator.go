@@ -10,6 +10,15 @@ import (
 	"main/internal/dto"
 )
 
+const (
+	ExceptionAlternativeDelivery = "ALTERNATIVE_DELIVERY"
+	ExceptionOther               = "OTHER"
+
+	ChannelSMS     = "sms"
+	ToneApologetic = "apologetic"
+	ToneProactive  = "proactive"
+)
+
 type DraftResult struct {
 	CustomerUpdateDraft string
 	ConfidenceScore     float64
@@ -22,6 +31,13 @@ type DraftResult struct {
 type DraftGeneratorConfig struct {
 	AIEnabled bool
 	AITimeout time.Duration
+
+	// Scoring parameters
+	ScoreChannelSMS              int
+	ScoreToneApologeticProactive int
+	ScoreLongReason              int
+	LikelyReasonLengthThreshold  int
+	AIScoreThreshold             int
 }
 
 type DraftGenerator struct {
@@ -40,7 +56,7 @@ func (dg *DraftGenerator) Generate(ctx context.Context, input dto.CustomerUpdate
 
 	input.BaselineDraft = buildFallbackDraftMessage(input)
 
-	if !dg.config.AIEnabled || !shouldCallAI(input) {
+	if !dg.config.AIEnabled || !dg.shouldCallAI(input) {
 		reason := FallbackReasonTemplateSufficient
 		if !dg.config.AIEnabled {
 			reason = FallbackReasonDisabled
@@ -115,7 +131,7 @@ func isInternalSystemError(exceptionType string) bool {
 }
 
 // shouldCallAI quyết định có cần gọi AI hay dùng Template tĩnh.
-func shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
+func (dg *DraftGenerator) shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
 	channel := strings.ToLower(strings.TrimSpace(input.Channel))
 	tone := strings.ToLower(strings.TrimSpace(input.Tone))
 
@@ -124,13 +140,13 @@ func shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
 		fmt.Printf("[DEBUG][shouldCallAI] VETO: Internal System Error (%s)\n", input.ExceptionType)
 		return false
 	}
-	if input.ExceptionType == "ALTERNATIVE_DELIVERY" {
+	if input.ExceptionType == ExceptionAlternativeDelivery {
 		fmt.Printf("[DEBUG][shouldCallAI] VETO: Alternative Delivery\n")
 		return false
 	}
 
 	// 2. MUST-HAVE RULES (Bắt buộc dùng AI)
-	if input.ExceptionType == "OTHER" {
+	if input.ExceptionType == ExceptionOther {
 		fmt.Printf("[DEBUG][shouldCallAI] MUST: Exception Type is OTHER\n")
 		return true
 	}
@@ -138,22 +154,21 @@ func shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
 	// 3. SCORING SYSTEM
 	score := 0
 
-	if channel == "sms" {
-		score += 2
+	if channel == ChannelSMS {
+		score += dg.config.ScoreChannelSMS
 	}
 
-	if tone == "apologetic" || tone == "proactive" {
-		score += 3
+	if tone == ToneApologetic || tone == ToneProactive {
+		score += dg.config.ScoreToneApologeticProactive
 	}
-	if len(input.LikelyReason) > 50 {
-		score += 1
+	if len(input.LikelyReason) > dg.config.LikelyReasonLengthThreshold {
+		score += dg.config.ScoreLongReason
 	}
 
-	threshold := 3
-	needAI := score >= threshold
+	needAI := score >= dg.config.AIScoreThreshold
 
 	fmt.Printf("[DEBUG][shouldCallAI] ExceptionType: %s | Tone: %q | Channel: %q | Score: %d/%d | NeedAI: %v\n",
-		input.ExceptionType, tone, channel, score, threshold, needAI)
+		input.ExceptionType, tone, channel, score, dg.config.AIScoreThreshold, needAI)
 
 	return needAI
 }
