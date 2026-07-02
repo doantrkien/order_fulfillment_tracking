@@ -1,7 +1,7 @@
 {
   "cases": [
-     {
-      "case_id": "case_05_skipped_status_created_to_shipped",
+    {
+      "case_id": "case_01_skipped_status_created_to_shipped",
       "synthetic_input": {
         "order_id": 1005,
         "current_status": "shipped",
@@ -29,7 +29,7 @@
       "expected_severity": "HIGH"
     },
     {
-      "case_id": "case_07_skipped_status_created_to_delivered",
+      "case_id": "case_02_skipped_status_created_to_delivered",
       "synthetic_input": {
         "order_id": 1007,
         "current_status": "delivered",
@@ -58,7 +58,7 @@
     },
 
     {
-      "case_id": "case_02_invalid_transition_shipped_to_packed",
+      "case_id": "case_03_invalid_transition_shipped_to_packed",
       "synthetic_input": {
         "order_id": 2002,
         "current_status": "packed",
@@ -92,7 +92,7 @@
       "expected_severity": "HIGH"
     },
     {
-      "case_id": "case_03_invalid_transition_delivered_to_shipped",
+      "case_id": "case_04_invalid_transition_delivered_to_shipped",
       "synthetic_input": {
         "order_id": 2003,
         "current_status": "shipped",
@@ -127,7 +127,7 @@
     },
 
     {
-      "case_id": "case_12_delayed_shipment_stuck_critical_7days",
+      "case_id": "case_05_delayed_shipment_stuck_critical_7days",
       "synthetic_input": {
         "order_id": 2012,
         "current_status": "shipped",
@@ -149,7 +149,7 @@
       "expected_severity": "CRITICAL"
     },
     {
-      "case_id": "case_09_delayed_shipment_stuck_in_shipped_5days",
+      "case_id": "case_06_delayed_shipment_stuck_in_shipped_5days",
       "synthetic_input": {
         "order_id": 2009,
         "current_status": "shipped",
@@ -172,7 +172,7 @@
     },
 
     {
-      "case_id": "case_14_duplicate_event_shipped_high",
+      "case_id": "case_07_duplicate_event_shipped_high",
       "synthetic_input": {
         "order_id": 1014,
         "current_status": "shipped",
@@ -201,7 +201,7 @@
     },
 
     {
-      "case_id": "case_15_duplicate_event_delivered_critical",
+      "case_id": "case_08_duplicate_event_delivered_critical",
       "synthetic_input": {
         "order_id": 1015,
         "current_status": "delivered",
@@ -230,7 +230,7 @@
     },
 
     {
-      "case_id": "case_16_delivery_failure_customer_not_home",
+      "case_id": "case_09_delivery_failure_customer_not_home",
       "synthetic_input": {
         "order_id": 2016,
         "current_status": "shipped",
@@ -252,7 +252,7 @@
       "expected_severity": "MEDIUM"
     },
     {
-      "case_id": "case_17_delivery_failure_weather_road_flooded",
+      "case_id": "case_10_delivery_failure_weather_road_flooded",
       "synthetic_input": {
         "order_id": 2017,
         "current_status": "shipped",
@@ -274,7 +274,7 @@
       "expected_severity": "HIGH"
     },
     {
-      "case_id": "case_18_delivery_failure_package_lost",
+      "case_id": "case_11_delivery_failure_package_lost",
       "synthetic_input": {
         "order_id": 2018,
         "current_status": "shipped",
@@ -296,7 +296,7 @@
       "expected_severity": "CRITICAL"
     },
     {
-      "case_id": "case_19_delivery_failure_wrong_address",
+      "case_id": "case_12_delivery_failure_wrong_address",
       "synthetic_input": {
         "order_id": 2019,
         "current_status": "shipped",
@@ -318,7 +318,7 @@
       "expected_severity": "MEDIUM"
     },
     {
-      "case_id": "case_20_cancel_before_payment_low",
+      "case_id": "case_13_cancel_before_payment_low",
       "synthetic_input": {
         "order_id": 2020,
         "current_status": "cancelled",
@@ -340,7 +340,7 @@
       "expected_severity": "LOW"
     },
     {
-      "case_id": "case_21_cancel_after_payment_medium",
+      "case_id": "case_14_cancel_after_payment_medium",
       "synthetic_input": {
         "order_id": 2021,
         "current_status": "cancelled",
@@ -368,7 +368,7 @@
       "expected_severity": "MEDIUM"
     },
     {
-      "case_id": "case_22_cancel_after_packed_high",
+      "case_id": "case_15_cancel_after_packed_high",
       "synthetic_input": {
         "order_id": 2022,
         "current_status": "cancelled",
@@ -402,7 +402,7 @@
       "expected_severity": "HIGH"
     },
     {
-      "case_id": "case_23_cancel_after_shipped_critical",
+      "case_id": "case_16_cancel_after_shipped_critical",
       "synthetic_input": {
         "order_id": 2023,
         "current_status": "cancelled",
@@ -442,7 +442,7 @@
       "expected_severity": "CRITICAL"
     },
     {
-      "case_id": "case_24_refund_after_payment_low",
+      "case_id": "case_17_refund_after_payment_low",
       "synthetic_input": {
         "order_id": 2024,
         "current_status": "refunded",
@@ -470,7 +470,7 @@
       "expected_severity": "LOW"
     },
     {
-      "case_id": "case_25_refund_after_packed_medium",
+      "case_id": "case_18_refund_after_packed_medium",
       "synthetic_input": {
         "order_id": 2025,
         "current_status": "refunded",
@@ -504,7 +504,7 @@
       "expected_severity": "MEDIUM"
     },
     {
-      "case_id": "case_26_refund_after_shipped_high",
+      "case_id": "case_19_refund_after_shipped_high",
       "synthetic_input": {
         "order_id": 2026,
         "current_status": "refunded",
@@ -544,7 +544,7 @@
       "expected_severity": "HIGH"
     },
     {
-      "case_id": "case_27_refund_after_delivered_critical",
+      "case_id": "case_20_refund_after_delivered_critical",
       "synthetic_input": {
         "order_id": 2027,
         "current_status": "refunded",
