@@ -33,7 +33,7 @@ type ExceptionInput struct {
 	CustomerName    string        `json:"customer_name"`
 	ShippingAddress string        `json:"shipping_address"`
 	CreatedAt       string        `json:"created_at"`
-	ErrorMessage    string        `json:"error_message"`
+	DriverNotes     string        `json:"driver_notes"`
 	EventHistory    []EventRecord `json:"event_history"`
 }
 
@@ -102,8 +102,8 @@ type TriggerEvaluationRequest struct {
 }
 
 type TriggerEvaluationResponse struct {
-	RunID   int64  `json:"run_id"`
-	Status  string `json:"status"`
+	RunID int64 `json:"run_id"`
+	// Status  string `json:"status"`
 	Message string `json:"message"`
 }
 
@@ -115,9 +115,7 @@ type EvaluationCase struct {
 }
 
 type EvaluationDataset struct {
-	RunBy       string           `json:"run_by"`
-	Environment string           `json:"environment"`
-	Cases       []EvaluationCase `json:"cases"`
+	Cases []EvaluationCase `json:"cases"`
 }
 
 // GetEvaluationRunResponse trả về summary của 1 evaluation run.

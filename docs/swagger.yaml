@@ -1,12 +1,5 @@
 basePath: /
 definitions:
-  dto.AnalyzeExceptionRequest:
-    properties:
-      note:
-        example: Phân tích đơn hàng này hộ tôi
-        maxLength: 500
-        type: string
-    type: object
   dto.AnalyzeExceptionResponse:
     properties:
       confidence_score:
@@ -559,11 +552,6 @@ paths:
         name: id
         required: true
         type: integer
-      - description: Optional analysis context notes
-        in: body
-        name: request
-        schema:
-          $ref: '#/definitions/dto.AnalyzeExceptionRequest'
       produces:
       - application/json
       responses:

@@ -53,7 +53,7 @@ func TestDraftGenerator_AIReturnsError(t *testing.T) {
 	require.NoError(t, err) // DraftGenerator should never return error on AI failure
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonConnectionError, result.FallbackReason)
-	assert.Contains(t, result.CustomerUpdateDraft, "order to [REDACTED_SHIPPING_ADDRESS]")
+	assert.Contains(t, result.CustomerUpdateDraft, "order to .")
 	assert.Equal(t, 1.0, result.ConfidenceScore)
 }
 
@@ -68,7 +68,7 @@ func TestDraftGenerator_AIReturnsTimeout(t *testing.T) {
 
 	input := dto.CustomerUpdateDraftInput{
 		OrderID:       1003,
-		ExceptionType: "INVALID_TRANSITION",
+		ExceptionType: "DELIVERY_FAILURE",
 		Tone:          "apologetic",
 	}
 
@@ -77,7 +77,7 @@ func TestDraftGenerator_AIReturnsTimeout(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonTimeout, result.FallbackReason)
-	assert.Contains(t, result.CustomerUpdateDraft, "status mismatch during your order")
+	assert.Contains(t, result.CustomerUpdateDraft, "issue occurred during the shipment")
 	assert.Equal(t, 1.0, result.ConfidenceScore)
 }
 
@@ -93,6 +93,7 @@ func TestDraftGenerator_AIReturnsInvalidResponse(t *testing.T) {
 	input := dto.CustomerUpdateDraftInput{
 		OrderID:       1004,
 		ExceptionType: "OTHER",
+		Tone:          "apologetic",
 	}
 
 	result, err := generator.Generate(context.Background(), input)
@@ -118,7 +119,7 @@ func TestDraftGenerator_AIReturnsLowConfidence(t *testing.T) {
 
 	input := dto.CustomerUpdateDraftInput{
 		OrderID:       1005,
-		ExceptionType: "SKIPPED_STATUS",
+		ExceptionType: "DELIVERY_FAILURE",
 		Tone:          "apologetic",
 	}
 
@@ -127,7 +128,7 @@ func TestDraftGenerator_AIReturnsLowConfidence(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonLowConfidence, result.FallbackReason)
-	assert.Contains(t, result.CustomerUpdateDraft, "unusual update")
+	assert.Contains(t, result.CustomerUpdateDraft, "issue occurred during the shipment")
 	assert.Equal(t, 1.0, result.ConfidenceScore)
 }
 

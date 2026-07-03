@@ -60,6 +60,17 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "valid_alternative_delivery",
+			input: dto.ExceptionOutput{
+				ExceptionType:      "ALTERNATIVE_DELIVERY",
+				Severity:           "LOW",
+				LikelyReason:       "Package left at reception desk per customer arrangement",
+				InternalNextAction: "Record alternative handoff location. Flag for confirmation if no pickup within 24h.",
+				ConfidenceScore:    0.95,
+			},
+			wantErr: false,
+		},
 		// ── Invalid cases ──────────────────────────────────────────────
 		{
 			name: "invalid_exception_type",

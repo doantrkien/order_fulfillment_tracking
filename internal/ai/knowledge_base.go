@@ -21,6 +21,15 @@ var kbBodyDuplicateEvent string
 //go:embed knowledge/skipped_status.md
 var kbBodySkippedStatus string
 
+//go:embed knowledge/alternative_success.md
+var kbBodyAlternativeSuccess string
+
+//go:embed knowledge/cancellation_edge_case.md
+var kbBodyCancellation string
+
+//go:embed knowledge/refund_edge_case.md
+var kbBodyRefund string
+
 type KnowledgeEntry struct {
 	Title string
 	Body  string
@@ -52,6 +61,21 @@ var kbSkippedStatus = KnowledgeEntry{
 	Body:  kbBodySkippedStatus,
 }
 
+var kbAlternativeSuccess = KnowledgeEntry{
+	Title: "Alternative Delivery Success",
+	Body:  kbBodyAlternativeSuccess,
+}
+
+var kbCancellation = KnowledgeEntry{
+	Title: "Cancellation Edge Case",
+	Body:  kbBodyCancellation,
+}
+
+var kbRefund = KnowledgeEntry{
+	Title: "Refund Edge Case",
+	Body:  kbBodyRefund,
+}
+
 var deliveryFailureKeywordsKB = []string{
 	"lost", "stolen", "cannot find", "missing parcel", "hàng bị mất", "nghi thất lạc",
 
@@ -64,26 +88,69 @@ var deliveryFailureKeywordsKB = []string{
 	"temporarily unreachable", "no answer", "will retry", "khách không nghe máy",
 }
 
+var stateMachineKeywordsKB = []string{
+	"tự động đổi trạng thái", "sai trạng thái hiện tại",
+}
+
 var duplicateKeywordsKB = []string{
-	"duplicate", "lặp", "trùng", "repeated",
+	"bấm lại", "duplicate", "lặp", "trùng", "repeated", "nhiều lần", "times", "hệ thống ghi nhận delivered 2 lần.",
 }
 
 var skippedKeywordsKB = []string{
-	"skipped", "missed", "bỏ qua", "thiếu",
+	"skipped", "missed", "bỏ qua", "thiếu", "không đi qua các bước thông thường",
 }
 
 var stuckKeywordsKB = []string{
 	"stuck", "no progress", "not moved", "delay", "delayed", "late",
-	"trễ", "chậm", "không tiến triển",
+	"trễ", "chậm", "không tiến triển", "Đơn hàng bị giữ lại",
+}
+
+var successKeywordsKB = []string{
+	"reception", "lễ tân", "neighbor", "hàng xóm", "bảo vệ", "security", "front door", "trước cửa", "thành công", "delivered",
+}
+
+var cancellationKeywordsKB = []string{
+	"cancel",
+	"cancelled",
+	"cancellation",
+	"customer requested cancellation",
+	"cancel request",
+	"hủy",
+	"hủy đơn",
+	"yêu cầu hủy",
+	"đổi ý",
+}
+
+var refundKeywordsKB = []string{
+	"refund",
+	"refunded",
+	"refund request",
+	"duplicate payment",
+	"chargeback",
+	"hoàn tiền",
+	"yêu cầu hoàn tiền",
+	"thanh toán nhầm",
 }
 
 func ClassifyDriverNote(note string) []KnowledgeEntry {
 	lower := strings.ToLower(strings.TrimSpace(note))
-	entries := []KnowledgeEntry{kbStateMachine} // always present
+	entries := []KnowledgeEntry{} // always present
 
 	matched := false
-	if containsAny(lower, deliveryFailureKeywordsKB) {
+	isSuccessAlternative := containsAny(lower, successKeywordsKB)
+
+	if isSuccessAlternative {
+		entries = append(entries, kbAlternativeSuccess)
+		matched = true
+	}
+
+	if containsAny(lower, deliveryFailureKeywordsKB) && !isSuccessAlternative {
 		entries = append(entries, kbDeliveryFailure)
+		matched = true
+	}
+
+	if containsAny(lower, stateMachineKeywordsKB) && !isSuccessAlternative {
+		entries = append(entries, kbStateMachine)
 		matched = true
 	}
 	if containsAny(lower, duplicateKeywordsKB) {
@@ -99,8 +166,18 @@ func ClassifyDriverNote(note string) []KnowledgeEntry {
 		matched = true
 	}
 
+	if containsAny(lower, cancellationKeywordsKB) {
+		entries = append(entries, kbCancellation)
+		matched = true
+	}
+
+	if containsAny(lower, refundKeywordsKB) {
+		entries = append(entries, kbRefund)
+		matched = true
+	}
+
 	if !matched {
-		entries = append(entries, kbDeliveryFailure, kbDuplicateEvent, kbSkippedStatus, kbStuckOrder)
+		entries = append(entries, kbDeliveryFailure, kbDuplicateEvent, kbSkippedStatus, kbStuckOrder, kbCancellation, kbRefund)
 	}
 
 	var titles []string

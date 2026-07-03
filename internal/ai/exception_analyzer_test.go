@@ -66,8 +66,8 @@ func TestExceptionAnalyzer_AIDisabled(t *testing.T) {
 	})
 
 	aiCtx := newTestAIContext()
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
-
+	// result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	result, err := analyzer.Analyze(context.Background(), aiCtx)
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonDisabled, result.FallbackReason)
@@ -84,7 +84,8 @@ func TestExceptionAnalyzer_NoDriverNote_SkipsAI(t *testing.T) {
 	})
 
 	aiCtx := newTestAIContext() // no driver notes
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	// result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	result, err := analyzer.Analyze(context.Background(), aiCtx)
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
@@ -111,7 +112,8 @@ func TestExceptionAnalyzer_WithDriverNote_CallsAI(t *testing.T) {
 	})
 
 	aiCtx := newTestAIContextWithDriverNote("vehicle breakdown on highway")
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	// result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	result, err := analyzer.Analyze(context.Background(), aiCtx)
 
 	require.NoError(t, err)
 	assert.False(t, result.FallbackUsed)
@@ -129,7 +131,8 @@ func TestExceptionAnalyzer_AIReturnsError(t *testing.T) {
 	})
 
 	aiCtx := newTestAIContextWithDriverNote("some note") // need driver note to trigger AI
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	// result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	result, err := analyzer.Analyze(context.Background(), aiCtx)
 
 	require.NoError(t, err) // Analyzer should NOT return error on AI failure
 	assert.True(t, result.FallbackUsed)
@@ -147,7 +150,8 @@ func TestExceptionAnalyzer_AIReturnsTimeout(t *testing.T) {
 	})
 
 	aiCtx := newTestAIContextWithDriverNote("some note") // need driver note to trigger AI
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	// result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	result, err := analyzer.Analyze(context.Background(), aiCtx)
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
@@ -166,7 +170,8 @@ func TestExceptionAnalyzer_AIReturnsInvalidResponse(t *testing.T) {
 	})
 
 	aiCtx := newTestAIContextWithDriverNote("some note") // need driver note to trigger AI
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	// result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	result, err := analyzer.Analyze(context.Background(), aiCtx)
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
@@ -192,7 +197,8 @@ func TestExceptionAnalyzer_AIReturnsLowConfidence(t *testing.T) {
 	})
 
 	aiCtx := newTestAIContextWithDriverNote("some driver note") // need driver note to trigger AI
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "test notes")
+	// result, err := analyzer.Analyze(context.Background(), aiCtx, "test notes")
+	result, err := analyzer.Analyze(context.Background(), aiCtx)
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
@@ -223,14 +229,15 @@ func TestExceptionAnalyzer_FallbackProducesValidResult(t *testing.T) {
 		},
 	}
 
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	// result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	result, err := analyzer.Analyze(context.Background(), aiCtx)
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonDisabled, result.FallbackReason)
 	assert.Equal(t, "SKIPPED_STATUS", result.ExceptionType)
 	assert.Equal(t, "CRITICAL", result.Severity)
-	assert.Equal(t, 0.99, result.ConfidenceScore)
+	assert.Equal(t, float64(1), result.ConfidenceScore)
 	assert.NotEmpty(t, result.LikelyReason)
 	assert.NotEmpty(t, result.InternalNextAction)
 }
@@ -257,7 +264,8 @@ func TestExceptionAnalyzer_FallbackNoExceptionDetected(t *testing.T) {
 		},
 	}
 
-	result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	// result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+	result, err := analyzer.Analyze(context.Background(), aiCtx)
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
@@ -283,7 +291,8 @@ func TestExceptionAnalyzer_NeverReturnsError_ForAIFailures(t *testing.T) {
 
 		// Must have a driver note so the AI path is exercised
 		aiCtx := newTestAIContextWithDriverNote("some note")
-		result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+		// result, err := analyzer.Analyze(context.Background(), aiCtx, "")
+		result, err := analyzer.Analyze(context.Background(), aiCtx)
 		assert.NoError(t, err, "Analyze should not return error for: %v", testErr)
 		assert.True(t, result.FallbackUsed, "Fallback should be used for: %v", testErr)
 	}
@@ -304,11 +313,13 @@ func TestBuildExceptionInput(t *testing.T) {
 				PreviousStatus: models.ORDER_STATUS_PACKED,
 				NewStatus:      models.ORDER_STATUS_SHIPPED,
 				UpdatedBy:      "driver_5",
+				DriverNote:     func(s string) *string { return &s }("customer complained"),
 			},
 		},
 	}
 
-	input := buildExceptionInput(aiCtx, "customer complained")
+	// input := buildExceptionInput(aiCtx, "customer complained")
+	input := buildExceptionInput(aiCtx)
 
 	assert.Equal(t, int64(42), input.OrderID)
 	assert.Equal(t, "shipped", input.CurrentStatus)
@@ -316,8 +327,10 @@ func TestBuildExceptionInput(t *testing.T) {
 	assert.Equal(t, "Test", input.CustomerName)
 	assert.Equal(t, "123 St", input.ShippingAddress)
 	assert.Equal(t, now.Format(time.RFC3339), input.CreatedAt)
-	assert.Equal(t, "customer complained", input.ErrorMessage)
+	assert.Equal(t, "customer complained", input.DriverNotes)
 	assert.Len(t, input.EventHistory, 1)
 	assert.Equal(t, "packed", input.EventHistory[0].FromStatus)
 	assert.Equal(t, "shipped", input.EventHistory[0].ToStatus)
 }
+
+

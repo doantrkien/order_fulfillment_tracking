@@ -10,14 +10,17 @@ import (
 	"main/internal/models"
 	"main/internal/repositories"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/datatypes"
 )
 
 type AIService interface {
-	AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
+	// AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
+	AnalyzeException(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error)
 	GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error)
 	GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIRequest) (*dto.GenerateDraftAPIResponse, error)
 	TriggerEvaluation(ctx context.Context, req dto.TriggerEvaluationRequest) (*dto.TriggerEvaluationResponse, error)
@@ -43,14 +46,16 @@ func NewAIService(aiRepo repositories.AIRepository, analyzer *ai.ExceptionAnalyz
 	}
 }
 
-func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error) {
+// func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error) {
+func (s *aiService) AnalyzeException(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error) {
 
 	aiCtx, err := s.aiRepo.GetAIContextByOrderID(ctx, orderID)
 	if err != nil {
 		return nil, errs.ERR_NOT_FOUND
 	}
 
-	result, err := s.analyzer.Analyze(ctx, aiCtx, notes)
+	// result, err := s.analyzer.Analyze(ctx, aiCtx, notes)
+	result, err := s.analyzer.Analyze(ctx, aiCtx)
 	if err != nil {
 		return nil, fmt.Errorf("Error in Analyze Service: %w", err)
 	}
@@ -96,6 +101,13 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		tone = models.DraftToneNeutral
 	}
 
+	channel := strings.ToLower(strings.TrimSpace(req.Channel))
+	switch channel {
+	case "sms", "email", "push":
+	default:
+		channel = "email"
+	}
+
 	lastestException, err := s.aiRepo.GetLatestAnalysisByOrderID(ctx, req.OrderID)
 	if err != nil {
 		return nil, errs.ERR_NOT_FOUND
@@ -109,7 +121,7 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		LikelyReason:    lastestException.LikelyReason,
 		ExceptionType:   lastestException.ExceptionType,
 		Tone:            tone,
-		Channel:         req.Channel,
+		Channel:         channel,
 	}
 
 	result, err := s.draftGenerator.Generate(ctx, adapterInput)
@@ -142,11 +154,13 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 	}
 
 	confidence := result.ConfidenceScore
+	reqID := uuid.NewString()
 	draft := &models.AICustomerUpdateDraft{
 		OrderID:               req.OrderID,
 		AIExceptionResultID:   &lastestException.ID,
 		DraftMessage:          result.CustomerUpdateDraft,
 		Tone:                  tone,
+		Channel:               channel,
 		ConfidenceScore:       &confidence,
 		FallbackUsed:          result.FallbackUsed,
 		FallbackReason:        fallbackReason,
@@ -154,7 +168,9 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		PromptTemplateVersion: ai.PromptTemplateVersion,
 		DurationMs:            durationMs,
 		ReviewStatus:          models.DraftReviewStatusPending,
+		RequestID:             &reqID,
 	}
+
 	if saveErr := s.aiDraftRepo.Save(ctx, draft); saveErr != nil {
 		return nil, errs.ERR_INTERNAL_SERVER
 	}
@@ -211,6 +227,8 @@ func mapResultToModel(orderID int64, result *ai.AnalysisResult) *models.AIExcept
 		}
 	}
 
+	reqID := uuid.NewString()
+
 	return &models.AIException{
 		OrderID:               orderID,
 		ExceptionType:         result.ExceptionType,
@@ -223,6 +241,7 @@ func mapResultToModel(orderID int64, result *ai.AnalysisResult) *models.AIExcept
 		PromptTemplateVersion: ai.PromptTemplateVersion,
 		DurationMs:            durationMs,
 		RawResponse:           rawResponse,
+		RequestID:             &reqID,
 		EvaluatedAt:           now,
 	}
 }
@@ -255,8 +274,9 @@ func (s *aiService) TriggerEvaluation(ctx context.Context, req dto.TriggerEvalua
 		return nil, fmt.Errorf("could not parse dataset JSON: %w", err)
 	}
 
-	// Optionally validate if the dataset matches what was requested
-	// But usually, since it's hardcoded for this feature, it's fine.
+	// fmt.Printf("Number of cases: %d\n", len(dataset.Cases))
+	// jsonBytes, _ := json.MarshalIndent(dataset, "", "  ")
+	// fmt.Printf("Cases: %s\n", string(jsonBytes))
 
 	// 2. Create Run Record in DB (Status = PENDING)
 	runRecord := &models.AIEvaluationRun{
@@ -269,9 +289,7 @@ func (s *aiService) TriggerEvaluation(ctx context.Context, req dto.TriggerEvalua
 	}
 
 	// 3. Initialize Worker
-	// Use 1 worker to avoid hitting Groq API rate limits when running batch evaluation.
-	// Can be increased if using a paid tier with higher RPM limits.
-	maxWorkers := 1
+	maxWorkers, _ := strconv.Atoi(os.Getenv("EVAL_MAX_WORKERS"))
 	worker := NewEvaluationWorker(s.analyzer, s.evalRepo, maxWorkers)
 
 	// 4. Trigger Worker in background goroutine
@@ -279,8 +297,8 @@ func (s *aiService) TriggerEvaluation(ctx context.Context, req dto.TriggerEvalua
 
 	// 5. Return immediate response
 	return &dto.TriggerEvaluationResponse{
-		RunID:   runRecord.ID,
-		Status:  string(runRecord.Status),
+		RunID: runRecord.ID,
+		// Status:  string(runRecord.Status),
 		Message: "Batch evaluation started in background",
 	}, nil
 }

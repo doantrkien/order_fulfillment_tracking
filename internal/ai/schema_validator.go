@@ -8,12 +8,15 @@ import (
 )
 
 var validExceptionTypes = map[string]bool{
-	"INVALID_TRANSITION": true,
-	"STUCK_ORDER":        true,
-	"SKIPPED_STATUS":     true,
-	"DUPLICATE_EVENT":    true,
-	"DELIVERY_FAILURE":   true,
-	"OTHER":              true,
+	"INVALID_TRANSITION":   true,
+	"CANCELLATION_ANOMALY": true,
+	"REFUND_ANOMALY":       true,
+	"STUCK_ORDER":          true,
+	"SKIPPED_STATUS":       true,
+	"DUPLICATE_EVENT":      true,
+	"DELIVERY_FAILURE":     true,
+	"ALTERNATIVE_DELIVERY": true,
+	"OTHER":                true,
 }
 
 var validSeverities = map[string]bool{

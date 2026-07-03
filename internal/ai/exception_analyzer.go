@@ -12,6 +12,7 @@ import (
 const (
 	FallbackReasonDisabled           = "ai_disabled"
 	FallbackReasonNoDriverNote       = "no_driver_note"
+	FallbackReasonEarlyNoteIgnored   = "early_note_ignored_to_save_cost"
 	FallbackReasonTemplateSufficient = "template_sufficient"
 	FallbackReasonTimeout            = "ai_timeout"
 	FallbackReasonConnectionError    = "ai_connection_error"
@@ -48,17 +49,22 @@ func NewExceptionAnalyzer(adapter AIAdapter, config ExceptionAnalyzerConfig) *Ex
 	}
 }
 
-func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContext, notes string) (*AnalysisResult, error) {
+func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContext) (*AnalysisResult, error) {
 	now := time.Now()
 
 	// ── Step 1: Rule-based engine
 	ruleResult := AnalyzeByRules(aiCtx, now)
 
 	// ── Step 2: Check for driver notes
-	hasDriverNote := hasAnyDriverNote(aiCtx) || strings.TrimSpace(notes) != ""
+	hasDriverNote := hasAnyDriverNote(aiCtx)
 
 	// ── Step 3: Skip AI when disabled or no driver note
-	if !ea.config.AIEnabled || !hasDriverNote {
+	// Exception: CANCELLED and REFUNDED are terminal states handled entirely by
+	// rule-based logic — they must bypass the driver-note gate so they are never
+	// silently downgraded to "OTHER".
+	isTerminalAnomaly := aiCtx.CurrentStatus == models.ORDER_STATUS_CANCELLED ||
+		aiCtx.CurrentStatus == models.ORDER_STATUS_REFUNDED
+	if !ea.config.AIEnabled || (!hasDriverNote && !isTerminalAnomaly) {
 		reason := FallbackReasonDisabled
 		if ea.config.AIEnabled && !hasDriverNote {
 			reason = FallbackReasonNoDriverNote
@@ -66,8 +72,15 @@ func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContex
 		return ruleResultToAnalysis(ruleResult, reason, 0, ""), nil
 	}
 
+	// For terminal anomaly statuses with no driver note, rule-based result is sufficient —
+	// skip the AI call to avoid unnecessary cost and latency.
+	if isTerminalAnomaly && !hasDriverNote {
+		return ruleResultToAnalysis(ruleResult, FallbackReasonNoDriverNote, 0, ""), nil
+	}
+
 	// ── Step 4: Call AI
-	input := buildExceptionInput(aiCtx, notes)
+	// input := buildExceptionInput(aiCtx, notes)
+	input := buildExceptionInput(aiCtx)
 
 	start := time.Now()
 	aiCtxTimeout, cancel := context.WithTimeout(ctx, ea.config.AITimeout)
@@ -173,7 +186,8 @@ func (ea *ExceptionAnalyzer) fallbackWithRaw(aiCtx *models.AIContext, reason str
 	}
 }
 
-func buildExceptionInput(aiCtx *models.AIContext, notes string) dto.ExceptionInput {
+// func buildExceptionInput(aiCtx *models.AIContext, notes string) dto.ExceptionInput {
+func buildExceptionInput(aiCtx *models.AIContext) dto.ExceptionInput {
 	eventHistory := make([]dto.EventRecord, 0, len(aiCtx.Events))
 	for _, e := range aiCtx.Events {
 		eventHistory = append(eventHistory, dto.EventRecord{
@@ -184,16 +198,25 @@ func buildExceptionInput(aiCtx *models.AIContext, notes string) dto.ExceptionInp
 		})
 	}
 
-	allNotes := []string{}
-	if strings.TrimSpace(notes) != "" {
-		allNotes = append(allNotes, strings.TrimSpace(notes))
-	}
-	for _, e := range aiCtx.Events {
+	// allNotes := []string{}
+	// // if strings.TrimSpace(notes) != "" {
+	// // 	allNotes = append(allNotes, strings.TrimSpace(notes))
+	// // }
+	// for _, e := range aiCtx.Events {
+	// 	if e.DriverNote != nil && strings.TrimSpace(*e.DriverNote) != "" {
+	// 		allNotes = append(allNotes, strings.TrimSpace(*e.DriverNote))
+	// 	}
+	// }
+	// errorMessage := strings.Join(allNotes, "; ")
+
+	var driverNotes string
+	for i := len(aiCtx.Events) - 1; i >= 0; i-- {
+		e := aiCtx.Events[i]
 		if e.DriverNote != nil && strings.TrimSpace(*e.DriverNote) != "" {
-			allNotes = append(allNotes, strings.TrimSpace(*e.DriverNote))
+			driverNotes = strings.TrimSpace(*e.DriverNote)
+			break
 		}
 	}
-	errorMessage := strings.Join(allNotes, "; ")
 
 	return dto.ExceptionInput{
 		OrderID:         aiCtx.OrderID,
@@ -202,7 +225,7 @@ func buildExceptionInput(aiCtx *models.AIContext, notes string) dto.ExceptionInp
 		CustomerName:    aiCtx.CustomerName,
 		ShippingAddress: aiCtx.ShippingAddress,
 		CreatedAt:       aiCtx.CreatedAt.Format(time.RFC3339),
-		ErrorMessage:    errorMessage,
+		DriverNotes:     driverNotes,
 		EventHistory:    eventHistory,
 	}
 }

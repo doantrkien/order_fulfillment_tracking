@@ -3,10 +3,20 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
 	"main/internal/dto"
+)
+
+const (
+	ExceptionAlternativeDelivery = "ALTERNATIVE_DELIVERY"
+	ExceptionOther               = "OTHER"
+
+	ChannelSMS     = "sms"
+	ToneApologetic = "apologetic"
+	ToneProactive  = "proactive"
 )
 
 type DraftResult struct {
@@ -21,6 +31,13 @@ type DraftResult struct {
 type DraftGeneratorConfig struct {
 	AIEnabled bool
 	AITimeout time.Duration
+
+	// Scoring parameters
+	ScoreChannelSMS              int
+	ScoreToneApologeticProactive int
+	ScoreLongReason              int
+	LikelyReasonLengthThreshold  int
+	AIScoreThreshold             int
 }
 
 type DraftGenerator struct {
@@ -39,7 +56,7 @@ func (dg *DraftGenerator) Generate(ctx context.Context, input dto.CustomerUpdate
 
 	input.BaselineDraft = buildFallbackDraftMessage(input)
 
-	if !dg.config.AIEnabled || !shouldCallAI(input) {
+	if !dg.config.AIEnabled || !dg.shouldCallAI(input) {
 		reason := FallbackReasonTemplateSufficient
 		if !dg.config.AIEnabled {
 			reason = FallbackReasonDisabled
@@ -103,29 +120,61 @@ func (dg *DraftGenerator) fallback(input dto.CustomerUpdateDraftInput, reason st
 	}
 }
 
-// shouldCallAI determines whether the AI is necessary for the given input.
-func shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
-	// 1. If exception type is OTHER, we need AI to explain the LikelyReason.
-	if input.ExceptionType == "OTHER" {
+// isInternalSystemError trả về true cho các loại lỗi hệ thống nội bộ.
+// Các loại lỗi này không cần AI diễn giải thêm — Template tĩnh đã đủ an toàn và trung lập.
+func isInternalSystemError(exceptionType string) bool {
+	switch exceptionType {
+	case "INVALID_TRANSITION", "SKIPPED_STATUS", "DUPLICATE_EVENT":
 		return true
 	}
-
-	// 2. If a specific tone is requested
-	tone := strings.ToLower(strings.TrimSpace(input.Tone))
-	if tone != "" && tone != "neutral" && tone != "informative" {
-		return true
-	}
-
-	// 3. If the channel is SMS
-	if strings.ToLower(strings.TrimSpace(input.Channel)) == "sms" {
-		return true
-	}
-
 	return false
 }
 
+// shouldCallAI quyết định có cần gọi AI hay dùng Template tĩnh.
+func (dg *DraftGenerator) shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
+	channel := strings.ToLower(strings.TrimSpace(input.Channel))
+	tone := strings.ToLower(strings.TrimSpace(input.Tone))
+
+	// 1. HARD RULES (Veto - Phủ quyết tuyệt đối)
+	if isInternalSystemError(input.ExceptionType) {
+		fmt.Printf("[DEBUG][shouldCallAI] VETO: Internal System Error (%s)\n", input.ExceptionType)
+		return false
+	}
+	if input.ExceptionType == ExceptionAlternativeDelivery {
+		fmt.Printf("[DEBUG][shouldCallAI] VETO: Alternative Delivery\n")
+		return false
+	}
+
+	// 2. MUST-HAVE RULES (Bắt buộc dùng AI)
+	if input.ExceptionType == ExceptionOther {
+		fmt.Printf("[DEBUG][shouldCallAI] MUST: Exception Type is OTHER\n")
+		return true
+	}
+
+	// 3. SCORING SYSTEM
+	score := 0
+
+	if channel == ChannelSMS {
+		score += dg.config.ScoreChannelSMS
+	}
+
+	if tone == ToneApologetic || tone == ToneProactive {
+		score += dg.config.ScoreToneApologeticProactive
+	}
+	if len(input.LikelyReason) > dg.config.LikelyReasonLengthThreshold {
+		score += dg.config.ScoreLongReason
+	}
+
+	needAI := score >= dg.config.AIScoreThreshold
+
+	fmt.Printf("[DEBUG][shouldCallAI] ExceptionType: %s | Tone: %q | Channel: %q | Score: %d/%d | NeedAI: %v\n",
+		input.ExceptionType, tone, channel, score, dg.config.AIScoreThreshold, needAI)
+
+	return needAI
+}
+
 func buildFallbackDraftMessage(input dto.CustomerUpdateDraftInput) string {
-	return GetFallbackTemplate(input.ExceptionType)
+	return GetFallbackTemplate(input.ExceptionType, input.CustomerName, input.ShippingAddress, input.CurrentStatus)
 }
 
 func stripDraftFences(s string) string {

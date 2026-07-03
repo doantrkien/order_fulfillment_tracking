@@ -34,7 +34,7 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 		CustomerName:    "John Doe",
 		ShippingAddress: "123 Main St",
 		CreatedAt:       "2023-10-27T10:00:00Z",
-		ErrorMessage:    "Driver got stuck in traffic",
+		DriverNotes:     "Driver got stuck in traffic",
 		EventHistory:    nil,
 	}
 
@@ -127,9 +127,9 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 				t.Logf("[CONNECTION ERROR] Gặp lỗi mất kết nối mạng: %v", err)
 			},
 			assertOut: func(t *testing.T, output dto.ExceptionOutput, rawText string) {
-                assert.Empty(t, output.ExceptionType)
-                assert.Empty(t, rawText)
-            },
+				assert.Empty(t, output.ExceptionType)
+				assert.Empty(t, rawText)
+			},
 		},
 	}
 

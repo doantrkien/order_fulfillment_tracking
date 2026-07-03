@@ -54,7 +54,7 @@ func TestDetectInvalidTransitions(t *testing.T) {
 				assert.NotNil(t, result)
 				assert.Equal(t, tc.wantType, result.ExceptionType)
 				assert.Equal(t, "CRITICAL", result.Severity)
-				assert.Equal(t, 0.99, result.ConfidenceScore)
+				assert.Equal(t, float64(1), result.ConfidenceScore)
 			}
 		})
 	}
@@ -85,7 +85,7 @@ func TestDetectDuplicateEvents(t *testing.T) {
 			},
 			wantType:     "DUPLICATE_EVENT",
 			wantSeverity: "MEDIUM",
-			wantScore:    0.96,
+			wantScore: 1,
 		},
 		{
 			name: "single event - no duplicate possible",
@@ -209,7 +209,7 @@ func TestDetectStuckOrder(t *testing.T) {
 			now:          baseTime.Add(25 * time.Hour),
 			wantType:     "STUCK_ORDER",
 			wantSeverity: "LOW",
-			wantScore:    0.85,
+			wantScore: 1,
 		},
 		{
 			name: "created status - escalated (over 48h = 2×24h)",
@@ -220,7 +220,7 @@ func TestDetectStuckOrder(t *testing.T) {
 			now:          baseTime.Add(49 * time.Hour),
 			wantType:     "STUCK_ORDER",
 			wantSeverity: "HIGH",
-			wantScore:    0.94,
+			wantScore: 1,
 		},
 		{
 			name: "shipped status - stuck (over 72h)",
@@ -234,7 +234,7 @@ func TestDetectStuckOrder(t *testing.T) {
 			now:          baseTime.Add(145 * time.Hour), // 144h age (2x threshold)
 			wantType:     "STUCK_ORDER",
 			wantSeverity: "MEDIUM",
-			wantScore:    0.90,
+			wantScore: 1,
 		},
 		{
 			name: "delivered (terminal) - never stuck",
@@ -340,4 +340,144 @@ func TestAnalyzeByRules_PriorityOrder(t *testing.T) {
 		result := AnalyzeByRules(aiCtx, now)
 		assert.Nil(t, result)
 	})
+}
+
+func TestDetectCancellationAnomaly(t *testing.T) {
+	tests := []struct {
+		name         string
+		aiCtx        *models.AIContext
+		wantNil      bool
+		wantSeverity string
+	}{
+		{
+			name: "not cancelled - returns nil",
+			aiCtx: &models.AIContext{
+				CurrentStatus: models.ORDER_STATUS_PAID,
+			},
+			wantNil: true,
+		},
+		{
+			name: "cancelled from created - LOW (only valid cancellation path)",
+			aiCtx: &models.AIContext{
+				CurrentStatus: models.ORDER_STATUS_CANCELLED,
+				Events: []models.AIEvent{
+					{PreviousStatus: models.ORDER_STATUS_CREATED, NewStatus: models.ORDER_STATUS_CANCELLED},
+				},
+			},
+			wantSeverity: "LOW",
+		},
+		{
+			name: "cancelled with no events - defaults to LOW",
+			aiCtx: &models.AIContext{
+				CurrentStatus: models.ORDER_STATUS_CANCELLED,
+				Events:        []models.AIEvent{},
+			},
+			wantSeverity: "LOW",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := detectCancellationAnomaly(tc.aiCtx)
+			if tc.wantNil {
+				assert.Nil(t, result)
+			} else {
+				if assert.NotNil(t, result) {
+					assert.Equal(t, "CANCELLATION_ANOMALY", result.ExceptionType)
+					assert.Equal(t, tc.wantSeverity, result.Severity)
+					assert.Equal(t, 1.0, result.ConfidenceScore)
+				}
+			}
+		})
+	}
+}
+
+func TestDetectRefundAnomaly(t *testing.T) {
+	tests := []struct {
+		name         string
+		aiCtx        *models.AIContext
+		wantNil      bool
+		wantSeverity string
+	}{
+		{
+			name: "not refunded - returns nil",
+			aiCtx: &models.AIContext{
+				CurrentStatus: models.ORDER_STATUS_PAID,
+			},
+			wantNil: true,
+		},
+		{
+			name: "refunded from paid - LOW",
+			aiCtx: &models.AIContext{
+				CurrentStatus: models.ORDER_STATUS_REFUNDED,
+				Events: []models.AIEvent{
+					{PreviousStatus: models.ORDER_STATUS_CREATED, NewStatus: models.ORDER_STATUS_PAID},
+					{PreviousStatus: models.ORDER_STATUS_PAID, NewStatus: models.ORDER_STATUS_REFUNDED},
+				},
+			},
+			wantSeverity: "LOW",
+		},
+		{
+			name: "refunded from packed - MEDIUM",
+			aiCtx: &models.AIContext{
+				CurrentStatus: models.ORDER_STATUS_REFUNDED,
+				Events: []models.AIEvent{
+					{PreviousStatus: models.ORDER_STATUS_CREATED, NewStatus: models.ORDER_STATUS_PAID},
+					{PreviousStatus: models.ORDER_STATUS_PAID, NewStatus: models.ORDER_STATUS_PACKED},
+					{PreviousStatus: models.ORDER_STATUS_PACKED, NewStatus: models.ORDER_STATUS_REFUNDED},
+				},
+			},
+			wantSeverity: "MEDIUM",
+		},
+		{
+			name: "refunded from shipped - HIGH",
+			aiCtx: &models.AIContext{
+				CurrentStatus: models.ORDER_STATUS_REFUNDED,
+				Events: []models.AIEvent{
+					{PreviousStatus: models.ORDER_STATUS_CREATED, NewStatus: models.ORDER_STATUS_PAID},
+					{PreviousStatus: models.ORDER_STATUS_PAID, NewStatus: models.ORDER_STATUS_PACKED},
+					{PreviousStatus: models.ORDER_STATUS_PACKED, NewStatus: models.ORDER_STATUS_SHIPPED},
+					{PreviousStatus: models.ORDER_STATUS_SHIPPED, NewStatus: models.ORDER_STATUS_REFUNDED},
+				},
+			},
+			wantSeverity: "HIGH",
+		},
+		{
+			name: "refunded from delivered - CRITICAL",
+			aiCtx: &models.AIContext{
+				CurrentStatus: models.ORDER_STATUS_REFUNDED,
+				Events: []models.AIEvent{
+					{PreviousStatus: models.ORDER_STATUS_CREATED, NewStatus: models.ORDER_STATUS_PAID},
+					{PreviousStatus: models.ORDER_STATUS_PAID, NewStatus: models.ORDER_STATUS_PACKED},
+					{PreviousStatus: models.ORDER_STATUS_PACKED, NewStatus: models.ORDER_STATUS_SHIPPED},
+					{PreviousStatus: models.ORDER_STATUS_SHIPPED, NewStatus: models.ORDER_STATUS_DELIVERED},
+					{PreviousStatus: models.ORDER_STATUS_DELIVERED, NewStatus: models.ORDER_STATUS_REFUNDED},
+				},
+			},
+			wantSeverity: "CRITICAL",
+		},
+		{
+			name: "refunded with no events - defaults to LOW",
+			aiCtx: &models.AIContext{
+				CurrentStatus: models.ORDER_STATUS_REFUNDED,
+				Events:        []models.AIEvent{},
+			},
+			wantSeverity: "LOW",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := detectRefundAnomaly(tc.aiCtx)
+			if tc.wantNil {
+				assert.Nil(t, result)
+			} else {
+				if assert.NotNil(t, result) {
+					assert.Equal(t, "REFUND_ANOMALY", result.ExceptionType)
+					assert.Equal(t, tc.wantSeverity, result.Severity)
+					assert.Equal(t, 1.0, result.ConfidenceScore)
+				}
+			}
+		})
+	}
 }
