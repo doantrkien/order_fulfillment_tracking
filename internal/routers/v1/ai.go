@@ -14,4 +14,5 @@ func SetupAIRouter(app *fiber.App, aiHandler *handlers.AIHandler) {
 	aiRouter.Post("evaluations/order-exceptions", aiHandler.TriggerEvaluation)
 	aiRouter.Get("evaluations/:run_id", aiHandler.GetEvaluationRun)
 	aiRouter.Get("evaluations/:run_id/details", aiHandler.GetEvaluationDetails)
+	aiRouter.Post("knowledge/reload", aiHandler.ReloadKnowledge)
 }

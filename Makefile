@@ -74,5 +74,8 @@ docker-down:
 docker-logs:
 	docker compose logs -f
 
+docker-build:
+	docker compose up -d --build
+
 
 

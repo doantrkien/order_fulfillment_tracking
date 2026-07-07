@@ -210,3 +210,19 @@ func (h *AIHandler) GetEvaluationDetails(c fiber.Ctx) error {
 
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, result)
 }
+
+// ReloadKnowledge godoc
+// @Summary Reload Knowledge Base from DB
+// @Description Reload knowledge entries from database to memory cache.
+// @Tags AI Admin
+// @Produce json
+// @Success 200 {object} response.ResponseStruct
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse
+// @Security BearerAuth
+// @Router /api/v1/ai/knowledge/reload [post]
+func (h *AIHandler) ReloadKnowledge(c fiber.Ctx) error {
+	if err := h.aiService.ReloadKnowledge(c.Context()); err != nil {
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
+	}
+	return response.ResponseSuccess(c, 200, "Knowledge Base reloaded successfully", nil)
+}

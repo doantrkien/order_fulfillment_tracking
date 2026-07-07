@@ -1,9 +1,13 @@
 package ai
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
+	"main/internal/models"
+	"main/internal/repositories"
 	"strings"
+	"sync"
 )
 
 //go:embed knowledge/state_machine.md
@@ -176,9 +180,7 @@ func ClassifyDriverNote(note string) []KnowledgeEntry {
 		matched = true
 	}
 
-	if !matched {
-		entries = append(entries, kbDeliveryFailure, kbDuplicateEvent, kbSkippedStatus, kbStuckOrder, kbCancellation, kbRefund)
-	}
+
 
 	var titles []string
 	for _, e := range entries {
@@ -196,4 +198,166 @@ func containsAny(s string, keywords []string) bool {
 		}
 	}
 	return false
+}
+
+type KnowledgeStore struct {
+	repo  repositories.KnowledgeRepository
+	cache map[string]KnowledgeEntry // key: slug
+	mu    sync.RWMutex
+}
+
+func NewKnowledgeStore(repo repositories.KnowledgeRepository) *KnowledgeStore {
+	return &KnowledgeStore{
+		repo:  repo,
+		cache: make(map[string]KnowledgeEntry),
+	}
+}
+
+func (s *KnowledgeStore) Initialize(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// 1. Query active knowledge entries from DB
+	dbEntries, err := s.repo.GetAllActive(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to load knowledge entries from DB: %w", err)
+	}
+
+	// 2. If DB is empty, auto-seed with embedded values
+	if len(dbEntries) == 0 {
+		seeds := []struct {
+			slug  string
+			title string
+			body  string
+		}{
+			{"state_machine", "Order State Machine", kbBodyStateMachine},
+			{"delivery_failure", "Delivery Failure", kbBodyDeliveryFailure},
+			{"stuck_order", "Stuck Order", kbBodyStuckOrder},
+			{"duplicate_event", "Duplicate Event", kbBodyDuplicateEvent},
+			{"skipped_status", "Skipped Status", kbBodySkippedStatus},
+			{"alternative_success", "Alternative Delivery Success", kbBodyAlternativeSuccess},
+			{"cancellation_edge_case", "Cancellation Edge Case", kbBodyCancellation},
+			{"refund_edge_case", "Refund Edge Case", kbBodyRefund},
+		}
+
+		for _, seed := range seeds {
+			entry := &models.KnowledgeEntry{
+				Slug:     seed.slug,
+				Title:    seed.title,
+				Body:     seed.body,
+				IsActive: true,
+			}
+			if err := s.repo.Save(ctx, entry); err != nil {
+				fmt.Printf("[WARNING][KnowledgeStore] Failed to seed slug %q: %v\n", seed.slug, err)
+			} else {
+				dbEntries = append(dbEntries, *entry)
+			}
+		}
+	}
+
+	// 3. Populate memory cache
+	s.cache = make(map[string]KnowledgeEntry)
+	for _, dbEntry := range dbEntries {
+		s.cache[dbEntry.Slug] = KnowledgeEntry{
+			Title: dbEntry.Title,
+			Body:  dbEntry.Body,
+		}
+	}
+
+	fmt.Printf("[INFO][KnowledgeStore] Loaded %d active knowledge entries into memory cache.\n", len(s.cache))
+	return nil
+}
+
+func (s *KnowledgeStore) Reload(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	dbEntries, err := s.repo.GetAllActive(ctx)
+	if err != nil {
+		return err
+	}
+
+	s.cache = make(map[string]KnowledgeEntry)
+	for _, dbEntry := range dbEntries {
+		s.cache[dbEntry.Slug] = KnowledgeEntry{
+			Title: dbEntry.Title,
+			Body:  dbEntry.Body,
+		}
+	}
+
+	fmt.Printf("[INFO][KnowledgeStore] Reloaded %d active knowledge entries from DB.\n", len(s.cache))
+	return nil
+}
+
+func (s *KnowledgeStore) GetStateMachine() KnowledgeEntry {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.cache != nil {
+		if entry, ok := s.cache["state_machine"]; ok {
+			return entry
+		}
+	}
+	return kbStateMachine
+}
+
+func (s *KnowledgeStore) ClassifyDriverNote(note string) []KnowledgeEntry {
+	lower := strings.ToLower(strings.TrimSpace(note))
+	entries := []KnowledgeEntry{}
+
+	getEntry := func(slug string, fallback KnowledgeEntry) KnowledgeEntry {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		if s.cache != nil {
+			if entry, ok := s.cache[slug]; ok {
+				return entry
+			}
+		}
+		return fallback
+	}
+
+	matched := false
+	isSuccessAlternative := containsAny(lower, successKeywordsKB)
+
+	if isSuccessAlternative {
+		entries = append(entries, getEntry("alternative_success", kbAlternativeSuccess))
+		matched = true
+	}
+
+	if containsAny(lower, deliveryFailureKeywordsKB) && !isSuccessAlternative {
+		entries = append(entries, getEntry("delivery_failure", kbDeliveryFailure))
+		matched = true
+	}
+
+	if containsAny(lower, stateMachineKeywordsKB) && !isSuccessAlternative {
+		entries = append(entries, getEntry("state_machine", kbStateMachine))
+		matched = true
+	}
+	if containsAny(lower, duplicateKeywordsKB) {
+		entries = append(entries, getEntry("duplicate_event", kbDuplicateEvent))
+		matched = true
+	}
+	if containsAny(lower, skippedKeywordsKB) {
+		entries = append(entries, getEntry("skipped_status", kbSkippedStatus))
+		matched = true
+	}
+	if containsAny(lower, stuckKeywordsKB) {
+		entries = append(entries, getEntry("stuck_order", kbStuckOrder))
+		matched = true
+	}
+	if containsAny(lower, cancellationKeywordsKB) {
+		entries = append(entries, getEntry("cancellation_edge_case", kbCancellation))
+		matched = true
+	}
+	if containsAny(lower, refundKeywordsKB) {
+		entries = append(entries, getEntry("refund_edge_case", kbRefund))
+		matched = true
+	}
+
+	var titles []string
+	for _, e := range entries {
+		titles = append(titles, e.Title)
+	}
+	fmt.Printf("[DEBUG][ClassifyDriverNote] Note: %q | Matched: %v | KB Sent: %d (%s)\n", note, matched, len(entries), strings.Join(titles, ", "))
+
+	return entries
 }

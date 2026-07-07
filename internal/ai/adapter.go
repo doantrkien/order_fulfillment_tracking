@@ -13,14 +13,16 @@ import (
 type AIAdapter interface {
 	AnalyzeException(ctx context.Context, input dto.ExceptionInput) (dto.ExceptionOutput, string, error)
 	DraftCustomerUpdate(ctx context.Context, input dto.CustomerUpdateDraftInput) (string, error)
+	ReloadKnowledge(ctx context.Context) error
 }
 
 type aiAdapter struct {
-	client aiclient.AIClient
+	client  aiclient.AIClient
+	kbStore *KnowledgeStore
 }
 
-func NewAIAdapter(client aiclient.AIClient) *aiAdapter {
-	return &aiAdapter{client: client}
+func NewAIAdapter(client aiclient.AIClient, kbStore *KnowledgeStore) *aiAdapter {
+	return &aiAdapter{client: client, kbStore: kbStore}
 }
 
 func (g *aiAdapter) AnalyzeException(
@@ -52,7 +54,18 @@ func (g *aiAdapter) AnalyzeException(
 
 	SanitizePromptContext(&promptCtx)
 
-	knowledge := ClassifyDriverNote(input.DriverNotes)
+	var knowledge []KnowledgeEntry
+	if g.kbStore != nil {
+		knowledge = g.kbStore.ClassifyDriverNote(input.DriverNotes)
+		if len(knowledge) == 0 {
+			knowledge = []KnowledgeEntry{g.kbStore.GetStateMachine()}
+		}
+	} else {
+		knowledge = ClassifyDriverNote(input.DriverNotes)
+		if len(knowledge) == 0 {
+			knowledge = []KnowledgeEntry{kbStateMachine}
+		}
+	}
 	prompt := BuildExceptionAnalysisPrompt(promptCtx, knowledge)
 
 	rawText, err := g.client.GenerateContent(ctx, prompt)
@@ -83,4 +96,11 @@ func (g *aiAdapter) DraftCustomerUpdate(
 	}
 
 	return rawText, nil
+}
+
+func (g *aiAdapter) ReloadKnowledge(ctx context.Context) error {
+	if g.kbStore != nil {
+		return g.kbStore.Reload(ctx)
+	}
+	return nil
 }

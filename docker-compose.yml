@@ -1,23 +1,21 @@
 services:
-  # app:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: order_tracking
-  #   ports:
-  #     - "5000:5000"
-  #   env_file:
-  #     - .env.docker
-  #   volumes:
-  #     - .:/app
-  #     - /app/tmp
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   stdin_open: true
-  #   tty: true
-
-  
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: order_tracking
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env.docker
+    volumes:
+      - .:/app
+      - /app/tmp
+    depends_on:
+      postgres:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
 
   postgres:
     image: postgres:16
@@ -32,7 +30,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d order_tracking"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d order_tracking" ]
       interval: 5s
       timeout: 5s
       retries: 8
@@ -61,8 +59,8 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
     restart: unless-stopped
-    # depends_on:
-    #   - app
+    depends_on:
+      - app
 
 volumes:
   postgres_data:

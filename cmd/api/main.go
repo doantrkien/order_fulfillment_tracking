@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 	_ "time/tzdata"
+	"context"
 
 	"main/configs"
 	"main/internal/ai"
@@ -15,6 +16,7 @@ import (
 	routers "main/internal/routers/v1"
 	"main/internal/services"
 	"main/pkg/aiclient"
+	"main/pkg/mongodb"
 	"main/pkg/postgresql"
 
 	_ "main/docs"
@@ -43,6 +45,10 @@ func main() {
 	db, err := postgresql.ConnectDB()
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)
+	}
+
+	if err := mongodb.ConnectMongo(); err != nil {
+		log.Fatal(err)
 	}
 
 	app := fiber.New(fiber.Config{
@@ -81,9 +87,15 @@ func main() {
 
 	aiRepo := repositories.NewAIRepository(db)
 
+	knowledgeRepo := repositories.NewKnowledgeRepository(db)
+	kbStore := ai.NewKnowledgeStore(knowledgeRepo)
+	if err := kbStore.Initialize(context.Background()); err != nil {
+		log.Printf("[WARNING] Cannot initialize KnowledgeStore: %v", err)
+	}
+
 	aiConfig := configs.LoadAIConfig()
 
-	aiAdapter := ai.NewAIAdapter(aiClient)
+	aiAdapter := ai.NewAIAdapter(aiClient, kbStore)
 
 	analyzer := ai.NewExceptionAnalyzer(aiAdapter, ai.ExceptionAnalyzerConfig{
 		AIEnabled: aiConfig.Enabled,

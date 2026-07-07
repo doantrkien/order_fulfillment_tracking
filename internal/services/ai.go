@@ -26,6 +26,7 @@ type AIService interface {
 	TriggerEvaluation(ctx context.Context, req dto.TriggerEvaluationRequest) (*dto.TriggerEvaluationResponse, error)
 	GetEvaluationRun(ctx context.Context, runID int64) (*dto.GetEvaluationRunResponse, error)
 	GetEvaluationDetails(ctx context.Context, runID int64) (*dto.GetEvaluationDetailsResponse, error)
+	ReloadKnowledge(ctx context.Context) error
 }
 
 type aiService struct {
@@ -44,6 +45,10 @@ func NewAIService(aiRepo repositories.AIRepository, analyzer *ai.ExceptionAnalyz
 		aiDraftRepo:    aiDraftRepo,
 		evalRepo:       evalRepo,
 	}
+}
+
+func (s *aiService) ReloadKnowledge(ctx context.Context) error {
+	return s.analyzer.ReloadKnowledge(ctx)
 }
 
 // func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error) {
