@@ -28,8 +28,8 @@ BEGIN
     FOR i IN 1..50000 LOOP
         selected_status := statuses[floor(random() * 7) + 1];
         
-        -- Create a base timestamp for this order (some time in the last 30 days)
-        base_time := NOW() - (random() * 30) * '1 day'::interval;
+        -- Create a base timestamp for this order (some time in the last 12 hours)
+        base_time := NOW() - (random() * 12) * '1 hour'::interval;
         
         -- Insert order
         INSERT INTO orders (user_info, total_amount, current_status, created_at, updated_at)

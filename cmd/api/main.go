@@ -16,7 +16,7 @@ import (
 	routers "main/internal/routers/v1"
 	"main/internal/services"
 	"main/pkg/aiclient"
-	"main/pkg/mongodb"
+	"main/pkg/embedding"
 	"main/pkg/postgresql"
 
 	_ "main/docs"
@@ -45,10 +45,6 @@ func main() {
 	db, err := postgresql.ConnectDB()
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)
-	}
-
-	if err := mongodb.ConnectMongo(); err != nil {
-		log.Fatal(err)
 	}
 
 	app := fiber.New(fiber.Config{
@@ -88,7 +84,14 @@ func main() {
 	aiRepo := repositories.NewAIRepository(db)
 
 	knowledgeRepo := repositories.NewKnowledgeRepository(db)
-	kbStore := ai.NewKnowledgeStore(knowledgeRepo)
+
+	embeddingClient, embErr := embedding.NewGeminiEmbeddingClient()
+	if embErr != nil {
+		log.Printf("[WARNING] Cannot initialize embedding client: %v — KB will use keyword matching", embErr)
+		embeddingClient = nil
+	}
+
+	kbStore := ai.NewKnowledgeStore(knowledgeRepo, embeddingClient)
 	if err := kbStore.Initialize(context.Background()); err != nil {
 		log.Printf("[WARNING] Cannot initialize KnowledgeStore: %v", err)
 	}

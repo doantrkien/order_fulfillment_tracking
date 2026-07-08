@@ -5,6 +5,7 @@ import (
 	"log"
 	"main/configs"
 	"os"
+	"strconv"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -47,7 +48,19 @@ func main() {
 			log.Fatalf("Error running migration Down: %v", err)
 		}
 		log.Println("Migration Down run successfully!")
+	case "force":
+		if len(os.Args) < 3 {
+			log.Fatalf("Usage: migrate force <version>")
+		}
+		version, err := strconv.Atoi(os.Args[2])
+		if err != nil {
+			log.Fatalf("Invalid version number: %v", err)
+		}
+		if err := m.Force(version); err != nil {
+			log.Fatalf("Error forcing migration version: %v", err)
+		}
+		log.Printf("Forced migration version to %d successfully!", version)
 	default:
-		log.Fatalf("Invalid command. Please use 'up' or 'down'")
+		log.Fatalf("Invalid command. Please use 'up', 'down', or 'force <version>'")
 	}
 }

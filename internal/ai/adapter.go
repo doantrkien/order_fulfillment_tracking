@@ -56,7 +56,7 @@ func (g *aiAdapter) AnalyzeException(
 
 	var knowledge []KnowledgeEntry
 	if g.kbStore != nil {
-		knowledge = g.kbStore.ClassifyDriverNote(input.DriverNotes)
+		knowledge = g.kbStore.ClassifyDriverNote(ctx, input.DriverNotes)
 		if len(knowledge) == 0 {
 			knowledge = []KnowledgeEntry{g.kbStore.GetStateMachine()}
 		}

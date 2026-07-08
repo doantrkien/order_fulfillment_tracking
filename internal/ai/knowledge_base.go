@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"main/internal/models"
 	"main/internal/repositories"
+	"main/pkg/embedding"
 	"strings"
 	"sync"
 )
@@ -89,7 +90,7 @@ var deliveryFailureKeywordsKB = []string{
 	"not home", "no one home", "customer not home", "wrong address", "address not found",
 	"không có nhà", "sai địa chỉ", "không liên lạc được",
 
-	"temporarily unreachable", "no answer", "will retry", "khách không nghe máy",
+	"temporarily unreachable", "no answer", "will retry", "khách không nghe máy", "cannot contact", "unreachable",
 }
 
 var stateMachineKeywordsKB = []string{
@@ -136,6 +137,8 @@ var refundKeywordsKB = []string{
 	"thanh toán nhầm",
 }
 
+// ClassifyDriverNote is the standalone (no-DB) keyword-based classifier.
+// It is used as fallback when KnowledgeStore.embeddingClient is nil.
 func ClassifyDriverNote(note string) []KnowledgeEntry {
 	lower := strings.ToLower(strings.TrimSpace(note))
 	entries := []KnowledgeEntry{} // always present
@@ -180,8 +183,6 @@ func ClassifyDriverNote(note string) []KnowledgeEntry {
 		matched = true
 	}
 
-
-
 	var titles []string
 	for _, e := range entries {
 		titles = append(titles, e.Title)
@@ -200,16 +201,23 @@ func containsAny(s string, keywords []string) bool {
 	return false
 }
 
+// ── KnowledgeStore ─────────────────────────────────────────────────────────────
+
+// KnowledgeStore manages an in-memory cache of KB entries backed by the database.
+// When an embeddingClient is provided, ClassifyDriverNote uses vector similarity
+// search instead of keyword matching.
 type KnowledgeStore struct {
-	repo  repositories.KnowledgeRepository
-	cache map[string]KnowledgeEntry // key: slug
-	mu    sync.RWMutex
+	repo            repositories.KnowledgeRepository
+	embeddingClient embedding.Client // nil → keyword fallback
+	cache           map[string]KnowledgeEntry // key: slug
+	mu              sync.RWMutex
 }
 
-func NewKnowledgeStore(repo repositories.KnowledgeRepository) *KnowledgeStore {
+func NewKnowledgeStore(repo repositories.KnowledgeRepository, embeddingClient embedding.Client) *KnowledgeStore {
 	return &KnowledgeStore{
-		repo:  repo,
-		cache: make(map[string]KnowledgeEntry),
+		repo:            repo,
+		embeddingClient: embeddingClient,
+		cache:           make(map[string]KnowledgeEntry),
 	}
 }
 
@@ -242,10 +250,11 @@ func (s *KnowledgeStore) Initialize(ctx context.Context) error {
 
 		for _, seed := range seeds {
 			entry := &models.KnowledgeEntry{
-				Slug:     seed.slug,
-				Title:    seed.title,
-				Body:     seed.body,
-				IsActive: true,
+				Slug:         seed.slug,
+				Title:        seed.title,
+				Body:         seed.body,
+				IsActive:     true,
+				NeedsReembed: true,
 			}
 			if err := s.repo.Save(ctx, entry); err != nil {
 				fmt.Printf("[WARNING][KnowledgeStore] Failed to seed slug %q: %v\n", seed.slug, err)
@@ -255,7 +264,10 @@ func (s *KnowledgeStore) Initialize(ctx context.Context) error {
 		}
 	}
 
-	// 3. Populate memory cache
+	// 3. Generate embeddings for entries that need it (NeedsReembed=true or embedding IS NULL)
+	s.generateMissingEmbeddings(ctx, dbEntries)
+
+	// 4. Populate memory cache
 	s.cache = make(map[string]KnowledgeEntry)
 	for _, dbEntry := range dbEntries {
 		s.cache[dbEntry.Slug] = KnowledgeEntry{
@@ -277,6 +289,9 @@ func (s *KnowledgeStore) Reload(ctx context.Context) error {
 		return err
 	}
 
+	// Re-embed any entry that was added/updated and still has needs_reembed=true
+	s.generateMissingEmbeddings(ctx, dbEntries)
+
 	s.cache = make(map[string]KnowledgeEntry)
 	for _, dbEntry := range dbEntries {
 		s.cache[dbEntry.Slug] = KnowledgeEntry{
@@ -287,6 +302,29 @@ func (s *KnowledgeStore) Reload(ctx context.Context) error {
 
 	fmt.Printf("[INFO][KnowledgeStore] Reloaded %d active knowledge entries from DB.\n", len(s.cache))
 	return nil
+}
+
+// generateMissingEmbeddings calls embeddingClient for entries where NeedsReembed is true.
+// It is a best-effort operation — errors are logged but never returned.
+func (s *KnowledgeStore) generateMissingEmbeddings(ctx context.Context, entries []models.KnowledgeEntry) {
+	if s.embeddingClient == nil {
+		return
+	}
+	for _, entry := range entries {
+		if !entry.NeedsReembed {
+			continue
+		}
+		vec, err := s.embeddingClient.Embed(ctx, entry.Body)
+		if err != nil {
+			fmt.Printf("[WARNING][KnowledgeStore] Embed failed for %q: %v\n", entry.Slug, err)
+			continue
+		}
+		if updateErr := s.repo.UpdateEmbedding(ctx, entry.ID, vec); updateErr != nil {
+			fmt.Printf("[WARNING][KnowledgeStore] UpdateEmbedding failed for %q (id=%d): %v\n", entry.Slug, entry.ID, updateErr)
+		} else {
+			fmt.Printf("[INFO][KnowledgeStore] Embedded entry %q (id=%d, dims=%d)\n", entry.Slug, entry.ID, len(vec))
+		}
+	}
 }
 
 func (s *KnowledgeStore) GetStateMachine() KnowledgeEntry {
@@ -300,7 +338,66 @@ func (s *KnowledgeStore) GetStateMachine() KnowledgeEntry {
 	return kbStateMachine
 }
 
-func (s *KnowledgeStore) ClassifyDriverNote(note string) []KnowledgeEntry {
+// ClassifyDriverNote classifies a driver note against the knowledge base.
+//
+// If an embeddingClient is available, it uses pgvector cosine-similarity search
+// (semantic). Otherwise it falls back to the keyword-based classifier.
+//
+// ctx is required for the embedding API call; the keyword path ignores it.
+func (s *KnowledgeStore) ClassifyDriverNote(ctx context.Context, note string) []KnowledgeEntry {
+	// ── Semantic path ────────────────────────────────────────────────────────
+	if s.embeddingClient != nil {
+		return s.classifyBySemantic(ctx, note)
+	}
+
+	// ── Keyword fallback ─────────────────────────────────────────────────────
+	return s.classifyByKeyword(note)
+}
+
+// classifyBySemantic embeds the note and queries pgvector for the top-k similar entries.
+// Falls back to keyword matching on any error.
+func (s *KnowledgeStore) classifyBySemantic(ctx context.Context, note string) []KnowledgeEntry {
+	vec, err := s.embeddingClient.Embed(ctx, note)
+	if err != nil {
+		fmt.Printf("[WARN][KnowledgeStore] Embed error, falling back to keyword: %v\n", err)
+		return s.classifyByKeyword(note)
+	}
+
+	dbEntries, err := s.repo.FindSimilar(ctx, vec, 2, 0.75)
+	if err != nil {
+		fmt.Printf("[WARN][KnowledgeStore] FindSimilar error, falling back to keyword: %v\n", err)
+		return s.classifyByKeyword(note)
+	}
+
+	if len(dbEntries) == 0 {
+		fmt.Printf("[DEBUG][ClassifyDriverNote] Semantic: no match (cosine < 0.75) for note: %q\n", note)
+		return []KnowledgeEntry{}
+	}
+
+	// Map DB entries back to in-memory KnowledgeEntry (use cache to get latest body)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	result := make([]KnowledgeEntry, 0, len(dbEntries))
+	for _, dbEntry := range dbEntries {
+		if cached, ok := s.cache[dbEntry.Slug]; ok {
+			result = append(result, cached)
+		} else {
+			result = append(result, KnowledgeEntry{Title: dbEntry.Title, Body: dbEntry.Body})
+		}
+	}
+
+	var titles []string
+	for _, e := range result {
+		titles = append(titles, e.Title)
+	}
+	fmt.Printf("[DEBUG][ClassifyDriverNote] Semantic match: %d entries (cosine ≥ 0.75): %s\n", len(result), strings.Join(titles, ", "))
+	return result
+}
+
+// classifyByKeyword is the original keyword-matching implementation,
+// preserved as fallback when embedding is unavailable.
+func (s *KnowledgeStore) classifyByKeyword(note string) []KnowledgeEntry {
 	lower := strings.ToLower(strings.TrimSpace(note))
 	entries := []KnowledgeEntry{}
 
@@ -357,7 +454,7 @@ func (s *KnowledgeStore) ClassifyDriverNote(note string) []KnowledgeEntry {
 	for _, e := range entries {
 		titles = append(titles, e.Title)
 	}
-	fmt.Printf("[DEBUG][ClassifyDriverNote] Note: %q | Matched: %v | KB Sent: %d (%s)\n", note, matched, len(entries), strings.Join(titles, ", "))
+	fmt.Printf("[DEBUG][ClassifyDriverNote] Keyword match: %v | KB Sent: %d (%s)\n", matched, len(entries), strings.Join(titles, ", "))
 
 	return entries
 }
