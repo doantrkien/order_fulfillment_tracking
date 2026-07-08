@@ -71,7 +71,7 @@ func (g *aiAdapter) AnalyzeException(
 	rawText, err := g.client.GenerateContent(ctx, prompt)
 	// fmt.Println("Raw Text Ai", rawText)
 	if err != nil {
-		return dto.ExceptionOutput{}, "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
+		return dto.ExceptionOutput{}, "", errs.ERR_AI_GENERATE_CONTENT_FAILED
 	}
 
 	var output dto.ExceptionOutput
@@ -92,7 +92,7 @@ func (g *aiAdapter) DraftCustomerUpdate(
 
 	rawText, err := g.client.GenerateContent(ctx, prompt)
 	if err != nil {
-		return "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
+		return "", errs.ERR_AI_GENERATE_CONTENT_FAILED
 	}
 
 	return rawText, nil

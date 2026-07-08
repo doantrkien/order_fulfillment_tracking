@@ -131,7 +131,7 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 
 	result, err := s.draftGenerator.Generate(ctx, adapterInput)
 	if err != nil {
-		return nil, errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
+		return nil, errs.ERR_AI_GENERATE_CONTENT_FAILED
 	}
 
 	var fallbackReason *string

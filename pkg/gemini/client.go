@@ -26,7 +26,7 @@ func NewClient() (*Client, error) {
 	fmt.Printf("[DEBUG][gemini.NewClient] GEMINI_API_KEY set: %v\n", apiKey != "")
 	if apiKey == "" {
 		fmt.Println("[DEBUG][gemini.NewClient] ERROR: GEMINI_API_KEY is empty")
-		return nil, errs.ERR_GEMINI_API_KEY_EMPTY
+		return nil, errs.ERR_AI_API_KEY_EMPTY
 	}
 
 	modelName := os.Getenv("GEMINI_AI_MODEL")
@@ -78,7 +78,7 @@ func NewClient() (*Client, error) {
 
 	if err != nil {
 		fmt.Printf("[DEBUG][gemini.NewClient] ERROR creating genai client: %v\n", err)
-		return nil, errs.ERR_GEMINI_CLIENT_CREATE_FAILED
+		return nil, errs.ERR_AI_CLIENT_CREATE_FAILED
 	}
 
 	fmt.Println("[DEBUG][gemini.NewClient] genai client created successfully")
@@ -159,6 +159,6 @@ func (c *Client) GenerateContent(
 		return text, nil
 	}
 
-	fmt.Println("[DEBUG][gemini.GenerateContent] All attempts exhausted, returning ERR_GEMINI_GENERATE_CONTENT_FAILED")
-	return "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
+	fmt.Println("[DEBUG][gemini.GenerateContent] All attempts exhausted, returning ERR_AI_GENERATE_CONTENT_FAILED")
+	return "", errs.ERR_AI_GENERATE_CONTENT_FAILED
 }
