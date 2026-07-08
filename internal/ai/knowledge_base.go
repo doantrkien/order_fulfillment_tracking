@@ -192,9 +192,38 @@ func ClassifyDriverNote(note string) []KnowledgeEntry {
 	return entries
 }
 
+func removeAccents(s string) string {
+	accents := map[rune][]rune{
+		'a': []rune("áàảãạăắằẳẵặâấầẩẫậ"),
+		'e': []rune("éèẻẽẹêếềểễệ"),
+		'i': []rune("íìỉĩị"),
+		'o': []rune("óòỏõọôốồổỗộơớờởỡợ"),
+		'u': []rune("úùủũụưứừửữự"),
+		'y': []rune("ýỳỷỹỵ"),
+		'd': []rune("đ"),
+	}
+
+	runesList := []rune(s)
+	for i, r := range runesList {
+		for unaccented, accentedChars := range accents {
+			for _, ac := range accentedChars {
+				if r == ac {
+					runesList[i] = unaccented
+					break
+				}
+			}
+		}
+	}
+	return string(runesList)
+}
+
 func containsAny(s string, keywords []string) bool {
+	normalizedS := removeAccents(s)
 	for _, kw := range keywords {
 		if strings.Contains(s, kw) {
+			return true
+		}
+		if strings.Contains(normalizedS, removeAccents(kw)) {
 			return true
 		}
 	}
@@ -370,8 +399,8 @@ func (s *KnowledgeStore) classifyBySemantic(ctx context.Context, note string) []
 	}
 
 	if len(dbEntries) == 0 {
-		fmt.Printf("[DEBUG][ClassifyDriverNote] Semantic: no match (cosine < 0.75) for note: %q\n", note)
-		return []KnowledgeEntry{}
+		fmt.Printf("[DEBUG][ClassifyDriverNote] Semantic: no match (cosine < 0.75) for note: %q. Falling back to keyword match.\n", note)
+		return s.classifyByKeyword(note)
 	}
 
 	// Map DB entries back to in-memory KnowledgeEntry (use cache to get latest body)

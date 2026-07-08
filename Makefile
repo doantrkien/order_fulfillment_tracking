@@ -79,3 +79,10 @@ docker-build:
 
 
 
+
+# =========================
+# OLLAMA SETUP
+# =========================
+setup-ollama:
+	ollama pull nomic-embed-text
+
