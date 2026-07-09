@@ -1,0 +1,2 @@
+ALTER TABLE ai_customer_update_drafts
+ADD COLUMN raw_response JSONB;

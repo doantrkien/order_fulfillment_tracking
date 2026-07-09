@@ -38,3 +38,4 @@ Respond with EXACTLY this JSON structure (no additional fields, no wrapping):
 7. If the driver note is clearly nonsense, irrelevant, profane, or a joke, classify as "OTHER" with severity "LOW" and indicate that the note is unhelpful or inappropriate.
 8. Severity MUST be determined by evaluating both the order lifecycle history and the content of the driver note. A critical note (e.g. accident, lost package) elevates severity regardless of timeline.
 9. If the order lifecycle shows that one or more mandatory workflow stages were skipped, classify as "SKIPPED_STATUS" (unless a more severe exception applies).
+10. If the provided [KNOWLEDGE BASE] does NOT contain rules that match the situation or you are uncertain, you MUST classify it as "OTHER" rather than forcing it into an unrelated category.

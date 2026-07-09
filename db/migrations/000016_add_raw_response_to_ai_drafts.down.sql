@@ -1,0 +1,2 @@
+ALTER TABLE ai_customer_update_drafts
+DROP COLUMN IF EXISTS raw_response;

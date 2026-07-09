@@ -1,13 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"runtime"
 	"strconv"
 	"time"
 	_ "time/tzdata"
-	"context"
 
 	"main/configs"
 	"main/internal/ai"
@@ -16,6 +16,7 @@ import (
 	routers "main/internal/routers/v1"
 	"main/internal/services"
 	"main/pkg/aiclient"
+	"main/pkg/embedding"
 	"main/pkg/postgresql"
 
 	_ "main/docs"
@@ -83,7 +84,14 @@ func main() {
 	aiRepo := repositories.NewAIRepository(db)
 
 	knowledgeRepo := repositories.NewKnowledgeRepository(db)
-	kbStore := ai.NewKnowledgeStore(knowledgeRepo)
+
+	embeddingClient, embErr := embedding.NewOllamaEmbeddingClient()
+	if embErr != nil {
+		log.Printf("[WARNING] Cannot initialize embedding client: %v — KB will use keyword matching", embErr)
+		embeddingClient = nil
+	}
+
+	kbStore := ai.NewKnowledgeStore(knowledgeRepo, embeddingClient)
 	if err := kbStore.Initialize(context.Background()); err != nil {
 		log.Printf("[WARNING] Cannot initialize KnowledgeStore: %v", err)
 	}
