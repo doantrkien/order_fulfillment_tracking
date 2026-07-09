@@ -139,13 +139,13 @@ func (r *knowledgeRepository) DeleteChunksByEntryID(ctx context.Context, entryID
 
 // FindSimilarChunks queries knowledge_chunks using pgvector cosine distance,
 // joined with knowledge_entries to include entry metadata.
-// Uses DISTINCT ON to deduplicate by entry — only the best-matching chunk per entry is returned.
+// Returns up to topK most similar chunks across all active entries.
 func (r *knowledgeRepository) FindSimilarChunks(ctx context.Context, vec []float32, topK int, threshold float64) ([]ChunkWithEntry, error) {
 	pgVec := pgvector.NewVector(vec)
 	var results []ChunkWithEntry
 	err := r.db.WithContext(ctx).
 		Raw(`
-			SELECT DISTINCT ON (ke.slug)
+			SELECT
 				kc.id AS chunk_id,
 				ke.slug AS entry_slug,
 				ke.title AS entry_title,
@@ -157,32 +157,15 @@ func (r *knowledgeRepository) FindSimilarChunks(ctx context.Context, vec []float
 			WHERE ke.is_active = true
 			  AND kc.embedding IS NOT NULL
 			  AND 1 - (kc.embedding <=> ?) > ?
-			ORDER BY ke.slug, similarity DESC
-		`, pgVec, pgVec, threshold).
+			ORDER BY similarity DESC
+			LIMIT ?
+		`, pgVec, pgVec, threshold, topK).
 		Scan(&results).Error
 	if err != nil {
 		return nil, err
 	}
 
-	// DISTINCT ON preserves one row per slug ordered by similarity DESC,
-	// but the outer result set is ordered by slug. Re-sort by similarity for the caller.
-	// Since topK is small (typically 3-5), a simple sort is fine.
-	sortBySimilarityDesc(results)
-
-	if len(results) > topK {
-		results = results[:topK]
-	}
-
 	return results, nil
-}
-
-// sortBySimilarityDesc sorts ChunkWithEntry results by Similarity descending.
-func sortBySimilarityDesc(results []ChunkWithEntry) {
-	for i := 1; i < len(results); i++ {
-		for j := i; j > 0 && results[j].Similarity > results[j-1].Similarity; j-- {
-			results[j], results[j-1] = results[j-1], results[j]
-		}
-	}
 }
 
 // UpdateChunkEmbedding persists the embedding vector for a single chunk and clears needs_reembed.
