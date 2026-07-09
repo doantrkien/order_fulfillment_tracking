@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"main/internal/models"
+	"main/internal/repositories"
 	"testing"
 
 	"github.com/pgvector/pgvector-go"
@@ -14,13 +15,21 @@ import (
 // ── Mock KnowledgeRepository ──────────────────────────────────────────────────
 
 type mockKnowledgeRepository struct {
-	entries         []models.KnowledgeEntry
-	err             error
-	saved           []*models.KnowledgeEntry
-	similarEntries  []models.KnowledgeEntry
-	similarErr      error
-	updatedID       int64
-	updatedEmbedding []float32
+	entries            []models.KnowledgeEntry
+	err                error
+	saved              []*models.KnowledgeEntry
+	similarEntries     []models.KnowledgeEntry
+	similarErr         error
+	updatedID          int64
+	updatedEmbedding   []float32
+	// Chunk fields
+	savedChunks        []models.KnowledgeChunk
+	similarChunks      []repositories.ChunkWithEntry
+	similarChunksErr   error
+	deletedEntryID     int64
+	chunksNeedReembed  []models.KnowledgeChunk
+	updatedChunkID     int64
+	updatedChunkEmbed  []float32
 }
 
 func (m *mockKnowledgeRepository) GetAllActive(_ context.Context) ([]models.KnowledgeEntry, error) {
@@ -54,6 +63,30 @@ func (m *mockKnowledgeRepository) UpdateEmbedding(_ context.Context, id int64, v
 	return nil
 }
 
+func (m *mockKnowledgeRepository) SaveChunks(_ context.Context, chunks []models.KnowledgeChunk) error {
+	m.savedChunks = append(m.savedChunks, chunks...)
+	return nil
+}
+
+func (m *mockKnowledgeRepository) DeleteChunksByEntryID(_ context.Context, entryID int64) error {
+	m.deletedEntryID = entryID
+	return nil
+}
+
+func (m *mockKnowledgeRepository) FindSimilarChunks(_ context.Context, _ []float32, _ int, _ float64) ([]repositories.ChunkWithEntry, error) {
+	return m.similarChunks, m.similarChunksErr
+}
+
+func (m *mockKnowledgeRepository) UpdateChunkEmbedding(_ context.Context, chunkID int64, vec []float32) error {
+	m.updatedChunkID = chunkID
+	m.updatedChunkEmbed = vec
+	return nil
+}
+
+func (m *mockKnowledgeRepository) GetChunksNeedingReembed(_ context.Context) ([]models.KnowledgeChunk, error) {
+	return m.chunksNeedReembed, nil
+}
+
 // ── Mock EmbeddingClient ──────────────────────────────────────────────────────
 
 type mockEmbeddingClient struct {
@@ -74,19 +107,17 @@ func TestKnowledgeStore_Initialize_EmptyDB_SeedsData(t *testing.T) {
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
 
-	// Should seed 8 default entries
-	assert.Len(t, repo.saved, 8)
-	assert.Len(t, store.cache, 8)
+	// Should seed 1 default entry
+	assert.Len(t, repo.saved, 1)
+	assert.Len(t, store.cache, 1)
 
 	// Check key entries
-	assert.Contains(t, store.cache, "state_machine")
-	assert.Contains(t, store.cache, "delivery_failure")
+	assert.Contains(t, store.cache, "combined_knowledge")
 }
 
 func TestKnowledgeStore_Initialize_NonEmptyDB_DoesNotSeed(t *testing.T) {
 	existing := []models.KnowledgeEntry{
-		{Slug: "state_machine", Title: "Custom State Machine", Body: "Custom body", IsActive: true},
-		{Slug: "delivery_failure", Title: "Custom Delivery Failure", Body: "Custom failure body", IsActive: true},
+		{Slug: "combined_knowledge", Title: "Custom Knowledge Base", Body: "Custom body", IsActive: true},
 	}
 	repo := &mockKnowledgeRepository{entries: existing}
 	store := NewKnowledgeStore(repo, nil)
@@ -96,8 +127,8 @@ func TestKnowledgeStore_Initialize_NonEmptyDB_DoesNotSeed(t *testing.T) {
 
 	// Should NOT seed any data
 	assert.Empty(t, repo.saved)
-	assert.Len(t, store.cache, 2)
-	assert.Equal(t, "Custom State Machine", store.cache["state_machine"].Title)
+	assert.Len(t, store.cache, 1)
+	assert.Equal(t, "Custom Knowledge Base", store.cache["combined_knowledge"].Title)
 }
 
 func TestKnowledgeStore_Initialize_GeneratesEmbeddingForNeedsReembed(t *testing.T) {
@@ -137,7 +168,7 @@ func TestKnowledgeStore_Initialize_SkipsEmbeddingWhenClientNil(t *testing.T) {
 
 func TestKnowledgeStore_ClassifyDriverNote_KeywordFallback_NoEmbeddingClient(t *testing.T) {
 	existing := []models.KnowledgeEntry{
-		{Slug: "delivery_failure", Title: "DB Delivery Failure Title", Body: "DB Delivery Failure Body", IsActive: true},
+		{Slug: "combined_knowledge", Title: "Order Fulfillment Knowledge Base", Body: "DB Delivery Failure Body", IsActive: true},
 	}
 	repo := &mockKnowledgeRepository{entries: existing}
 	store := NewKnowledgeStore(repo, nil) // keyword path
@@ -145,16 +176,14 @@ func TestKnowledgeStore_ClassifyDriverNote_KeywordFallback_NoEmbeddingClient(t *
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
 
-	// "hàng bị mất" matches deliveryFailureKeywordsKB
 	entries := store.ClassifyDriverNote(context.Background(), "hàng bị mất")
 	require.Len(t, entries, 1)
-	assert.Equal(t, "DB Delivery Failure Title", entries[0].Title)
-	assert.Equal(t, "DB Delivery Failure Body", entries[0].Body)
+	assert.Equal(t, "Order Fulfillment Knowledge Base", entries[0].Title)
 }
 
 func TestKnowledgeStore_ClassifyDriverNote_KeywordFallback_EmbedError(t *testing.T) {
 	existing := []models.KnowledgeEntry{
-		{Slug: "delivery_failure", Title: "DF", Body: "body", IsActive: true},
+		{Slug: "combined_knowledge", Title: "Order Fulfillment Knowledge Base", Body: "body", IsActive: true},
 	}
 	repo := &mockKnowledgeRepository{entries: existing}
 	embClient := &mockEmbeddingClient{err: errors.New("embedding API timeout")}
@@ -163,11 +192,9 @@ func TestKnowledgeStore_ClassifyDriverNote_KeywordFallback_EmbedError(t *testing
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
 
-	// embed fails → should fall back to keyword matching, not panic
 	entries := store.ClassifyDriverNote(context.Background(), "xe hỏng trên đường giao hàng hôm nay")
-	// "xe hỏng" matches deliveryFailureKeywordsKB
 	assert.NotEmpty(t, entries, "should return keyword-matched entries on embed error")
-	assert.Equal(t, "DF", entries[0].Title)
+	assert.Equal(t, "Order Fulfillment Knowledge Base", entries[0].Title)
 }
 
 // ── Tests: ClassifyDriverNote semantic path ───────────────────────────────────
@@ -199,11 +226,12 @@ func TestKnowledgeStore_ClassifyDriverNote_SemanticMatch(t *testing.T) {
 	assert.Equal(t, "Delivery Failure", entries[0].Title)
 }
 
-func TestKnowledgeStore_ClassifyDriverNote_SemanticBelowThreshold_ReturnsEmpty(t *testing.T) {
+func TestKnowledgeStore_ClassifyDriverNote_AllPathsBelowThreshold_ReturnsEmpty(t *testing.T) {
 	testVec := make([]float32, 768)
 	repo := &mockKnowledgeRepository{
 		entries:        []models.KnowledgeEntry{{Slug: "state_machine", Title: "SM", Body: "body", IsActive: true}},
-		similarEntries: []models.KnowledgeEntry{}, // FindSimilar returns empty — similarity < threshold
+		similarChunks:  []repositories.ChunkWithEntry{},  // chunk search: no match
+		similarEntries: []models.KnowledgeEntry{},          // entry-level search: no match
 	}
 	embClient := &mockEmbeddingClient{vec: testVec}
 	store := NewKnowledgeStore(repo, embClient)
@@ -211,14 +239,16 @@ func TestKnowledgeStore_ClassifyDriverNote_SemanticBelowThreshold_ReturnsEmpty(t
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
 
+	// "some unrelated note" matches no keywords and no semantic search
 	entries := store.ClassifyDriverNote(context.Background(), "some unrelated note")
-	assert.Empty(t, entries, "should return empty when no entry passes similarity threshold")
+	assert.NotEmpty(t, entries, "should fallback to combined KB when no semantic match")
+	assert.Equal(t, "Order Fulfillment Knowledge Base", entries[0].Title)
 }
 
 func TestKnowledgeStore_ClassifyDriverNote_FindSimilarError_FallbackToKeyword(t *testing.T) {
 	testVec := make([]float32, 768)
 	existing := []models.KnowledgeEntry{
-		{Slug: "delivery_failure", Title: "DF", Body: "body", IsActive: true},
+		{Slug: "combined_knowledge", Title: "Order Fulfillment Knowledge Base", Body: "body", IsActive: true},
 	}
 	repo := &mockKnowledgeRepository{
 		entries:    existing,
@@ -231,9 +261,9 @@ func TestKnowledgeStore_ClassifyDriverNote_FindSimilarError_FallbackToKeyword(t 
 	require.NoError(t, err)
 
 	// FindSimilar errors → keyword fallback
-	// "xe hỏng" matches deliveryFailureKeywordsKB keyword
 	entries := store.ClassifyDriverNote(context.Background(), "xe hỏng không giao được")
 	assert.NotEmpty(t, entries, "should fallback to keyword on FindSimilar error")
+	assert.Equal(t, "Order Fulfillment Knowledge Base", entries[0].Title)
 }
 
 // ── Tests: pgvector.Vector integration ───────────────────────────────────────
@@ -245,4 +275,109 @@ func TestPgvectorNewVector_CorrectDimensions(t *testing.T) {
 	}
 	pgVec := pgvector.NewVector(vec)
 	assert.Equal(t, 768, len(pgVec.Slice()))
+}
+
+// ── Tests: Chunk-level RAG ────────────────────────────────────────────────────
+
+func TestKnowledgeStore_ClassifyDriverNote_SemanticChunkMatch(t *testing.T) {
+	testVec := make([]float32, 768)
+	testVec[0] = 0.9
+
+	// FindSimilarChunks returns a chunk from delivery_failure entry
+	chunkResult := repositories.ChunkWithEntry{
+		ChunkID:    10,
+		EntrySlug:  "delivery_failure",
+		EntryTitle: "Delivery Failure",
+		Heading:    "### CRITICAL — Lost Package",
+		Content:    "Package is lost, stolen, or cannot be located.",
+		Similarity: 0.85,
+	}
+	repo := &mockKnowledgeRepository{
+		entries:       []models.KnowledgeEntry{{Slug: "delivery_failure", Title: "Delivery Failure", Body: "full body", IsActive: true}},
+		similarChunks: []repositories.ChunkWithEntry{chunkResult},
+	}
+	embClient := &mockEmbeddingClient{vec: testVec}
+	store := NewKnowledgeStore(repo, embClient)
+
+	err := store.Initialize(context.Background())
+	require.NoError(t, err)
+
+	// Note should match via chunk-level search
+	entries := store.ClassifyDriverNote(context.Background(), "hàng bị thất lạc không tìm thấy")
+	require.Len(t, entries, 1, "should return 1 entry from chunk match")
+	assert.Equal(t, "Delivery Failure", entries[0].Title)
+	// Body should be the chunk content, not full entry body
+	assert.Contains(t, entries[0].Body, "Package is lost")
+	assert.NotContains(t, entries[0].Body, "full body")
+}
+
+func TestKnowledgeStore_ClassifyDriverNote_ChunksFallbackToEntryLevel(t *testing.T) {
+	testVec := make([]float32, 768)
+	testVec[0] = 0.9
+
+	// FindSimilarChunks returns empty, but FindSimilar (entry-level) has a match
+	similarEntry := models.KnowledgeEntry{
+		ID: 1, Slug: "stuck_order", Title: "Stuck Order", Body: "stuck body", IsActive: true,
+	}
+	repo := &mockKnowledgeRepository{
+		entries:        []models.KnowledgeEntry{similarEntry},
+		similarChunks:  []repositories.ChunkWithEntry{}, // empty chunks
+		similarEntries: []models.KnowledgeEntry{similarEntry},
+	}
+	embClient := &mockEmbeddingClient{vec: testVec}
+	store := NewKnowledgeStore(repo, embClient)
+
+	err := store.Initialize(context.Background())
+	require.NoError(t, err)
+
+	entries := store.ClassifyDriverNote(context.Background(), "đơn hàng không tiến triển")
+	require.Len(t, entries, 1)
+	assert.Equal(t, "Stuck Order", entries[0].Title)
+}
+
+func TestKnowledgeStore_ClassifyDriverNote_ChunksErrorFallbackToEntryLevel(t *testing.T) {
+	testVec := make([]float32, 768)
+
+	similarEntry := models.KnowledgeEntry{
+		ID: 1, Slug: "delivery_failure", Title: "DF", Body: "body", IsActive: true,
+	}
+	repo := &mockKnowledgeRepository{
+		entries:          []models.KnowledgeEntry{similarEntry},
+		similarChunksErr: errors.New("chunks table not found"),
+		similarEntries:   []models.KnowledgeEntry{similarEntry},
+	}
+	embClient := &mockEmbeddingClient{vec: testVec}
+	store := NewKnowledgeStore(repo, embClient)
+
+	err := store.Initialize(context.Background())
+	require.NoError(t, err)
+
+	// FindSimilarChunks errors → should fall back to entry-level
+	entries := store.ClassifyDriverNote(context.Background(), "xe hỏng trên đường giao hàng")
+	assert.NotEmpty(t, entries, "should fallback to entry-level on chunks error")
+}
+
+func TestKnowledgeStore_BuildRAGEntries_GroupsByEntry(t *testing.T) {
+	repo := &mockKnowledgeRepository{}
+	store := NewKnowledgeStore(repo, nil)
+
+	chunks := []repositories.ChunkWithEntry{
+		{ChunkID: 1, EntrySlug: "delivery_failure", EntryTitle: "Delivery Failure", Content: "chunk 1 content", Similarity: 0.90},
+		{ChunkID: 2, EntrySlug: "delivery_failure", EntryTitle: "Delivery Failure", Content: "chunk 2 content", Similarity: 0.85},
+		{ChunkID: 3, EntrySlug: "stuck_order", EntryTitle: "Stuck Order", Content: "stuck chunk", Similarity: 0.80},
+	}
+
+	result := store.buildRAGEntries(chunks)
+
+	// Should group into 2 entries
+	require.Len(t, result, 2)
+
+	// First entry should be delivery_failure (highest similarity)
+	assert.Equal(t, "Delivery Failure", result[0].Title)
+	assert.Contains(t, result[0].Body, "chunk 1 content")
+	assert.Contains(t, result[0].Body, "chunk 2 content")
+
+	// Second entry should be stuck_order
+	assert.Equal(t, "Stuck Order", result[1].Title)
+	assert.Contains(t, result[1].Body, "stuck chunk")
 }

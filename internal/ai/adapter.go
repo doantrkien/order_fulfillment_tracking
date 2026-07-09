@@ -57,14 +57,8 @@ func (g *aiAdapter) AnalyzeException(
 	var knowledge []KnowledgeEntry
 	if g.kbStore != nil {
 		knowledge = g.kbStore.ClassifyDriverNote(ctx, input.DriverNotes)
-		if len(knowledge) == 0 {
-			knowledge = []KnowledgeEntry{g.kbStore.GetStateMachine()}
-		}
 	} else {
 		knowledge = ClassifyDriverNote(input.DriverNotes)
-		if len(knowledge) == 0 {
-			knowledge = []KnowledgeEntry{kbStateMachine}
-		}
 	}
 	prompt := BuildExceptionAnalysisPrompt(promptCtx, knowledge)
 

@@ -187,7 +187,10 @@ func TestBuildExceptionAnalysisPrompt_NoDriverNotes(t *testing.T) {
 	}
 
 	prompt := BuildExceptionAnalysisPrompt(ctx, nil)
-	assert.NotContains(t, prompt, "Driver Note:")
+	// Make sure we didn't inject the Driver Note field into the context section.
+	// Since the KB itself contains the words "Driver Note", we check for the specific formatting
+	assert.NotContains(t, prompt, "Driver Note: \n")
+	assert.NotContains(t, prompt, "Driver Note:  ")
 }
 
 // ── ClassifyDriverNote tests ─────────────────────────────────────────────────
@@ -201,60 +204,14 @@ func kbTitles(entries []KnowledgeEntry) []string {
 	return titles
 }
 
-func TestClassifyDriverNote_AlwaysIncludesStateMachine(t *testing.T) {
-	entries := ClassifyDriverNote("")
+func TestClassifyDriverNote_ReturnsCombinedKnowledge(t *testing.T) {
+	entries := ClassifyDriverNote("any random note")
 	titles := kbTitles(entries)
-	assert.Contains(t, titles, "Order State Machine")
+	assert.Contains(t, titles, "Order Fulfillment Knowledge Base")
+	assert.Len(t, entries, 1)
 }
 
-func TestClassifyDriverNote_DeliveryKeywords(t *testing.T) {
-	cases := []string{
-		"customer not home",
-		"xe hỏng trên đường",
-		"accident on highway",
-		"package lost",
-		"could not deliver",
-		"giao thất bại",
-		"bad weather",
-	}
-	for _, note := range cases {
-		entries := ClassifyDriverNote(note)
-		titles := kbTitles(entries)
-		assert.Contains(t, titles, "Delivery Failure", "note: %q", note)
-	}
-}
-
-func TestClassifyDriverNote_DuplicateKeywords(t *testing.T) {
-	entries := ClassifyDriverNote("duplicate event received")
-	titles := kbTitles(entries)
-	assert.Contains(t, titles, "Duplicate Event")
-}
-
-func TestClassifyDriverNote_SkippedKeywords(t *testing.T) {
-	entries := ClassifyDriverNote("skipped mandatory step")
-	titles := kbTitles(entries)
-	assert.Contains(t, titles, "Skipped Status")
-}
-
-func TestClassifyDriverNote_StuckKeywords(t *testing.T) {
-	entries := ClassifyDriverNote("order is delayed, no progress for 3 days")
-	titles := kbTitles(entries)
-	assert.Contains(t, titles, "Stuck Order")
-}
-
-func TestClassifyDriverNote_UnknownNote_FallsBackToAll(t *testing.T) {
-	// A non-empty note that matches no specific keyword should still get
-	// all fallback domains so the AI has useful context.
-	entries := ClassifyDriverNote("driver arrived at destination")
-	titles := kbTitles(entries)
-	assert.Contains(t, titles, "Order State Machine")
-	assert.Contains(t, titles, "Delivery Failure")
-	assert.Contains(t, titles, "Duplicate Event")
-	assert.Contains(t, titles, "Skipped Status")
-	assert.Contains(t, titles, "Stuck Order")
-}
-
-func TestBuildExceptionAnalysisPrompt_InjectsOnlyRelevantKB(t *testing.T) {
+func TestBuildExceptionAnalysisPrompt_InjectsCombinedKB(t *testing.T) {
 	ctx := ExceptionPromptContext{
 		OrderID:       999,
 		CurrentStatus: "shipped",
@@ -263,13 +220,5 @@ func TestBuildExceptionAnalysisPrompt_InjectsOnlyRelevantKB(t *testing.T) {
 	knowledge := ClassifyDriverNote(ctx.DriverNotes)
 	prompt := BuildExceptionAnalysisPrompt(ctx, knowledge)
 
-	// Delivery failure KB should be present — note matches delivery keywords
-	assert.Contains(t, prompt, "Delivery Failure")
-	// State machine KB should always be present
-	assert.Contains(t, prompt, "Order State Machine")
-	// Unrelated KB entries (stuck, duplicate, skipped) should NOT appear
-	// because the note matched delivery_failure keywords specifically
-	assert.NotContains(t, prompt, "Stuck Order")
-	assert.NotContains(t, prompt, "Duplicate Event")
-	assert.NotContains(t, prompt, "Skipped Status")
+	assert.Contains(t, prompt, "Order Fulfillment Knowledge Base")
 }

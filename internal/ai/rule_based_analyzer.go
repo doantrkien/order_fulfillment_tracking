@@ -53,11 +53,11 @@ var deliveryFailureLowKeywords = []string{
 type RuleFunc func(aiCtx *models.AIContext, now time.Time) *RuleBasedResult
 
 var rules = []RuleFunc{
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDuplicateEvents(ctx.Events) },
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult {
 		return detectInvalidTransitions(ctx.Events)
 	},
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectSkippedStatuses(ctx.Events) },
-	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDuplicateEvents(ctx.Events) },
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectStuckOrder(ctx, now) },
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDeliveryFailure(ctx) },
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectCancellationAnomaly(ctx) },

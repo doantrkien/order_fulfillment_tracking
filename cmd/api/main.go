@@ -85,7 +85,7 @@ func main() {
 
 	knowledgeRepo := repositories.NewKnowledgeRepository(db)
 
-	embeddingClient, embErr := embedding.NewOllamaEmbeddingClient()
+	embeddingClient, embErr := embedding.NewEmbeddingClientFromEnv()
 	if embErr != nil {
 		log.Printf("[WARNING] Cannot initialize embedding client: %v — KB will use keyword matching", embErr)
 		embeddingClient = nil

@@ -11,185 +11,24 @@ import (
 	"sync"
 )
 
-//go:embed knowledge/state_machine.md
-var kbBodyStateMachine string
-
-//go:embed knowledge/delivery_failure.md
-var kbBodyDeliveryFailure string
-
-//go:embed knowledge/stuck_order.md
-var kbBodyStuckOrder string
-
-//go:embed knowledge/duplicate_event.md
-var kbBodyDuplicateEvent string
-
-//go:embed knowledge/skipped_status.md
-var kbBodySkippedStatus string
-
-//go:embed knowledge/alternative_success.md
-var kbBodyAlternativeSuccess string
-
-//go:embed knowledge/cancellation_edge_case.md
-var kbBodyCancellation string
-
-//go:embed knowledge/refund_edge_case.md
-var kbBodyRefund string
+//go:embed knowledge/combined_knowledge.md
+var kbBodyCombined string
 
 type KnowledgeEntry struct {
 	Title string
 	Body  string
 }
 
-// ── Compiled KB entries (one per exception domain) ───────────────────────────
-var kbStateMachine = KnowledgeEntry{
-	Title: "Order State Machine",
-	Body:  kbBodyStateMachine,
-}
-
-var kbDeliveryFailure = KnowledgeEntry{
-	Title: "Delivery Failure",
-	Body:  kbBodyDeliveryFailure,
-}
-
-var kbStuckOrder = KnowledgeEntry{
-	Title: "Stuck Order",
-	Body:  kbBodyStuckOrder,
-}
-
-var kbDuplicateEvent = KnowledgeEntry{
-	Title: "Duplicate Event",
-	Body:  kbBodyDuplicateEvent,
-}
-
-var kbSkippedStatus = KnowledgeEntry{
-	Title: "Skipped Status",
-	Body:  kbBodySkippedStatus,
-}
-
-var kbAlternativeSuccess = KnowledgeEntry{
-	Title: "Alternative Delivery Success",
-	Body:  kbBodyAlternativeSuccess,
-}
-
-var kbCancellation = KnowledgeEntry{
-	Title: "Cancellation Edge Case",
-	Body:  kbBodyCancellation,
-}
-
-var kbRefund = KnowledgeEntry{
-	Title: "Refund Edge Case",
-	Body:  kbBodyRefund,
-}
-
-var deliveryFailureKeywordsKB = []string{
-	"lost", "stolen", "cannot find", "missing parcel", "hàng bị mất", "nghi thất lạc",
-
-	"accident", "vehicle breakdown", "xe hỏng", "tai nạn", "bad weather", "thời tiết",
-	"failed", "failure", "cannot deliver", "could not deliver", "giao thất bại",
-
-	"not home", "no one home", "customer not home", "wrong address", "address not found",
-	"không có nhà", "sai địa chỉ", "không liên lạc được",
-
-	"temporarily unreachable", "no answer", "will retry", "khách không nghe máy", "cannot contact", "unreachable",
-}
-
-var stateMachineKeywordsKB = []string{
-	"tự động đổi trạng thái", "sai trạng thái hiện tại",
-}
-
-var duplicateKeywordsKB = []string{
-	"bấm lại", "duplicate", "lặp", "trùng", "repeated", "nhiều lần", "times", "hệ thống ghi nhận delivered 2 lần.",
-}
-
-var skippedKeywordsKB = []string{
-	"skipped", "missed", "bỏ qua", "thiếu", "không đi qua các bước thông thường",
-}
-
-var stuckKeywordsKB = []string{
-	"stuck", "no progress", "not moved", "delay", "delayed", "late",
-	"trễ", "chậm", "không tiến triển", "Đơn hàng bị giữ lại",
-}
-
-var successKeywordsKB = []string{
-	"reception", "lễ tân", "neighbor", "hàng xóm", "bảo vệ", "security", "front door", "trước cửa", "thành công", "delivered",
-}
-
-var cancellationKeywordsKB = []string{
-	"cancel",
-	"cancelled",
-	"cancellation",
-	"customer requested cancellation",
-	"cancel request",
-	"hủy",
-	"hủy đơn",
-	"yêu cầu hủy",
-	"đổi ý",
-}
-
-var refundKeywordsKB = []string{
-	"refund",
-	"refunded",
-	"refund request",
-	"duplicate payment",
-	"chargeback",
-	"hoàn tiền",
-	"yêu cầu hoàn tiền",
-	"thanh toán nhầm",
-}
-
 // ClassifyDriverNote is the standalone (no-DB) keyword-based classifier.
 // It is used as fallback when KnowledgeStore.embeddingClient is nil.
 func ClassifyDriverNote(note string) []KnowledgeEntry {
-	lower := strings.ToLower(strings.TrimSpace(note))
-	entries := []KnowledgeEntry{} // always present
-
-	matched := false
-	isSuccessAlternative := containsAny(lower, successKeywordsKB)
-
-	if isSuccessAlternative {
-		entries = append(entries, kbAlternativeSuccess)
-		matched = true
+	fmt.Printf("[DEBUG][ClassifyDriverNote] Standalone fallback triggered. Returning full combined KB.\\n")
+	return []KnowledgeEntry{
+		{
+			Title: "Order Fulfillment Knowledge Base",
+			Body:  kbBodyCombined,
+		},
 	}
-
-	if containsAny(lower, deliveryFailureKeywordsKB) && !isSuccessAlternative {
-		entries = append(entries, kbDeliveryFailure)
-		matched = true
-	}
-
-	if containsAny(lower, stateMachineKeywordsKB) && !isSuccessAlternative {
-		entries = append(entries, kbStateMachine)
-		matched = true
-	}
-	if containsAny(lower, duplicateKeywordsKB) {
-		entries = append(entries, kbDuplicateEvent)
-		matched = true
-	}
-	if containsAny(lower, skippedKeywordsKB) {
-		entries = append(entries, kbSkippedStatus)
-		matched = true
-	}
-	if containsAny(lower, stuckKeywordsKB) {
-		entries = append(entries, kbStuckOrder)
-		matched = true
-	}
-
-	if containsAny(lower, cancellationKeywordsKB) {
-		entries = append(entries, kbCancellation)
-		matched = true
-	}
-
-	if containsAny(lower, refundKeywordsKB) {
-		entries = append(entries, kbRefund)
-		matched = true
-	}
-
-	var titles []string
-	for _, e := range entries {
-		titles = append(titles, e.Title)
-	}
-	fmt.Printf("[DEBUG][ClassifyDriverNote] Note: %q | Matched: %v | KB Sent: %d (%s)\n", note, matched, len(entries), strings.Join(titles, ", "))
-
-	return entries
 }
 
 func removeAccents(s string) string {
@@ -267,14 +106,7 @@ func (s *KnowledgeStore) Initialize(ctx context.Context) error {
 			title string
 			body  string
 		}{
-			{"state_machine", "Order State Machine", kbBodyStateMachine},
-			{"delivery_failure", "Delivery Failure", kbBodyDeliveryFailure},
-			{"stuck_order", "Stuck Order", kbBodyStuckOrder},
-			{"duplicate_event", "Duplicate Event", kbBodyDuplicateEvent},
-			{"skipped_status", "Skipped Status", kbBodySkippedStatus},
-			{"alternative_success", "Alternative Delivery Success", kbBodyAlternativeSuccess},
-			{"cancellation_edge_case", "Cancellation Edge Case", kbBodyCancellation},
-			{"refund_edge_case", "Refund Edge Case", kbBodyRefund},
+			{"combined_knowledge", "Order Fulfillment Knowledge Base", kbBodyCombined},
 		}
 
 		for _, seed := range seeds {
@@ -293,10 +125,13 @@ func (s *KnowledgeStore) Initialize(ctx context.Context) error {
 		}
 	}
 
-	// 3. Generate embeddings for entries that need it (NeedsReembed=true or embedding IS NULL)
+	// 3. Generate entry-level embeddings (legacy, kept for backward compat)
 	s.generateMissingEmbeddings(ctx, dbEntries)
 
-	// 4. Populate memory cache
+	// 4. Chunk entries and generate chunk-level embeddings for RAG
+	s.rechunkAndEmbed(ctx, dbEntries)
+
+	// 5. Populate memory cache
 	s.cache = make(map[string]KnowledgeEntry)
 	for _, dbEntry := range dbEntries {
 		s.cache[dbEntry.Slug] = KnowledgeEntry{
@@ -320,6 +155,9 @@ func (s *KnowledgeStore) Reload(ctx context.Context) error {
 
 	// Re-embed any entry that was added/updated and still has needs_reembed=true
 	s.generateMissingEmbeddings(ctx, dbEntries)
+
+	// Re-chunk and embed entries that need it
+	s.rechunkAndEmbed(ctx, dbEntries)
 
 	s.cache = make(map[string]KnowledgeEntry)
 	for _, dbEntry := range dbEntries {
@@ -356,16 +194,68 @@ func (s *KnowledgeStore) generateMissingEmbeddings(ctx context.Context, entries 
 	}
 }
 
-func (s *KnowledgeStore) GetStateMachine() KnowledgeEntry {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if s.cache != nil {
-		if entry, ok := s.cache["state_machine"]; ok {
-			return entry
+// rechunkAndEmbed splits each entry that needs re-embedding into chunks,
+// saves them to the knowledge_chunks table, and generates chunk-level embeddings.
+// This is a best-effort operation — errors are logged but never returned.
+func (s *KnowledgeStore) rechunkAndEmbed(ctx context.Context, entries []models.KnowledgeEntry) {
+	if s.embeddingClient == nil {
+		return
+	}
+
+	for _, entry := range entries {
+		if !entry.NeedsReembed {
+			continue
+		}
+
+		// 1. Delete old chunks for this entry
+		if err := s.repo.DeleteChunksByEntryID(ctx, entry.ID); err != nil {
+			fmt.Printf("[WARNING][KnowledgeStore] DeleteChunks failed for %q (id=%d): %v\n", entry.Slug, entry.ID, err)
+			continue
+		}
+
+		// 2. Chunk the entry body by markdown sections
+		chunks := ChunkMarkdown(entry.Body, entry.Title, DefaultMinChunkTokens)
+		if len(chunks) == 0 {
+			continue
+		}
+
+		// 3. Build model objects
+		dbChunks := make([]models.KnowledgeChunk, 0, len(chunks))
+		for i, c := range chunks {
+			dbChunks = append(dbChunks, models.KnowledgeChunk{
+				EntryID:      entry.ID,
+				ChunkIndex:   int16(i),
+				Heading:      c.Heading,
+				Content:      c.Content,
+				TokenCount:   c.TokenCount,
+				NeedsReembed: true,
+			})
+		}
+
+		// 4. Save chunks to DB
+		if err := s.repo.SaveChunks(ctx, dbChunks); err != nil {
+			fmt.Printf("[WARNING][KnowledgeStore] SaveChunks failed for %q: %v\n", entry.Slug, err)
+			continue
+		}
+		fmt.Printf("[INFO][KnowledgeStore] Created %d chunks for entry %q (id=%d)\n", len(dbChunks), entry.Slug, entry.ID)
+
+		// 5. Embed each chunk and save embedding
+		for _, dbChunk := range dbChunks {
+			vec, err := s.embeddingClient.Embed(ctx, dbChunk.Content)
+			if err != nil {
+				fmt.Printf("[WARNING][KnowledgeStore] Embed chunk failed for %q chunk#%d: %v\n", entry.Slug, dbChunk.ChunkIndex, err)
+				continue
+			}
+			if updateErr := s.repo.UpdateChunkEmbedding(ctx, dbChunk.ID, vec); updateErr != nil {
+				fmt.Printf("[WARNING][KnowledgeStore] UpdateChunkEmbedding failed for chunk id=%d: %v\n", dbChunk.ID, updateErr)
+			} else {
+				fmt.Printf("[INFO][KnowledgeStore] Embedded chunk %q #%d (id=%d, dims=%d)\n", entry.Slug, dbChunk.ChunkIndex, dbChunk.ID, len(vec))
+			}
 		}
 	}
-	return kbStateMachine
 }
+
+
 
 // ClassifyDriverNote classifies a driver note against the knowledge base.
 //
@@ -383,8 +273,10 @@ func (s *KnowledgeStore) ClassifyDriverNote(ctx context.Context, note string) []
 	return s.classifyByKeyword(note)
 }
 
-// classifyBySemantic embeds the note and queries pgvector for the top-k similar entries.
-// Falls back to keyword matching on any error.
+// classifyBySemantic embeds the note and queries pgvector for the top-k similar chunks.
+// It uses chunk-level retrieval for fine-grained semantic matching, then groups chunks
+// by parent entry to build enriched KnowledgeEntry results.
+// Falls back to entry-level search, then keyword matching on any error.
 func (s *KnowledgeStore) classifyBySemantic(ctx context.Context, note string) []KnowledgeEntry {
 	vec, err := s.embeddingClient.Embed(ctx, note)
 	if err != nil {
@@ -392,6 +284,34 @@ func (s *KnowledgeStore) classifyBySemantic(ctx context.Context, note string) []
 		return s.classifyByKeyword(note)
 	}
 
+	// Try chunk-level retrieval first (RAG path)
+	chunks, err := s.repo.FindSimilarChunks(ctx, vec, 5, 0.65)
+	if err != nil {
+		fmt.Printf("[WARN][KnowledgeStore] FindSimilarChunks error, trying entry-level: %v\n", err)
+		// Fall back to entry-level search
+		return s.classifyByEntryLevel(ctx, vec, note)
+	}
+
+	if len(chunks) == 0 {
+		fmt.Printf("[DEBUG][ClassifyDriverNote] Semantic chunks: no match (cosine < 0.65) for note: %q. Trying entry-level.\n", note)
+		// Fall back to entry-level search with original threshold
+		return s.classifyByEntryLevel(ctx, vec, note)
+	}
+
+	// Build enriched entries from chunks (inject only relevant sections)
+	result := s.buildRAGEntries(chunks)
+
+	var titles []string
+	for _, e := range result {
+		titles = append(titles, e.Title)
+	}
+	fmt.Printf("[DEBUG][ClassifyDriverNote] Semantic chunk match: %d entries from %d chunks: %s\n", len(result), len(chunks), strings.Join(titles, ", "))
+	return result
+}
+
+// classifyByEntryLevel is the original entry-level semantic search, kept as
+// fallback when chunk-level search returns no results or errors.
+func (s *KnowledgeStore) classifyByEntryLevel(ctx context.Context, vec []float32, note string) []KnowledgeEntry {
 	dbEntries, err := s.repo.FindSimilar(ctx, vec, 2, 0.75)
 	if err != nil {
 		fmt.Printf("[WARN][KnowledgeStore] FindSimilar error, falling back to keyword: %v\n", err)
@@ -399,11 +319,10 @@ func (s *KnowledgeStore) classifyBySemantic(ctx context.Context, note string) []
 	}
 
 	if len(dbEntries) == 0 {
-		fmt.Printf("[DEBUG][ClassifyDriverNote] Semantic: no match (cosine < 0.75) for note: %q. Falling back to keyword match.\n", note)
+		fmt.Printf("[DEBUG][ClassifyDriverNote] Semantic entry-level: no match (cosine < 0.75) for note: %q. Falling back to keyword match.\n", note)
 		return s.classifyByKeyword(note)
 	}
 
-	// Map DB entries back to in-memory KnowledgeEntry (use cache to get latest body)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -420,70 +339,63 @@ func (s *KnowledgeStore) classifyBySemantic(ctx context.Context, note string) []
 	for _, e := range result {
 		titles = append(titles, e.Title)
 	}
-	fmt.Printf("[DEBUG][ClassifyDriverNote] Semantic match: %d entries (cosine ≥ 0.75): %s\n", len(result), strings.Join(titles, ", "))
+	fmt.Printf("[DEBUG][ClassifyDriverNote] Semantic entry-level match: %d entries (cosine ≥ 0.75): %s\n", len(result), strings.Join(titles, ", "))
 	return result
 }
 
-// classifyByKeyword is the original keyword-matching implementation,
-// preserved as fallback when embedding is unavailable.
-func (s *KnowledgeStore) classifyByKeyword(note string) []KnowledgeEntry {
-	lower := strings.ToLower(strings.TrimSpace(note))
-	entries := []KnowledgeEntry{}
+// buildRAGEntries groups chunks by their parent entry and constructs KnowledgeEntry
+// objects whose Body contains only the relevant chunk content (not the full entry body).
+// This reduces token usage in the AI prompt while maintaining semantic precision.
+func (s *KnowledgeStore) buildRAGEntries(chunks []repositories.ChunkWithEntry) []KnowledgeEntry {
+	// Group chunks by entry slug, preserving order (first seen = highest similarity)
+	type entryChunks struct {
+		slug   string
+		title  string
+		parts  []string
+	}
+	seenOrder := []string{}
+	grouped := make(map[string]*entryChunks)
 
-	getEntry := func(slug string, fallback KnowledgeEntry) KnowledgeEntry {
-		s.mu.RLock()
-		defer s.mu.RUnlock()
-		if s.cache != nil {
-			if entry, ok := s.cache[slug]; ok {
-				return entry
+	for _, c := range chunks {
+		if _, ok := grouped[c.EntrySlug]; !ok {
+			grouped[c.EntrySlug] = &entryChunks{
+				slug:  c.EntrySlug,
+				title: c.EntryTitle,
 			}
+			seenOrder = append(seenOrder, c.EntrySlug)
 		}
-		return fallback
+		grouped[c.EntrySlug].parts = append(grouped[c.EntrySlug].parts, c.Content)
 	}
 
-	matched := false
-	isSuccessAlternative := containsAny(lower, successKeywordsKB)
-
-	if isSuccessAlternative {
-		entries = append(entries, getEntry("alternative_success", kbAlternativeSuccess))
-		matched = true
+	result := make([]KnowledgeEntry, 0, len(seenOrder))
+	for _, slug := range seenOrder {
+		ec := grouped[slug]
+		result = append(result, KnowledgeEntry{
+			Title: ec.title,
+			Body:  strings.Join(ec.parts, "\n\n"),
+		})
 	}
 
-	if containsAny(lower, deliveryFailureKeywordsKB) && !isSuccessAlternative {
-		entries = append(entries, getEntry("delivery_failure", kbDeliveryFailure))
-		matched = true
-	}
+	return result
+}
 
-	if containsAny(lower, stateMachineKeywordsKB) && !isSuccessAlternative {
-		entries = append(entries, getEntry("state_machine", kbStateMachine))
-		matched = true
+// classifyByKeyword is the fallback when embedding is unavailable or yields no results.
+// It returns the entire combined knowledge base so the LLM has all context.
+func (s *KnowledgeStore) classifyByKeyword(note string) []KnowledgeEntry {
+	fmt.Printf("[DEBUG][ClassifyDriverNote] Keyword fallback triggered. Returning full combined KB.\n")
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	
+	if s.cache != nil {
+		if entry, ok := s.cache["combined_knowledge"]; ok {
+			return []KnowledgeEntry{entry}
+		}
 	}
-	if containsAny(lower, duplicateKeywordsKB) {
-		entries = append(entries, getEntry("duplicate_event", kbDuplicateEvent))
-		matched = true
+	
+	return []KnowledgeEntry{
+		{
+			Title: "Order Fulfillment Knowledge Base",
+			Body:  kbBodyCombined,
+		},
 	}
-	if containsAny(lower, skippedKeywordsKB) {
-		entries = append(entries, getEntry("skipped_status", kbSkippedStatus))
-		matched = true
-	}
-	if containsAny(lower, stuckKeywordsKB) {
-		entries = append(entries, getEntry("stuck_order", kbStuckOrder))
-		matched = true
-	}
-	if containsAny(lower, cancellationKeywordsKB) {
-		entries = append(entries, getEntry("cancellation_edge_case", kbCancellation))
-		matched = true
-	}
-	if containsAny(lower, refundKeywordsKB) {
-		entries = append(entries, getEntry("refund_edge_case", kbRefund))
-		matched = true
-	}
-
-	var titles []string
-	for _, e := range entries {
-		titles = append(titles, e.Title)
-	}
-	fmt.Printf("[DEBUG][ClassifyDriverNote] Keyword match: %v | KB Sent: %d (%s)\n", matched, len(entries), strings.Join(titles, ", "))
-
-	return entries
 }

@@ -84,5 +84,7 @@ docker-build:
 # OLLAMA SETUP
 # =========================
 setup-ollama:
-	ollama pull nomic-embed-text
+	docker compose up -d ollama
+	docker compose exec -T ollama sh -c "until ollama list >/dev/null 2>&1; do sleep 2; done"
+	docker compose exec -T ollama ollama pull nomic-embed-text
 
