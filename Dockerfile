@@ -13,10 +13,10 @@ COPY --from=modules /go/pkg /go/pkg
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-w -s" -tags service -o /bin/app_service ./cmd/api
+    go build -ldflags="-w -s" -tags service -o /bin/app_service ./cmd/api
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-w -s" -tags migrate -o /bin/app_migrate ./cmd/migrate
+    go build -ldflags="-w -s" -tags migrate -o /bin/app_migrate ./cmd/migrate
 
 FROM scratch AS production
 

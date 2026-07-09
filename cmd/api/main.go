@@ -16,7 +16,6 @@ import (
 	routers "main/internal/routers/v1"
 	"main/internal/services"
 	"main/pkg/aiclient"
-	"main/pkg/mongodb"
 	"main/pkg/postgresql"
 
 	_ "main/docs"
@@ -45,10 +44,6 @@ func main() {
 	db, err := postgresql.ConnectDB()
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)
-	}
-
-	if err := mongodb.ConnectMongo(); err != nil {
-		log.Fatal(err)
 	}
 
 	app := fiber.New(fiber.Config{

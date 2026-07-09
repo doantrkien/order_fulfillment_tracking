@@ -1,27 +1,9 @@
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: order_tracking
-    ports:
-      - "5000:5000"
-    env_file:
-      - .env.docker
-    volumes:
-      - .:/app
-      - /app/tmp
-    depends_on:
-      postgres:
-        condition: service_healthy
-    stdin_open: true
-    tty: true
-
   postgres:
     image: postgres:16
     container_name: postgres
     ports:
-      - "5432:5432"
+      - "5435:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 12345
@@ -30,7 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d order_tracking" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d order_tracking"]
       interval: 5s
       timeout: 5s
       retries: 8
@@ -40,28 +22,10 @@ services:
     image: adminer
     container_name: adminer
     ports:
-      - "8080:8080"
+      - "8081:8080"
     depends_on:
       - postgres
     restart: unless-stopped
 
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3002:3000"
-    volumes:
-      - ./configs/grafana/provisioning:/etc/grafana/provisioning
-      - grafana_data:/var/lib/grafana
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
-    restart: unless-stopped
-    depends_on:
-      - app
-
 volumes:
   postgres_data:
-  grafana_data:
