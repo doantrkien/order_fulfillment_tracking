@@ -23,26 +23,12 @@ type KnowledgeRepository interface {
 	GetAllActive(ctx context.Context) ([]models.KnowledgeEntry, error)
 	GetBySlug(ctx context.Context, slug string) (*models.KnowledgeEntry, error)
 	Save(ctx context.Context, entry *models.KnowledgeEntry) error
-	// FindSimilar returns up to topK entries whose embedding cosine-similarity with
-	// vec is >= threshold. Results are ordered by similarity descending.
 	FindSimilar(ctx context.Context, vec []float32, topK int, threshold float64) ([]models.KnowledgeEntry, error)
-	// UpdateEmbedding persists the embedding vector for a single entry and clears
-	// the needs_reembed flag.
 	UpdateEmbedding(ctx context.Context, id int64, vec []float32) error
-
-	// ── Chunk operations ─────────────────────────────────────────────────────
-
-	// SaveChunks persists a batch of chunks (insert or upsert).
 	SaveChunks(ctx context.Context, chunks []models.KnowledgeChunk) error
-	// DeleteChunksByEntryID removes all chunks belonging to the given entry.
 	DeleteChunksByEntryID(ctx context.Context, entryID int64) error
-	// FindSimilarChunks returns up to topK chunks whose embedding cosine-similarity
-	// with vec is >= threshold, joined with their parent entry metadata.
-	// Results are deduplicated by entry (best chunk per entry) and ordered by similarity desc.
 	FindSimilarChunks(ctx context.Context, vec []float32, topK int, threshold float64) ([]ChunkWithEntry, error)
-	// UpdateChunkEmbedding persists the embedding vector for a single chunk and clears needs_reembed.
 	UpdateChunkEmbedding(ctx context.Context, chunkID int64, vec []float32) error
-	// GetChunksNeedingReembed returns all chunks with needs_reembed=true.
 	GetChunksNeedingReembed(ctx context.Context) ([]models.KnowledgeChunk, error)
 }
 
@@ -82,9 +68,6 @@ func (r *knowledgeRepository) Save(ctx context.Context, entry *models.KnowledgeE
 		Save(entry).Error
 }
 
-// FindSimilar queries knowledge_entries using pgvector cosine distance operator (<=>).
-// Only entries with a non-NULL embedding and is_active=true are searched.
-// Similarity is defined as 1 - cosine_distance, so threshold=0.75 means cosine distance <= 0.25.
 func (r *knowledgeRepository) FindSimilar(ctx context.Context, vec []float32, topK int, threshold float64) ([]models.KnowledgeEntry, error) {
 	pgVec := pgvector.NewVector(vec)
 	var entries []models.KnowledgeEntry
@@ -105,7 +88,6 @@ func (r *knowledgeRepository) FindSimilar(ctx context.Context, vec []float32, to
 	return entries, nil
 }
 
-// UpdateEmbedding saves the embedding vector for the given entry ID and resets needs_reembed.
 func (r *knowledgeRepository) UpdateEmbedding(ctx context.Context, id int64, vec []float32) error {
 	pgVec := pgvector.NewVector(vec)
 	return r.db.WithContext(ctx).
@@ -117,10 +99,6 @@ func (r *knowledgeRepository) UpdateEmbedding(ctx context.Context, id int64, vec
 		}).Error
 }
 
-// ── Chunk operations ─────────────────────────────────────────────────────────
-
-// SaveChunks persists a batch of chunks. Existing chunks for the same entry are
-// expected to be deleted first via DeleteChunksByEntryID.
 func (r *knowledgeRepository) SaveChunks(ctx context.Context, chunks []models.KnowledgeChunk) error {
 	if len(chunks) == 0 {
 		return nil
@@ -130,16 +108,12 @@ func (r *knowledgeRepository) SaveChunks(ctx context.Context, chunks []models.Kn
 		Create(&chunks).Error
 }
 
-// DeleteChunksByEntryID removes all chunks belonging to the given entry.
 func (r *knowledgeRepository) DeleteChunksByEntryID(ctx context.Context, entryID int64) error {
 	return r.db.WithContext(ctx).
 		Where("entry_id = ?", entryID).
 		Delete(&models.KnowledgeChunk{}).Error
 }
 
-// FindSimilarChunks queries knowledge_chunks using pgvector cosine distance,
-// joined with knowledge_entries to include entry metadata.
-// Returns up to topK most similar chunks across all active entries.
 func (r *knowledgeRepository) FindSimilarChunks(ctx context.Context, vec []float32, topK int, threshold float64) ([]ChunkWithEntry, error) {
 	pgVec := pgvector.NewVector(vec)
 	var results []ChunkWithEntry
@@ -168,7 +142,6 @@ func (r *knowledgeRepository) FindSimilarChunks(ctx context.Context, vec []float
 	return results, nil
 }
 
-// UpdateChunkEmbedding persists the embedding vector for a single chunk and clears needs_reembed.
 func (r *knowledgeRepository) UpdateChunkEmbedding(ctx context.Context, chunkID int64, vec []float32) error {
 	pgVec := pgvector.NewVector(vec)
 	return r.db.WithContext(ctx).
@@ -180,7 +153,6 @@ func (r *knowledgeRepository) UpdateChunkEmbedding(ctx context.Context, chunkID 
 		}).Error
 }
 
-// GetChunksNeedingReembed returns all chunks where needs_reembed is true.
 func (r *knowledgeRepository) GetChunksNeedingReembed(ctx context.Context) ([]models.KnowledgeChunk, error) {
 	var chunks []models.KnowledgeChunk
 	err := r.db.WithContext(ctx).
@@ -191,4 +163,3 @@ func (r *knowledgeRepository) GetChunksNeedingReembed(ctx context.Context) ([]mo
 	}
 	return chunks, nil
 }
-

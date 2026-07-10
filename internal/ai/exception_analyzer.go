@@ -9,18 +9,17 @@ import (
 	"unicode"
 )
 
-// Fallback reason constants used in audit logging.
 const (
-	FallbackReasonDisabled           = "ai_disabled"
-	FallbackReasonNoDriverNote       = "no_driver_note"
-	FallbackReasonEarlyNoteIgnored   = "early_note_ignored_to_save_cost"
-	FallbackReasonTemplateSufficient = "template_sufficient"
-	FallbackReasonTimeout            = "ai_timeout"
-	FallbackReasonConnectionError    = "ai_connection_error"
-	FallbackReasonInvalidResponse    = "ai_invalid_response"
-	FallbackReasonLowConfidence      = "ai_confidence_below_threshold"
+	FallbackReasonDisabled            = "ai_disabled"
+	FallbackReasonNoDriverNote        = "no_driver_note"
+	FallbackReasonEarlyNoteIgnored    = "early_note_ignored_to_save_cost"
+	FallbackReasonTemplateSufficient  = "template_sufficient"
+	FallbackReasonTimeout             = "ai_timeout"
+	FallbackReasonConnectionError     = "ai_connection_error"
+	FallbackReasonInvalidResponse     = "ai_invalid_response"
+	FallbackReasonLowConfidence       = "ai_confidence_below_threshold"
 	FallbackReasonStructuralRuleMatch = "structural_rule_match"
-	FallbackReasonNoteNotActionable  = "note_not_actionable"
+	FallbackReasonNoteNotActionable   = "note_not_actionable"
 )
 
 type AnalysisResult struct {
@@ -59,16 +58,10 @@ func (ea *ExceptionAnalyzer) ReloadKnowledge(ctx context.Context) error {
 func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContext) (*AnalysisResult, error) {
 	now := time.Now()
 
-	// ── Step 1: Rule-based engine
 	ruleResult := AnalyzeByRules(aiCtx, now)
 
-	// ── Step 2: Check for driver notes
 	hasDriverNote := hasAnyDriverNote(aiCtx)
 
-	// ── Step 3: Skip AI when disabled or no driver note
-	// Exception: CANCELLED and REFUNDED are terminal states handled entirely by
-	// rule-based logic — they must bypass the driver-note gate so they are never
-	// silently downgraded to "OTHER".
 	isTerminalAnomaly := aiCtx.CurrentStatus == models.ORDER_STATUS_CANCELLED ||
 		aiCtx.CurrentStatus == models.ORDER_STATUS_REFUNDED
 
@@ -80,18 +73,14 @@ func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContex
 		return ruleResultToAnalysis(ruleResult, FallbackReasonNoDriverNote, 0, ""), nil
 	}
 
-	// For terminal anomaly statuses with no driver note, rule-based result is sufficient —
-	// skip the AI call to avoid unnecessary cost and latency.
 	if isTerminalAnomaly && !hasDriverNote {
 		return ruleResultToAnalysis(ruleResult, FallbackReasonNoDriverNote, 0, ""), nil
 	}
 
-	// Skip AI call if a structural exception is already identified with high confidence
 	if ruleResult != nil && isStructuralException(ruleResult.ExceptionType) {
 		return ruleResultToAnalysis(ruleResult, FallbackReasonStructuralRuleMatch, 0, ""), nil
 	}
 
-	// ── Step 3.5: Check if the driver note is actionable
 	if hasDriverNote {
 		var latestNote string
 		for i := len(aiCtx.Events) - 1; i >= 0; i-- {
@@ -106,8 +95,6 @@ func (ea *ExceptionAnalyzer) Analyze(ctx context.Context, aiCtx *models.AIContex
 		}
 	}
 
-	// ── Step 4: Call AI
-	// input := buildExceptionInput(aiCtx, notes)
 	input := buildExceptionInput(aiCtx)
 
 	start := time.Now()
@@ -178,12 +165,10 @@ func ruleResultToAnalysis(ruleResult *RuleBasedResult, reason string, durationMs
 	}
 }
 
-// fallback runs the rule-based analyzer
 func (ea *ExceptionAnalyzer) fallback(aiCtx *models.AIContext, reason string, durationMs int, now time.Time) *AnalysisResult {
 	return ea.fallbackWithRaw(aiCtx, reason, durationMs, "", now)
 }
 
-// fallbackWithRaw
 func (ea *ExceptionAnalyzer) fallbackWithRaw(aiCtx *models.AIContext, reason string, durationMs int, rawResponse string, now time.Time) *AnalysisResult {
 	ruleResult := AnalyzeByRules(aiCtx, now)
 
@@ -214,7 +199,6 @@ func (ea *ExceptionAnalyzer) fallbackWithRaw(aiCtx *models.AIContext, reason str
 	}
 }
 
-// func buildExceptionInput(aiCtx *models.AIContext, notes string) dto.ExceptionInput {
 func buildExceptionInput(aiCtx *models.AIContext) dto.ExceptionInput {
 	eventHistory := make([]dto.EventRecord, 0, len(aiCtx.Events))
 	for _, e := range aiCtx.Events {
@@ -225,17 +209,6 @@ func buildExceptionInput(aiCtx *models.AIContext) dto.ExceptionInput {
 			UpdatedBy:  e.UpdatedBy,
 		})
 	}
-
-	// allNotes := []string{}
-	// // if strings.TrimSpace(notes) != "" {
-	// // 	allNotes = append(allNotes, strings.TrimSpace(notes))
-	// // }
-	// for _, e := range aiCtx.Events {
-	// 	if e.DriverNote != nil && strings.TrimSpace(*e.DriverNote) != "" {
-	// 		allNotes = append(allNotes, strings.TrimSpace(*e.DriverNote))
-	// 	}
-	// }
-	// errorMessage := strings.Join(allNotes, "; ")
 
 	var driverNotes string
 	for i := len(aiCtx.Events) - 1; i >= 0; i-- {
@@ -274,12 +247,9 @@ func isStructuralException(exceptionType string) bool {
 func isNoteActionable(note string) bool {
 	s := strings.TrimSpace(note)
 
-	// Gate 1: Too short (< 10 runes)
 	if len([]rune(s)) < 10 {
 		return false
 	}
-
-	// Gate 2: Character validation (letters/runes ratio < 40%)
 	letterCount := 0
 	for _, r := range s {
 		if unicode.IsLetter(r) {
@@ -290,7 +260,6 @@ func isNoteActionable(note string) bool {
 		return false
 	}
 
-	// Gate 3: Word count (< 3 words)
 	if len(strings.Fields(s)) < 3 {
 		return false
 	}

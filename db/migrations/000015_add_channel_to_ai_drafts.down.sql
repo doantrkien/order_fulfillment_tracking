@@ -1,2 +1,2 @@
-ALTER TABLE ai_customer_update_drafts
-DROP COLUMN IF EXISTS channel;
+-- ALTER TABLE ai_customer_update_drafts
+-- DROP COLUMN IF EXISTS channel;

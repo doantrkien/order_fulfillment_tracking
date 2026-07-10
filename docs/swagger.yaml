@@ -212,10 +212,10 @@ definitions:
   dto.LoginRequest:
     properties:
       email:
-        example: admin@order.com
+        example: admin@demo.com
         type: string
       password:
-        example: "12345"
+        example: "123456"
         type: string
     required:
     - email

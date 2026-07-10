@@ -32,7 +32,7 @@ seed:
 # SWAGGER
 # =========================
 swagger:
-	$(shell go env GOPATH)/bin/swag init -g $(MAIN_FILE)/main.go
+	go run github.com/swaggo/swag/cmd/swag@latest init -g $(MAIN_FILE)/main.go
 
 # =========================
 # TEST
@@ -86,5 +86,5 @@ docker-build:
 setup-ollama:
 	docker compose up -d ollama
 	docker compose exec -T ollama sh -c "until ollama list >/dev/null 2>&1; do sleep 2; done"
-	docker compose exec -T ollama ollama pull nomic-embed-text
+	docker compose exec -T ollama ollama pull nomic-embed-text-v2-moe
 
