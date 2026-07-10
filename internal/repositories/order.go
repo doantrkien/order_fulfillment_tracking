@@ -44,9 +44,7 @@ func (r *orderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int
 	db := r.db.Model(&models.Order{})
 
 	if query.DriverID != 0 {
-		db = db.Distinct("orders.*").
-			Joins("JOIN order_events ON order_events.order_id = orders.id").
-			Where("order_events.driver_id = ?", query.DriverID)
+		db = db.Where("EXISTS (SELECT 1 FROM order_events WHERE order_events.order_id = orders.id AND order_events.driver_id = ?)", query.DriverID)
 	}
 	if query.Status != "" {
 		db = db.Where("orders.current_status = ?", query.Status)

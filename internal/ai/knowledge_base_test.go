@@ -210,9 +210,16 @@ func TestKnowledgeStore_ClassifyDriverNote_SemanticMatch(t *testing.T) {
 		Title: "Delivery Failure",
 		Body:  "delivery_failure_body",
 	}
+	similarChunk := repositories.ChunkWithEntry{
+		ChunkID:    1,
+		EntrySlug:  "delivery_failure",
+		EntryTitle: "Delivery Failure",
+		Content:    "delivery_failure_body",
+		Similarity: 0.9,
+	}
 	repo := &mockKnowledgeRepository{
-		entries:        []models.KnowledgeEntry{similarEntry},
-		similarEntries: []models.KnowledgeEntry{similarEntry},
+		entries:       []models.KnowledgeEntry{similarEntry},
+		similarChunks: []repositories.ChunkWithEntry{similarChunk},
 	}
 	embClient := &mockEmbeddingClient{vec: testVec}
 	store := NewKnowledgeStore(repo, embClient)
@@ -311,31 +318,35 @@ func TestKnowledgeStore_ClassifyDriverNote_SemanticChunkMatch(t *testing.T) {
 	assert.NotContains(t, entries[0].Body, "full body")
 }
 
-func TestKnowledgeStore_ClassifyDriverNote_ChunksFallbackToEntryLevel(t *testing.T) {
+func TestKnowledgeStore_ClassifyDriverNote_ChunksFallbackToKeyword(t *testing.T) {
 	testVec := make([]float32, 768)
 	testVec[0] = 0.9
 
-	// FindSimilarChunks returns empty, but FindSimilar (entry-level) has a match
+	// FindSimilarChunks returns empty, should fallback to keyword
 	similarEntry := models.KnowledgeEntry{
 		ID: 1, Slug: "stuck_order", Title: "Stuck Order", Body: "stuck body", IsActive: true,
 	}
 	repo := &mockKnowledgeRepository{
 		entries:        []models.KnowledgeEntry{similarEntry},
 		similarChunks:  []repositories.ChunkWithEntry{}, // empty chunks
-		similarEntries: []models.KnowledgeEntry{similarEntry},
 	}
 	embClient := &mockEmbeddingClient{vec: testVec}
 	store := NewKnowledgeStore(repo, embClient)
+
+	// Inject the combined KB into the mock cache for keyword fallback
+	store.cache = map[string]KnowledgeEntry{
+		"combined_knowledge": {Title: "Order Fulfillment Knowledge Base", Body: "combined body"},
+	}
 
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
 
 	entries := store.ClassifyDriverNote(context.Background(), "đơn hàng không tiến triển")
 	require.Len(t, entries, 1)
-	assert.Equal(t, "Stuck Order", entries[0].Title)
+	assert.Equal(t, "Order Fulfillment Knowledge Base", entries[0].Title)
 }
 
-func TestKnowledgeStore_ClassifyDriverNote_ChunksErrorFallbackToEntryLevel(t *testing.T) {
+func TestKnowledgeStore_ClassifyDriverNote_ChunksErrorFallbackToKeyword(t *testing.T) {
 	testVec := make([]float32, 768)
 
 	similarEntry := models.KnowledgeEntry{
@@ -344,7 +355,6 @@ func TestKnowledgeStore_ClassifyDriverNote_ChunksErrorFallbackToEntryLevel(t *te
 	repo := &mockKnowledgeRepository{
 		entries:          []models.KnowledgeEntry{similarEntry},
 		similarChunksErr: errors.New("chunks table not found"),
-		similarEntries:   []models.KnowledgeEntry{similarEntry},
 	}
 	embClient := &mockEmbeddingClient{vec: testVec}
 	store := NewKnowledgeStore(repo, embClient)
@@ -352,9 +362,10 @@ func TestKnowledgeStore_ClassifyDriverNote_ChunksErrorFallbackToEntryLevel(t *te
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
 
-	// FindSimilarChunks errors → should fall back to entry-level
+	// FindSimilarChunks errors → should fall back to keyword
 	entries := store.ClassifyDriverNote(context.Background(), "xe hỏng trên đường giao hàng")
-	assert.NotEmpty(t, entries, "should fallback to entry-level on chunks error")
+	assert.NotEmpty(t, entries, "should fallback to keyword on chunks error")
+	assert.Equal(t, "Order Fulfillment Knowledge Base", entries[0].Title)
 }
 
 func TestKnowledgeStore_BuildRAGEntries_GroupsByEntry(t *testing.T) {
