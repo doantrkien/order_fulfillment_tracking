@@ -6,13 +6,15 @@ import (
 	"time"
 
 	"main/errs"
-	"main/internal/dto"
+	dto_ai "main/internal/dto/ai"
+
 	"main/pkg/aiclient"
+	"main/utils/helpers"
 )
 
 type AIAdapter interface {
-	AnalyzeException(ctx context.Context, input dto.ExceptionInput) (dto.ExceptionOutput, string, error)
-	DraftCustomerUpdate(ctx context.Context, input dto.CustomerUpdateDraftInput) (string, error)
+	AnalyzeException(ctx context.Context, input dto_ai.ExceptionPromptContext) (dto_ai.AIAnalysisResult, string, error)
+	DraftCustomerUpdate(ctx context.Context, input dto_ai.CustomerUpdateDraftInput) (string, error)
 	ReloadKnowledge(ctx context.Context) error
 }
 
@@ -27,11 +29,11 @@ func NewAIAdapter(client aiclient.AIClient, kbStore *KnowledgeStore) *aiAdapter 
 
 func (g *aiAdapter) AnalyzeException(
 	ctx context.Context,
-	input dto.ExceptionInput,
-) (dto.ExceptionOutput, string, error) {
-	timeline := make([]EventTimelineEntry, 0, len(input.EventHistory))
-	for _, e := range input.EventHistory {
-		timeline = append(timeline, EventTimelineEntry{
+	input dto_ai.ExceptionPromptContext,
+) (dto_ai.AIAnalysisResult, string, error) {
+	timeline := make([]dto_ai.EventTimelineEntry, 0, len(input.EventTimeline))
+	for _, e := range input.EventTimeline {
+		timeline = append(timeline, dto_ai.EventTimelineEntry{
 			FromStatus: e.FromStatus,
 			ToStatus:   e.ToStatus,
 			UpdatedBy:  e.UpdatedBy,
@@ -39,7 +41,7 @@ func (g *aiAdapter) AnalyzeException(
 		})
 	}
 
-	promptCtx := ExceptionPromptContext{
+	promptCtx := dto_ai.ExceptionPromptContext{
 		OrderID:         input.OrderID,
 		CurrentStatus:   input.CurrentStatus,
 		TotalAmount:     input.TotalAmount,
@@ -58,20 +60,20 @@ func (g *aiAdapter) AnalyzeException(
 	if g.kbStore != nil {
 		knowledge = g.kbStore.ClassifyDriverNote(ctx, input.DriverNotes)
 	} else {
-		knowledge = ClassifyDriverNote(input.DriverNotes)
+		knowledge = GetKnowledgeBase(input.DriverNotes)
 	}
 	prompt := BuildExceptionAnalysisPrompt(promptCtx, knowledge)
 
 	rawText, err := g.client.GenerateContent(ctx, prompt)
 	// fmt.Println("Raw Text Ai", rawText)
 	if err != nil {
-		return dto.ExceptionOutput{}, "", errs.ERR_AI_GENERATE_CONTENT_FAILED
+		return dto_ai.AIAnalysisResult{}, "", errs.ERR_AI_GENERATE_CONTENT_FAILED
 	}
 
-	var output dto.ExceptionOutput
-	cleaned := stripMarkdownFences(rawText)
+	var output dto_ai.AIAnalysisResult
+	cleaned := helpers.StripFences(rawText)
 	if err := json.Unmarshal([]byte(cleaned), &output); err != nil {
-		return dto.ExceptionOutput{}, rawText, errs.ERR_AI_RESPONSE_VALIDATION_FAILED
+		return dto_ai.AIAnalysisResult{}, rawText, errs.ERR_AI_RESPONSE_VALIDATION_FAILED
 	}
 
 	return output, rawText, nil
@@ -79,7 +81,7 @@ func (g *aiAdapter) AnalyzeException(
 
 func (g *aiAdapter) DraftCustomerUpdate(
 	ctx context.Context,
-	input dto.CustomerUpdateDraftInput,
+	input dto_ai.CustomerUpdateDraftInput,
 ) (string, error) {
 	SanitizeCustomerUpdateDraftInput(&input)
 	prompt := BuildCustomerUpdateDraftPrompt(input)

@@ -29,8 +29,6 @@ var CustomerUpdateFallbackTemplates = map[string]string{
 }
 
 func GetFallbackTemplate(exceptionType, customerName, shippingAddress, currentStatus string) string {
-	// If the order is already delivered, prioritize the DELIVERED template
-	// regardless of the exception type (e.g. "OTHER" with a driver note).
 	if strings.ToUpper(currentStatus) == "DELIVERED" || strings.ToUpper(currentStatus) == "COMPLETED" {
 		return fmt.Sprintf(CustomerUpdateFallbackTemplates["DELIVERED"], customerName)
 	}

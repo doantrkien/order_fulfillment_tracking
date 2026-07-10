@@ -1,7 +1,7 @@
 package mocks
 
 import (
-	dto "main/internal/dto"
+	dto_api "main/internal/dto/api"
 	models "main/internal/models"
 
 	mock "github.com/stretchr/testify/mock"
@@ -40,7 +40,7 @@ func (_m *OrderRepository) CreateOrder(order models.Order, updatedBy string) (*m
 	return r0, r1
 }
 
-func (_m *OrderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int64, error) {
+func (_m *OrderRepository) GetAllOrder(query dto_api.OrderQuery) ([]models.Order, int64, error) {
 	ret := _m.Called(query)
 
 	if len(ret) == 0 {
@@ -50,10 +50,10 @@ func (_m *OrderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, in
 	var r0 []models.Order
 	var r1 int64
 	var r2 error
-	if rf, ok := ret.Get(0).(func(dto.OrderQuery) ([]models.Order, int64, error)); ok {
+	if rf, ok := ret.Get(0).(func(dto_api.OrderQuery) ([]models.Order, int64, error)); ok {
 		return rf(query)
 	}
-	if rf, ok := ret.Get(0).(func(dto.OrderQuery) []models.Order); ok {
+	if rf, ok := ret.Get(0).(func(dto_api.OrderQuery) []models.Order); ok {
 		r0 = rf(query)
 	} else {
 		if ret.Get(0) != nil {
@@ -61,13 +61,13 @@ func (_m *OrderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, in
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(dto.OrderQuery) int64); ok {
+	if rf, ok := ret.Get(1).(func(dto_api.OrderQuery) int64); ok {
 		r1 = rf(query)
 	} else {
 		r1 = ret.Get(1).(int64)
 	}
 
-	if rf, ok := ret.Get(2).(func(dto.OrderQuery) error); ok {
+	if rf, ok := ret.Get(2).(func(dto_api.OrderQuery) error); ok {
 		r2 = rf(query)
 	} else {
 		r2 = ret.Error(2)

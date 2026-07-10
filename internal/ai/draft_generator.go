@@ -7,7 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"main/internal/dto"
+	"main/constant"
+	"main/errs"
+	dto_ai "main/internal/dto/ai"
+	"main/utils/helpers"
+	"main/utils/validates"
 )
 
 const (
@@ -32,7 +36,6 @@ type DraftGeneratorConfig struct {
 	AIEnabled bool
 	AITimeout time.Duration
 
-	// Scoring parameters
 	ScoreChannelSMS              int
 	ScoreToneApologeticProactive int
 	ScoreLongReason              int
@@ -52,14 +55,14 @@ func NewDraftGenerator(adapter AIAdapter, config DraftGeneratorConfig) *DraftGen
 	}
 }
 
-func (dg *DraftGenerator) Generate(ctx context.Context, input dto.CustomerUpdateDraftInput) (*DraftResult, error) {
+func (dg *DraftGenerator) Generate(ctx context.Context, input dto_ai.CustomerUpdateDraftInput) (*DraftResult, error) {
 
 	input.BaselineDraft = buildFallbackDraftMessage(input)
 
 	if !dg.config.AIEnabled || !dg.shouldCallAI(input) {
-		reason := FallbackReasonTemplateSufficient
+		reason := constant.FallbackReasonTemplateSufficient
 		if !dg.config.AIEnabled {
-			reason = FallbackReasonDisabled
+			reason = constant.FallbackReasonDisabled
 		}
 		return &DraftResult{
 			CustomerUpdateDraft: input.BaselineDraft,
@@ -77,22 +80,22 @@ func (dg *DraftGenerator) Generate(ctx context.Context, input dto.CustomerUpdate
 	rawText, err := dg.adapter.DraftCustomerUpdate(timeoutCtx, input)
 	durationMs := int(time.Since(start).Milliseconds())
 	if err != nil {
-		reason := ClassifyError(err)
+		reason := errs.ClassifyError(err)
 		return dg.fallback(input, reason, durationMs, ""), nil
 	}
 
-	cleaned := stripDraftFences(rawText)
-	var output dto.CustomerUpdateDraftOutput
+	cleaned := helpers.StripFences(rawText)
+	var output dto_ai.CustomerUpdateDraftOutput
 	if err := json.Unmarshal([]byte(cleaned), &output); err != nil {
-		return dg.fallback(input, FallbackReasonInvalidResponse, durationMs, rawText), nil
+		return dg.fallback(input, constant.FallbackReasonInvalidResponse, durationMs, rawText), nil
 	}
 
 	if strings.TrimSpace(output.CustomerUpdateDraft) == "" {
-		return dg.fallback(input, FallbackReasonInvalidResponse, durationMs, rawText), nil
+		return dg.fallback(input, constant.FallbackReasonInvalidResponse, durationMs, rawText), nil
 	}
 
-	if output.ConfidenceScore < ConfidenceThreshold {
-		return dg.fallback(input, FallbackReasonLowConfidence, durationMs, rawText), nil
+	if output.ConfidenceScore < validates.ConfidenceThreshold {
+		return dg.fallback(input, constant.FallbackReasonLowConfidence, durationMs, rawText), nil
 	}
 
 	return &DraftResult{
@@ -104,8 +107,7 @@ func (dg *DraftGenerator) Generate(ctx context.Context, input dto.CustomerUpdate
 	}, nil
 }
 
-// fallback generates a safe template-based draft message when AI is unavailable.
-func (dg *DraftGenerator) fallback(input dto.CustomerUpdateDraftInput, reason string, durationMs int, rawResponse string) *DraftResult {
+func (dg *DraftGenerator) fallback(input dto_ai.CustomerUpdateDraftInput, reason string, durationMs int, rawResponse string) *DraftResult {
 	message := input.BaselineDraft
 	if message == "" {
 		message = buildFallbackDraftMessage(input)
@@ -120,23 +122,11 @@ func (dg *DraftGenerator) fallback(input dto.CustomerUpdateDraftInput, reason st
 	}
 }
 
-// isInternalSystemError trả về true cho các loại lỗi hệ thống nội bộ.
-// Các loại lỗi này không cần AI diễn giải thêm — Template tĩnh đã đủ an toàn và trung lập.
-func isInternalSystemError(exceptionType string) bool {
-	switch exceptionType {
-	case "INVALID_TRANSITION", "SKIPPED_STATUS", "DUPLICATE_EVENT":
-		return true
-	}
-	return false
-}
-
-// shouldCallAI quyết định có cần gọi AI hay dùng Template tĩnh.
-func (dg *DraftGenerator) shouldCallAI(input dto.CustomerUpdateDraftInput) bool {
+func (dg *DraftGenerator) shouldCallAI(input dto_ai.CustomerUpdateDraftInput) bool {
 	channel := strings.ToLower(strings.TrimSpace(input.Channel))
 	tone := strings.ToLower(strings.TrimSpace(input.Tone))
 
-	// 1. HARD RULES (Veto - Phủ quyết tuyệt đối)
-	if isInternalSystemError(input.ExceptionType) {
+	if validates.IsInternalSystemError(input.ExceptionType) {
 		fmt.Printf("[DEBUG][shouldCallAI] VETO: Internal System Error (%s)\n", input.ExceptionType)
 		return false
 	}
@@ -145,13 +135,11 @@ func (dg *DraftGenerator) shouldCallAI(input dto.CustomerUpdateDraftInput) bool 
 		return false
 	}
 
-	// 2. MUST-HAVE RULES (Bắt buộc dùng AI)
 	if input.ExceptionType == ExceptionOther {
 		fmt.Printf("[DEBUG][shouldCallAI] MUST: Exception Type is OTHER\n")
 		return true
 	}
 
-	// 3. SCORING SYSTEM
 	score := 0
 
 	if channel == ChannelSMS {
@@ -173,20 +161,6 @@ func (dg *DraftGenerator) shouldCallAI(input dto.CustomerUpdateDraftInput) bool 
 	return needAI
 }
 
-func buildFallbackDraftMessage(input dto.CustomerUpdateDraftInput) string {
+func buildFallbackDraftMessage(input dto_ai.CustomerUpdateDraftInput) string {
 	return GetFallbackTemplate(input.ExceptionType, input.CustomerName, input.ShippingAddress, input.CurrentStatus)
-}
-
-func stripDraftFences(s string) string {
-	s = strings.TrimSpace(s)
-	if strings.HasPrefix(s, "```") {
-		if idx := strings.Index(s, "\n"); idx != -1 {
-			s = s[idx+1:]
-		}
-		if idx := strings.LastIndex(s, "```"); idx != -1 {
-			s = s[:idx]
-		}
-		s = strings.TrimSpace(s)
-	}
-	return s
 }

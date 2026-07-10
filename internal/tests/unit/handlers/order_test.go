@@ -9,11 +9,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"main/internal/dto"
+	"main/errs"
+	dto_api "main/internal/dto/api"
 	"main/internal/handlers"
 	"main/internal/models"
 	"main/internal/services"
-	"main/errs"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
@@ -25,14 +25,14 @@ import (
 func TestOrderHandlerCreateOrder(t *testing.T) {
 	tests := []struct {
 		name           string
-		input          dto.OrderRequest
+		input          dto_api.OrderRequest
 		setupMock      func(*mocks.OrderRepository)
 		expectError    bool
 		expectedResult *models.Order
 	}{
 		{
 			name: "Success",
-			input: dto.OrderRequest{
+			input: dto_api.OrderRequest{
 				TotalAmount:     1000,
 				Username:        "testuser",
 				UserPhone:       "0123456789",
@@ -46,7 +46,7 @@ func TestOrderHandlerCreateOrder(t *testing.T) {
 		},
 		{
 			name: "Invalid JSON",
-			input: dto.OrderRequest{
+			input: dto_api.OrderRequest{
 				TotalAmount: 1000,
 			},
 			setupMock:   nil,
@@ -54,13 +54,13 @@ func TestOrderHandlerCreateOrder(t *testing.T) {
 		},
 		{
 			name:        "Empty body",
-			input:       dto.OrderRequest{},
+			input:       dto_api.OrderRequest{},
 			setupMock:   nil,
 			expectError: true,
 		},
 		{
 			name: "Service error",
-			input: dto.OrderRequest{
+			input: dto_api.OrderRequest{
 				TotalAmount:     2000,
 				Username:        "erroruser",
 				UserPhone:       "0123456789",
@@ -73,7 +73,7 @@ func TestOrderHandlerCreateOrder(t *testing.T) {
 		},
 		{
 			name: "Missing Content-Type header",
-			input: dto.OrderRequest{
+			input: dto_api.OrderRequest{
 				TotalAmount: 3000,
 			},
 			setupMock:   nil,
@@ -145,13 +145,13 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 						CreatedAt:     mockTime,
 					},
 				}
-				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}).
+				m.On("GetAllOrder", dto_api.OrderQuery{PageNumber: 1, LimitItems: 10}).
 					Return(mockOrders, int64(1), nil).Once()
 			},
 			wantCode: 200,
 			validate: func(t *testing.T, resp *http.Response) {
 				var body struct {
-					Data       []dto.OrderReponse `json:"data"`
+					Data       []map[string]interface{} `json:"data"`
 					Pagination struct {
 						Page  int   `json:"current_page"`
 						Limit int   `json:"limit_items"`
@@ -178,7 +178,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 						CreatedAt:     mockTime,
 					},
 				}
-				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 2, LimitItems: 5}).
+				m.On("GetAllOrder", dto_api.OrderQuery{PageNumber: 2, LimitItems: 5}).
 					Return(mockOrders, int64(8), nil).Once()
 			},
 			wantCode: 200,
@@ -201,7 +201,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 			name:  "Service error",
 			query: "",
 			setupMock: func(m *mocks.OrderRepository) {
-				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}).Return(nil, int64(0), assert.AnError).Once()
+				m.On("GetAllOrder", dto_api.OrderQuery{PageNumber: 1, LimitItems: 10}).Return(nil, int64(0), assert.AnError).Once()
 			},
 			wantCode: 500,
 		},
@@ -215,7 +215,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 						CurrentStatus: models.ORDER_STATUS_PAID,
 					},
 				}
-				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10, Status: "paid"}).
+				m.On("GetAllOrder", dto_api.OrderQuery{PageNumber: 1, LimitItems: 10, Status: "paid"}).
 					Return(mockOrders, int64(1), nil).Once()
 			},
 			wantCode: 200,
@@ -229,7 +229,7 @@ func TestOrderHandlerGetAllOrder(t *testing.T) {
 						ID: 3,
 					},
 				}
-				m.On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10, Date: "2026-05-19"}).
+				m.On("GetAllOrder", dto_api.OrderQuery{PageNumber: 1, LimitItems: 10, Date: "2026-05-19"}).
 					Return(mockOrders, int64(1), nil).Once()
 			},
 			wantCode: 200,
@@ -369,7 +369,7 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 				CurrentStatus: models.ORDER_STATUS_CREATED,
 			},
 			orderID: "1",
-			body: dto.UpdateStatusRequest{
+			body: dto_api.UpdateStatusRequest{
 				Status: "paid",
 			},
 			expectedStatus: 200,
@@ -388,7 +388,7 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 			orderID:        "abc",
 			expectedStatus: 400,
 			expectError:    true,
-			body: dto.UpdateStatusRequest{
+			body: dto_api.UpdateStatusRequest{
 				Status: "paid",
 			},
 		},
@@ -404,7 +404,7 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 			orderID:        "1",
 			expectedStatus: 400,
 			expectError:    true,
-			body: dto.UpdateStatusRequest{
+			body: dto_api.UpdateStatusRequest{
 				Status: "",
 			},
 		},
@@ -413,7 +413,7 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 		// 	orderID:        "999",
 		// 	expectedStatus: 404,
 		// 	expectError:    true,
-		// 	body: dto.UpdateStatusRequest{
+		// 	body: dto_api.UpdateStatusRequest{
 		// 		Status: "paid",
 		// 	},
 		// 	setupMock: func(m *mocks.OrderRepository) {
@@ -427,7 +427,7 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 			orderID:        "1",
 			expectedStatus: 400,
 			expectError:    true,
-			body: dto.UpdateStatusRequest{
+			body: dto_api.UpdateStatusRequest{
 				Status: "delivered",
 			},
 			setupMock: func(m *mocks.OrderRepository) {
@@ -441,7 +441,7 @@ func TestOrderHandlerUpdateOrderStatus(t *testing.T) {
 			orderID:        "1",
 			expectedStatus: 500,
 			expectError:    true,
-			body: dto.UpdateStatusRequest{
+			body: dto_api.UpdateStatusRequest{
 				Status: "paid",
 			},
 			setupMock: func(m *mocks.OrderRepository) {

@@ -3,8 +3,13 @@ package ai
 import (
 	"context"
 	"errors"
-	"main/internal/dto"
+
+	"main/constant"
+	"main/internal/ai"
+	dto_ai "main/internal/dto/ai"
+	dto_api "main/internal/dto/api"
 	"main/internal/models"
+	"main/utils/helpers"
 	"testing"
 	"time"
 
@@ -14,24 +19,24 @@ import (
 
 // mockAdapter implements AIAdapter for testing.
 type mockAdapter struct {
-	output    dto.ExceptionOutput
+	output    dto_ai.AIAnalysisResult
 	outputStr string
 	err       error
 }
 
-func (m *mockAdapter) AnalyzeException(_ context.Context, _ dto.ExceptionInput) (dto.ExceptionOutput, string, error) {
+func (m *mockAdapter) AnalyzeException(_ context.Context, _ dto_ai.ExceptionPromptContext) (dto_ai.AIAnalysisResult, string, error) {
 	return m.output, m.outputStr, m.err
 }
 
-func (m *mockAdapter) SummarizeReport(_ context.Context, _ dto.ExceptionOutput) (dto.ReportSummaryOutput, error) {
-	return dto.ReportSummaryOutput{}, nil
+func (m *mockAdapter) SummarizeReport(_ context.Context, _ dto_ai.AIAnalysisResult) (dto_api.ReportSummaryOutput, error) {
+	return dto_api.ReportSummaryOutput{}, nil
 }
 
 func (m *mockAdapter) Ping(_ context.Context) error {
 	return nil
 }
 
-func (m *mockAdapter) DraftCustomerUpdate(_ context.Context, _ dto.CustomerUpdateDraftInput) (string, error) {
+func (m *mockAdapter) DraftCustomerUpdate(_ context.Context, _ dto_ai.CustomerUpdateDraftInput) (string, error) {
 	return m.outputStr, m.err
 }
 
@@ -64,7 +69,7 @@ func newTestAIContextWithDriverNote(note string) *models.AIContext {
 }
 
 func TestExceptionAnalyzer_AIDisabled(t *testing.T) {
-	analyzer := NewExceptionAnalyzer(nil, ExceptionAnalyzerConfig{
+	analyzer := ai.NewExceptionAnalyzer(nil, ai.ExceptionAnalyzerConfig{
 		AIEnabled: false,
 		AITimeout: 10 * time.Second,
 	})
@@ -74,7 +79,7 @@ func TestExceptionAnalyzer_AIDisabled(t *testing.T) {
 	result, err := analyzer.Analyze(context.Background(), aiCtx)
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
-	assert.Equal(t, FallbackReasonDisabled, result.FallbackReason)
+	assert.Equal(t, constant.FallbackReasonDisabled, result.FallbackReason)
 	assert.Equal(t, "", result.RawResponse)
 }
 
@@ -82,7 +87,7 @@ func TestExceptionAnalyzer_AIDisabled(t *testing.T) {
 // carries a driver note, AI is NOT called and rule-based result is returned directly.
 func TestExceptionAnalyzer_NoDriverNote_SkipsAI(t *testing.T) {
 	// adapter would panic if called — ensures AI is never invoked
-	analyzer := NewExceptionAnalyzer(nil, ExceptionAnalyzerConfig{
+	analyzer := ai.NewExceptionAnalyzer(nil, ai.ExceptionAnalyzerConfig{
 		AIEnabled: true,
 		AITimeout: 10 * time.Second,
 	})
@@ -93,7 +98,7 @@ func TestExceptionAnalyzer_NoDriverNote_SkipsAI(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
-	assert.Equal(t, FallbackReasonNoDriverNote, result.FallbackReason)
+	assert.Equal(t, constant.FallbackReasonNoDriverNote, result.FallbackReason)
 	assert.Equal(t, "", result.RawResponse)
 }
 
@@ -101,7 +106,7 @@ func TestExceptionAnalyzer_NoDriverNote_SkipsAI(t *testing.T) {
 // is present, the AI adapter is invoked.
 func TestExceptionAnalyzer_WithDriverNote_CallsAI(t *testing.T) {
 	adapter := &mockAdapter{
-		output: dto.ExceptionOutput{
+		output: dto_ai.AIAnalysisResult{
 			ExceptionType:      "DELIVERY_FAILURE",
 			Severity:           "HIGH",
 			LikelyReason:       "Driver note indicates vehicle breakdown",
@@ -110,7 +115,7 @@ func TestExceptionAnalyzer_WithDriverNote_CallsAI(t *testing.T) {
 		},
 		outputStr: `{"exception_type":"DELIVERY_FAILURE"}`,
 	}
-	analyzer := NewExceptionAnalyzer(adapter, ExceptionAnalyzerConfig{
+	analyzer := ai.NewExceptionAnalyzer(adapter, ai.ExceptionAnalyzerConfig{
 		AIEnabled: true,
 		AITimeout: 10 * time.Second,
 	})
@@ -129,7 +134,7 @@ func TestExceptionAnalyzer_AIReturnsError(t *testing.T) {
 	adapter := &mockAdapter{
 		err: errors.New("connection refused"),
 	}
-	analyzer := NewExceptionAnalyzer(adapter, ExceptionAnalyzerConfig{
+	analyzer := ai.NewExceptionAnalyzer(adapter, ai.ExceptionAnalyzerConfig{
 		AIEnabled: true,
 		AITimeout: 10 * time.Second,
 	})
@@ -140,7 +145,7 @@ func TestExceptionAnalyzer_AIReturnsError(t *testing.T) {
 
 	require.NoError(t, err) // Analyzer should NOT return error on AI failure
 	assert.True(t, result.FallbackUsed)
-	assert.Contains(t, []string{FallbackReasonTimeout, FallbackReasonConnectionError}, result.FallbackReason)
+	assert.Contains(t, []string{constant.FallbackReasonTimeout, constant.FallbackReasonConnectionError}, result.FallbackReason)
 	assert.GreaterOrEqual(t, result.DurationMs, 0)
 }
 
@@ -148,7 +153,7 @@ func TestExceptionAnalyzer_AIReturnsTimeout(t *testing.T) {
 	adapter := &mockAdapter{
 		err: context.DeadlineExceeded,
 	}
-	analyzer := NewExceptionAnalyzer(adapter, ExceptionAnalyzerConfig{
+	analyzer := ai.NewExceptionAnalyzer(adapter, ai.ExceptionAnalyzerConfig{
 		AIEnabled: true,
 		AITimeout: 10 * time.Second,
 	})
@@ -159,7 +164,7 @@ func TestExceptionAnalyzer_AIReturnsTimeout(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
-	assert.Equal(t, FallbackReasonTimeout, result.FallbackReason)
+	assert.Equal(t, constant.FallbackReasonTimeout, result.FallbackReason)
 }
 
 func TestExceptionAnalyzer_AIReturnsInvalidResponse(t *testing.T) {
@@ -168,7 +173,7 @@ func TestExceptionAnalyzer_AIReturnsInvalidResponse(t *testing.T) {
 		outputStr: "{invalid-json}",
 		err:       errors.New("AI response is not valid JSON"),
 	}
-	analyzer := NewExceptionAnalyzer(adapter, ExceptionAnalyzerConfig{
+	analyzer := ai.NewExceptionAnalyzer(adapter, ai.ExceptionAnalyzerConfig{
 		AIEnabled: true,
 		AITimeout: 10 * time.Second,
 	})
@@ -179,14 +184,14 @@ func TestExceptionAnalyzer_AIReturnsInvalidResponse(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
-	assert.Contains(t, []string{FallbackReasonConnectionError, FallbackReasonTimeout, FallbackReasonInvalidResponse}, result.FallbackReason)
+	assert.Contains(t, []string{constant.FallbackReasonConnectionError, constant.FallbackReasonTimeout, constant.FallbackReasonInvalidResponse}, result.FallbackReason)
 	assert.Equal(t, "{invalid-json}", result.RawResponse)
 }
 
 func TestExceptionAnalyzer_AIReturnsLowConfidence(t *testing.T) {
 	// Valid output but confidence below threshold (0.6)
 	adapter := &mockAdapter{
-		output: dto.ExceptionOutput{
+		output: dto_ai.AIAnalysisResult{
 			ExceptionType:      "STUCK_ORDER",
 			Severity:           "HIGH",
 			LikelyReason:       "Some reason that is valid",
@@ -195,7 +200,7 @@ func TestExceptionAnalyzer_AIReturnsLowConfidence(t *testing.T) {
 		},
 		outputStr: `{"confidence_score": 0.3}`,
 	}
-	analyzer := NewExceptionAnalyzer(adapter, ExceptionAnalyzerConfig{
+	analyzer := ai.NewExceptionAnalyzer(adapter, ai.ExceptionAnalyzerConfig{
 		AIEnabled: true,
 		AITimeout: 10 * time.Second,
 	})
@@ -206,13 +211,13 @@ func TestExceptionAnalyzer_AIReturnsLowConfidence(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
-	assert.Equal(t, FallbackReasonLowConfidence, result.FallbackReason)
+	assert.Equal(t, constant.FallbackReasonLowConfidence, result.FallbackReason)
 	assert.Equal(t, `{"confidence_score": 0.3}`, result.RawResponse)
 }
 
 func TestExceptionAnalyzer_FallbackProducesValidResult(t *testing.T) {
 	// AI disabled, but the order has an invalid transition in its events
-	analyzer := NewExceptionAnalyzer(nil, ExceptionAnalyzerConfig{
+	analyzer := ai.NewExceptionAnalyzer(nil, ai.ExceptionAnalyzerConfig{
 		AIEnabled: false,
 		AITimeout: 10 * time.Second,
 	})
@@ -238,7 +243,7 @@ func TestExceptionAnalyzer_FallbackProducesValidResult(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
-	assert.Equal(t, FallbackReasonDisabled, result.FallbackReason)
+	assert.Equal(t, constant.FallbackReasonDisabled, result.FallbackReason)
 	assert.Equal(t, "INVALID_TRANSITION", result.ExceptionType)
 	assert.Equal(t, "CRITICAL", result.Severity)
 	assert.Equal(t, float64(1), result.ConfidenceScore)
@@ -248,7 +253,7 @@ func TestExceptionAnalyzer_FallbackProducesValidResult(t *testing.T) {
 
 func TestExceptionAnalyzer_FallbackNoExceptionDetected(t *testing.T) {
 	// AI disabled, order is healthy (no rules triggered)
-	analyzer := NewExceptionAnalyzer(nil, ExceptionAnalyzerConfig{
+	analyzer := ai.NewExceptionAnalyzer(nil, ai.ExceptionAnalyzerConfig{
 		AIEnabled: false,
 		AITimeout: 10 * time.Second,
 	})
@@ -288,7 +293,7 @@ func TestExceptionAnalyzer_NeverReturnsError_ForAIFailures(t *testing.T) {
 
 	for _, testErr := range testErrors {
 		adapter := &mockAdapter{err: testErr}
-		analyzer := NewExceptionAnalyzer(adapter, ExceptionAnalyzerConfig{
+		analyzer := ai.NewExceptionAnalyzer(adapter, ai.ExceptionAnalyzerConfig{
 			AIEnabled: true,
 			AITimeout: 5 * time.Second,
 		})
@@ -323,7 +328,7 @@ func TestBuildExceptionInput(t *testing.T) {
 	}
 
 	// input := buildExceptionInput(aiCtx, "customer complained")
-	input := buildExceptionInput(aiCtx)
+	input := helpers.BuildExceptionInput(aiCtx)
 
 	assert.Equal(t, int64(42), input.OrderID)
 	assert.Equal(t, "shipped", input.CurrentStatus)
@@ -332,9 +337,9 @@ func TestBuildExceptionInput(t *testing.T) {
 	assert.Equal(t, "123 St", input.ShippingAddress)
 	assert.Equal(t, now.Format(time.RFC3339), input.CreatedAt)
 	assert.Equal(t, "customer complained", input.DriverNotes)
-	assert.Len(t, input.EventHistory, 1)
-	assert.Equal(t, "packed", input.EventHistory[0].FromStatus)
-	assert.Equal(t, "shipped", input.EventHistory[0].ToStatus)
+	assert.Len(t, input.EventTimeline, 1)
+	assert.Equal(t, "packed", input.EventTimeline[0].FromStatus)
+	assert.Equal(t, "shipped", input.EventTimeline[0].ToStatus)
 }
 
 func TestExceptionAnalyzer_StructuralRuleMatch(t *testing.T) {
@@ -362,7 +367,7 @@ func TestExceptionAnalyzer_StructuralRuleMatch(t *testing.T) {
 		},
 	}
 
-	analyzer := NewExceptionAnalyzer(nil, ExceptionAnalyzerConfig{
+	analyzer := ai.NewExceptionAnalyzer(nil, ai.ExceptionAnalyzerConfig{
 		AIEnabled: true,
 		AITimeout: 10 * time.Second,
 	})
@@ -370,7 +375,7 @@ func TestExceptionAnalyzer_StructuralRuleMatch(t *testing.T) {
 	result, err := analyzer.Analyze(context.Background(), aiCtx)
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
-	assert.Equal(t, FallbackReasonStructuralRuleMatch, result.FallbackReason)
+	assert.Equal(t, constant.FallbackReasonStructuralRuleMatch, result.FallbackReason)
 	assert.Equal(t, "DUPLICATE_EVENT", result.ExceptionType)
 }
 
@@ -390,7 +395,7 @@ func TestExceptionAnalyzer_SpamNotes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			aiCtx := newTestAIContextWithDriverNote(tt.note)
-			analyzer := NewExceptionAnalyzer(nil, ExceptionAnalyzerConfig{
+			analyzer := ai.NewExceptionAnalyzer(nil, ai.ExceptionAnalyzerConfig{
 				AIEnabled: true,
 				AITimeout: 10 * time.Second,
 			})
@@ -398,7 +403,7 @@ func TestExceptionAnalyzer_SpamNotes(t *testing.T) {
 			result, err := analyzer.Analyze(context.Background(), aiCtx)
 			require.NoError(t, err)
 			assert.True(t, result.FallbackUsed)
-			assert.Equal(t, FallbackReasonNoteNotActionable, result.FallbackReason)
+			assert.Equal(t, constant.FallbackReasonNoteNotActionable, result.FallbackReason)
 		})
 	}
 }
@@ -406,7 +411,7 @@ func TestExceptionAnalyzer_SpamNotes(t *testing.T) {
 func TestExceptionAnalyzer_ActionableNote_CallsAI(t *testing.T) {
 	// A valid, actionable note should pass the spam gate and call AI
 	adapter := &mockAdapter{
-		output: dto.ExceptionOutput{
+		output: dto_ai.AIAnalysisResult{
 			ExceptionType:      "DELIVERY_FAILURE",
 			Severity:           "HIGH",
 			LikelyReason:       "Vehicle broke down",
@@ -415,7 +420,7 @@ func TestExceptionAnalyzer_ActionableNote_CallsAI(t *testing.T) {
 		},
 		outputStr: `{"exception_type":"DELIVERY_FAILURE"}`,
 	}
-	analyzer := NewExceptionAnalyzer(adapter, ExceptionAnalyzerConfig{
+	analyzer := ai.NewExceptionAnalyzer(adapter, ai.ExceptionAnalyzerConfig{
 		AIEnabled: true,
 		AITimeout: 10 * time.Second,
 	})
@@ -426,5 +431,3 @@ func TestExceptionAnalyzer_ActionableNote_CallsAI(t *testing.T) {
 	assert.False(t, result.FallbackUsed)
 	assert.Equal(t, "DELIVERY_FAILURE", result.ExceptionType)
 }
-
-

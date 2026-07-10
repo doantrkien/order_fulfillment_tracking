@@ -3,7 +3,7 @@ package repositories
 import (
 	"errors"
 	"main/errs"
-	"main/internal/dto"
+	dto "main/internal/dto/api"
 	"main/internal/models"
 	"time"
 

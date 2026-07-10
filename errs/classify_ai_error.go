@@ -1,28 +1,27 @@
-package ai
+package errs
 
 import (
 	"context"
 	"errors"
+	"main/constant"
 	"net"
 )
 
-// ClassifyError maps an AI adapter error to a fallback reason string.
-// This is used by the ExceptionAnalyzer to record why fallback was triggered.
 func ClassifyError(err error) string {
 	if errors.Is(err, context.DeadlineExceeded) {
-		return FallbackReasonTimeout
+		return constant.FallbackReasonTimeout
 	}
 
 	var netErr net.Error
 	if errors.As(err, &netErr) && netErr.Timeout() {
-		return FallbackReasonTimeout
+		return constant.FallbackReasonTimeout
 	}
 
 	var netOpErr *net.OpError
 	if errors.As(err, &netOpErr) {
-		return FallbackReasonConnectionError
+		return constant.FallbackReasonConnectionError
 	}
 
 	// Default: treat unknown errors as connection errors
-	return FallbackReasonConnectionError
+	return constant.FallbackReasonConnectionError
 }

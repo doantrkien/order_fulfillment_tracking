@@ -3,28 +3,11 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
-	"main/internal/dto"
+	"main/constant"
+	dto_ai "main/internal/dto/ai"
+	"main/utils/helpers"
 	"strings"
 )
-
-var validExceptionTypes = map[string]bool{
-	"INVALID_TRANSITION":   true,
-	"CANCELLATION_ANOMALY": true,
-	"REFUND_ANOMALY":       true,
-	"STUCK_ORDER":          true,
-	"SKIPPED_STATUS":       true,
-	"DUPLICATE_EVENT":      true,
-	"DELIVERY_FAILURE":     true,
-	"ALTERNATIVE_DELIVERY": true,
-	"OTHER":                true,
-}
-
-var validSeverities = map[string]bool{
-	"LOW":      true,
-	"MEDIUM":   true,
-	"HIGH":     true,
-	"CRITICAL": true,
-}
 
 type ValidationError struct {
 	Fields []string
@@ -34,16 +17,16 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("schema validation failed: %s", strings.Join(e.Fields, "; "))
 }
 
-func ParseAndValidateAIOutput(output *dto.ExceptionOutput) error {
+func ParseAndValidateAIOutput(output *dto_ai.AIAnalysisResult) error {
 	var violations []string
 
-	if !validExceptionTypes[output.ExceptionType] {
+	if !constant.ValidExceptionTypes[output.ExceptionType] {
 		violations = append(violations,
 			fmt.Sprintf("invalid exception_type '%s' (expected one of: %s)",
-				output.ExceptionType, joinMapKeys(validExceptionTypes)))
+				output.ExceptionType, helpers.JoinMapKeys(constant.ValidExceptionTypes)))
 	}
 
-	if !validSeverities[output.Severity] {
+	if !constant.ValidSeverities[output.Severity] {
 		violations = append(violations,
 			fmt.Sprintf("invalid severity '%s' (expected one of: LOW, MEDIUM, HIGH, CRITICAL)",
 				output.Severity))
@@ -75,32 +58,13 @@ func ParseAndValidateAIOutput(output *dto.ExceptionOutput) error {
 	return nil
 }
 
-func stripMarkdownFences(s string) string {
-	s = strings.TrimSpace(s)
-	if strings.HasPrefix(s, "```json") {
-		s = strings.TrimPrefix(s, "```json")
-	} else if strings.HasPrefix(s, "```") {
-		s = strings.TrimPrefix(s, "```")
-	}
-	s = strings.TrimSuffix(s, "```")
-	return strings.TrimSpace(s)
-}
-
-func joinMapKeys(m map[string]bool) string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	return strings.Join(keys, ", ")
-}
-
 type AICustomerUpdateDraftRawOutput struct {
 	CustomerUpdateDraft string  `json:"customer_update_draft"`
 	ConfidenceScore     float64 `json:"confidence_score"`
 }
 
 func ParseAndValidateCustomerUpdateDraft(rawResponse string) (*AICustomerUpdateDraftRawOutput, error) {
-	cleaned := stripMarkdownFences(rawResponse)
+	cleaned := helpers.StripFences(rawResponse)
 
 	var output AICustomerUpdateDraftRawOutput
 	if err := json.Unmarshal([]byte(cleaned), &output); err != nil {

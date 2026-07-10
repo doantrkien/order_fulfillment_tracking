@@ -4,7 +4,8 @@ import (
 	"context"
 	"main/constant"
 	"main/errs"
-	"main/internal/dto"
+
+	dto "main/internal/dto/api"
 	"main/internal/services"
 	"main/response"
 	"time"

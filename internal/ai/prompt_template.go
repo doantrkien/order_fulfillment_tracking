@@ -5,17 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"main/internal/dto"
-)
-
-// PromptTemplateVersion tracks the current version of the exception analysis prompt.
-// Increment this when the prompt structure or instructions change.
-const PromptTemplateVersion = "1.4.0"
-
-const (
-	MaxEventTimelineEntries = 50
-	MaxDriverNotesLength    = 500
-	MaxStringFieldLength    = 200
+	"main/constant"
+	dto_ai "main/internal/dto/ai"
 )
 
 //go:embed knowledge/prompt_exception.md
@@ -24,26 +15,7 @@ var basePromptException string
 //go:embed knowledge/prompt_draft.md
 var basePromptDraft string
 
-type ExceptionPromptContext struct {
-	OrderID         int64
-	CurrentStatus   string
-	TotalAmount     int64
-	CustomerName    string
-	ShippingAddress string
-	CreatedAt       string
-	AnalyzedAt      string
-	EventTimeline   []EventTimelineEntry
-	DriverNotes     string
-}
-
-type EventTimelineEntry struct {
-	FromStatus string
-	ToStatus   string
-	UpdatedBy  string
-	EventAt    string
-}
-
-func SanitizePromptContext(ctx *ExceptionPromptContext) {
+func SanitizePromptContext(ctx *dto_ai.ExceptionPromptContext) {
 	if ctx.CustomerName != "" {
 		ctx.CustomerName = "[REDACTED_CUSTOMER_NAME]"
 	}
@@ -51,18 +23,16 @@ func SanitizePromptContext(ctx *ExceptionPromptContext) {
 		ctx.ShippingAddress = "[REDACTED_SHIPPING_ADDRESS]"
 	}
 
-	if len(ctx.EventTimeline) > MaxEventTimelineEntries {
-		ctx.EventTimeline = ctx.EventTimeline[len(ctx.EventTimeline)-MaxEventTimelineEntries:]
+	if len(ctx.EventTimeline) > constant.MaxEventTimelineEntries {
+		ctx.EventTimeline = ctx.EventTimeline[len(ctx.EventTimeline)-constant.MaxEventTimelineEntries:]
 	}
 
-	if len(ctx.DriverNotes) > MaxDriverNotesLength {
-		ctx.DriverNotes = ctx.DriverNotes[:MaxDriverNotesLength] + "...[truncated]"
+	if len(ctx.DriverNotes) > constant.MaxDriverNotesLength {
+		ctx.DriverNotes = ctx.DriverNotes[:constant.MaxDriverNotesLength] + "...[truncated]"
 	}
 }
 
-// BuildExceptionAnalysisPrompt constructs a focused prompt for the AI.
-func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext, knowledge []KnowledgeEntry) string {
-	// 1. Build context string
+func BuildExceptionAnalysisPrompt(ctx dto_ai.ExceptionPromptContext, knowledge []KnowledgeEntry) string {
 	var ctxSb strings.Builder
 	ctxSb.WriteString(fmt.Sprintf("Order ID: %d\n", ctx.OrderID))
 	ctxSb.WriteString(fmt.Sprintf("Current Status: %s\n", ctx.CurrentStatus))
@@ -87,9 +57,8 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext, knowledge []Knowle
 		ctxSb.WriteString(fmt.Sprintf("Driver Note: %s\n", ctx.DriverNotes))
 	}
 
-	// 2. Build knowledge base string
 	if len(knowledge) == 0 {
-		knowledge = ClassifyDriverNote("")
+		knowledge = GetKnowledgeBase("")
 	}
 	var kbSb strings.Builder
 	for _, kb := range knowledge {
@@ -100,11 +69,10 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext, knowledge []Knowle
 		kbSb.WriteString("\n\n")
 	}
 
-	// 3. Inject into base markdown template
 	return fmt.Sprintf(basePromptException, ctxSb.String(), strings.TrimSpace(kbSb.String()))
 }
 
-func SanitizeCustomerUpdateDraftInput(input *dto.CustomerUpdateDraftInput) {
+func SanitizeCustomerUpdateDraftInput(input *dto_ai.CustomerUpdateDraftInput) {
 	if input.CustomerName != "" {
 		input.CustomerName = "[REDACTED_CUSTOMER_NAME]"
 	}
@@ -113,9 +81,7 @@ func SanitizeCustomerUpdateDraftInput(input *dto.CustomerUpdateDraftInput) {
 	}
 }
 
-// BuildCustomerUpdateDraftPrompt constructs a prompt for drafting a customer update message.
-func BuildCustomerUpdateDraftPrompt(input dto.CustomerUpdateDraftInput) string {
-	// 1. Build context string
+func BuildCustomerUpdateDraftPrompt(input dto_ai.CustomerUpdateDraftInput) string {
 	var ctxSb strings.Builder
 	ctxSb.WriteString(fmt.Sprintf("Order ID: %d\n", input.OrderID))
 	ctxSb.WriteString(fmt.Sprintf("Customer Name: %s\n", input.CustomerName))
@@ -126,6 +92,5 @@ func BuildCustomerUpdateDraftPrompt(input dto.CustomerUpdateDraftInput) string {
 	ctxSb.WriteString(fmt.Sprintf("Requested Tone: %s\n", input.Tone))
 	ctxSb.WriteString(fmt.Sprintf("Communication Channel: %s\n", input.Channel))
 
-	// 2. Inject into base markdown template
 	return fmt.Sprintf(basePromptDraft, ctxSb.String(), input.BaselineDraft)
 }

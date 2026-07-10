@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"errors"
+	"main/internal/ai"
 	"main/internal/models"
 	"main/internal/repositories"
 	"testing"
@@ -15,21 +16,21 @@ import (
 // ── Mock KnowledgeRepository ──────────────────────────────────────────────────
 
 type mockKnowledgeRepository struct {
-	entries            []models.KnowledgeEntry
-	err                error
-	saved              []*models.KnowledgeEntry
-	similarEntries     []models.KnowledgeEntry
-	similarErr         error
-	updatedID          int64
-	updatedEmbedding   []float32
+	entries          []models.KnowledgeEntry
+	err              error
+	saved            []*models.KnowledgeEntry
+	similarEntries   []models.KnowledgeEntry
+	similarErr       error
+	updatedID        int64
+	updatedEmbedding []float32
 	// Chunk fields
-	savedChunks        []models.KnowledgeChunk
-	similarChunks      []repositories.ChunkWithEntry
-	similarChunksErr   error
-	deletedEntryID     int64
-	chunksNeedReembed  []models.KnowledgeChunk
-	updatedChunkID     int64
-	updatedChunkEmbed  []float32
+	savedChunks       []models.KnowledgeChunk
+	similarChunks     []repositories.ChunkWithEntry
+	similarChunksErr  error
+	deletedEntryID    int64
+	chunksNeedReembed []models.KnowledgeChunk
+	updatedChunkID    int64
+	updatedChunkEmbed []float32
 }
 
 func (m *mockKnowledgeRepository) GetAllActive(_ context.Context) ([]models.KnowledgeEntry, error) {
@@ -102,17 +103,17 @@ func (m *mockEmbeddingClient) Embed(_ context.Context, _ string) ([]float32, err
 
 func TestKnowledgeStore_Initialize_EmptyDB_SeedsData(t *testing.T) {
 	repo := &mockKnowledgeRepository{}
-	store := NewKnowledgeStore(repo, nil) // no embedding client
+	store := ai.NewKnowledgeStore(repo, nil) // no embedding client
 
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
 
 	// Should seed 1 default entry
 	assert.Len(t, repo.saved, 1)
-	assert.Len(t, store.cache, 1)
+	assert.Len(t, store.Cache, 1)
 
 	// Check key entries
-	assert.Contains(t, store.cache, "combined_knowledge")
+	assert.Contains(t, store.Cache, "combined_knowledge")
 }
 
 func TestKnowledgeStore_Initialize_NonEmptyDB_DoesNotSeed(t *testing.T) {
@@ -120,15 +121,15 @@ func TestKnowledgeStore_Initialize_NonEmptyDB_DoesNotSeed(t *testing.T) {
 		{Slug: "combined_knowledge", Title: "Custom Knowledge Base", Body: "Custom body", IsActive: true},
 	}
 	repo := &mockKnowledgeRepository{entries: existing}
-	store := NewKnowledgeStore(repo, nil)
+	store := ai.NewKnowledgeStore(repo, nil)
 
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
 
 	// Should NOT seed any data
 	assert.Empty(t, repo.saved)
-	assert.Len(t, store.cache, 1)
-	assert.Equal(t, "Custom Knowledge Base", store.cache["combined_knowledge"].Title)
+	assert.Len(t, store.Cache, 1)
+	assert.Equal(t, "Custom Knowledge Base", store.Cache["combined_knowledge"].Title)
 }
 
 func TestKnowledgeStore_Initialize_GeneratesEmbeddingForNeedsReembed(t *testing.T) {
@@ -140,7 +141,7 @@ func TestKnowledgeStore_Initialize_GeneratesEmbeddingForNeedsReembed(t *testing.
 	}
 	repo := &mockKnowledgeRepository{entries: existing}
 	embClient := &mockEmbeddingClient{vec: testVec}
-	store := NewKnowledgeStore(repo, embClient)
+	store := ai.NewKnowledgeStore(repo, embClient)
 
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
@@ -155,7 +156,7 @@ func TestKnowledgeStore_Initialize_SkipsEmbeddingWhenClientNil(t *testing.T) {
 		{ID: 1, Slug: "delivery_failure", Title: "DF", Body: "body", IsActive: true, NeedsReembed: true},
 	}
 	repo := &mockKnowledgeRepository{entries: existing}
-	store := NewKnowledgeStore(repo, nil) // no embedding client
+	store := ai.NewKnowledgeStore(repo, nil) // no embedding client
 
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
@@ -171,7 +172,7 @@ func TestKnowledgeStore_ClassifyDriverNote_KeywordFallback_NoEmbeddingClient(t *
 		{Slug: "combined_knowledge", Title: "Order Fulfillment Knowledge Base", Body: "DB Delivery Failure Body", IsActive: true},
 	}
 	repo := &mockKnowledgeRepository{entries: existing}
-	store := NewKnowledgeStore(repo, nil) // keyword path
+	store := ai.NewKnowledgeStore(repo, nil) // keyword path
 
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
@@ -187,7 +188,7 @@ func TestKnowledgeStore_ClassifyDriverNote_KeywordFallback_EmbedError(t *testing
 	}
 	repo := &mockKnowledgeRepository{entries: existing}
 	embClient := &mockEmbeddingClient{err: errors.New("embedding API timeout")}
-	store := NewKnowledgeStore(repo, embClient)
+	store := ai.NewKnowledgeStore(repo, embClient)
 
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
@@ -215,7 +216,7 @@ func TestKnowledgeStore_ClassifyDriverNote_SemanticMatch(t *testing.T) {
 		similarEntries: []models.KnowledgeEntry{similarEntry},
 	}
 	embClient := &mockEmbeddingClient{vec: testVec}
-	store := NewKnowledgeStore(repo, embClient)
+	store := ai.NewKnowledgeStore(repo, embClient)
 
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
@@ -230,11 +231,11 @@ func TestKnowledgeStore_ClassifyDriverNote_AllPathsBelowThreshold_ReturnsEmpty(t
 	testVec := make([]float32, 768)
 	repo := &mockKnowledgeRepository{
 		entries:        []models.KnowledgeEntry{{Slug: "state_machine", Title: "SM", Body: "body", IsActive: true}},
-		similarChunks:  []repositories.ChunkWithEntry{},  // chunk search: no match
-		similarEntries: []models.KnowledgeEntry{},          // entry-level search: no match
+		similarChunks:  []repositories.ChunkWithEntry{}, // chunk search: no match
+		similarEntries: []models.KnowledgeEntry{},       // entry-level search: no match
 	}
 	embClient := &mockEmbeddingClient{vec: testVec}
-	store := NewKnowledgeStore(repo, embClient)
+	store := ai.NewKnowledgeStore(repo, embClient)
 
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
@@ -255,7 +256,7 @@ func TestKnowledgeStore_ClassifyDriverNote_FindSimilarError_FallbackToKeyword(t 
 		similarErr: errors.New("pgvector unavailable"),
 	}
 	embClient := &mockEmbeddingClient{vec: testVec}
-	store := NewKnowledgeStore(repo, embClient)
+	store := ai.NewKnowledgeStore(repo, embClient)
 
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
@@ -297,7 +298,7 @@ func TestKnowledgeStore_ClassifyDriverNote_SemanticChunkMatch(t *testing.T) {
 		similarChunks: []repositories.ChunkWithEntry{chunkResult},
 	}
 	embClient := &mockEmbeddingClient{vec: testVec}
-	store := NewKnowledgeStore(repo, embClient)
+	store := ai.NewKnowledgeStore(repo, embClient)
 
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
@@ -325,7 +326,7 @@ func TestKnowledgeStore_ClassifyDriverNote_ChunksFallbackToEntryLevel(t *testing
 		similarEntries: []models.KnowledgeEntry{similarEntry},
 	}
 	embClient := &mockEmbeddingClient{vec: testVec}
-	store := NewKnowledgeStore(repo, embClient)
+	store := ai.NewKnowledgeStore(repo, embClient)
 
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
@@ -347,7 +348,7 @@ func TestKnowledgeStore_ClassifyDriverNote_ChunksErrorFallbackToEntryLevel(t *te
 		similarEntries:   []models.KnowledgeEntry{similarEntry},
 	}
 	embClient := &mockEmbeddingClient{vec: testVec}
-	store := NewKnowledgeStore(repo, embClient)
+	store := ai.NewKnowledgeStore(repo, embClient)
 
 	err := store.Initialize(context.Background())
 	require.NoError(t, err)
@@ -359,7 +360,7 @@ func TestKnowledgeStore_ClassifyDriverNote_ChunksErrorFallbackToEntryLevel(t *te
 
 func TestKnowledgeStore_BuildRAGEntries_GroupsByEntry(t *testing.T) {
 	repo := &mockKnowledgeRepository{}
-	store := NewKnowledgeStore(repo, nil)
+	store := ai.NewKnowledgeStore(repo, nil)
 
 	chunks := []repositories.ChunkWithEntry{
 		{ChunkID: 1, EntrySlug: "delivery_failure", EntryTitle: "Delivery Failure", Content: "chunk 1 content", Similarity: 0.90},
@@ -367,7 +368,7 @@ func TestKnowledgeStore_BuildRAGEntries_GroupsByEntry(t *testing.T) {
 		{ChunkID: 3, EntrySlug: "stuck_order", EntryTitle: "Stuck Order", Content: "stuck chunk", Similarity: 0.80},
 	}
 
-	result := store.buildRAGEntries(chunks)
+	result := store.BuildRAGEntries(chunks)
 
 	// Should group into 2 entries
 	require.Len(t, result, 2)

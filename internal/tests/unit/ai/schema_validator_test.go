@@ -1,7 +1,9 @@
 package ai
 
 import (
-	"main/internal/dto"
+	"main/internal/ai"
+	dto_ai "main/internal/dto/ai"
+	"main/utils/helpers"
 	"strings"
 	"testing"
 
@@ -12,13 +14,13 @@ import (
 func TestParseAndValidateAIOutput(t *testing.T) {
 	tests := []struct {
 		name        string
-		input       dto.ExceptionOutput
+		input       dto_ai.AIAnalysisResult
 		wantErr     bool
 		errContains string
 	}{
 		{
 			name: "valid_happy_path",
-			input: dto.ExceptionOutput{
+			input: dto_ai.AIAnalysisResult{
 				ExceptionType:      "STUCK_ORDER",
 				Severity:           "HIGH",
 				LikelyReason:       "Order stuck at packed status for 72 hours",
@@ -29,7 +31,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 		},
 		{
 			name: "valid_all_exception_types",
-			input: dto.ExceptionOutput{
+			input: dto_ai.AIAnalysisResult{
 				ExceptionType:      "INVALID_TRANSITION",
 				Severity:           "CRITICAL",
 				LikelyReason:       "Attempted created to delivered skip",
@@ -40,7 +42,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 		},
 		{
 			name: "valid_boundary_confidence_zero",
-			input: dto.ExceptionOutput{
+			input: dto_ai.AIAnalysisResult{
 				ExceptionType:      "OTHER",
 				Severity:           "LOW",
 				LikelyReason:       "Cannot determine",
@@ -51,7 +53,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 		},
 		{
 			name: "valid_boundary_confidence_one",
-			input: dto.ExceptionOutput{
+			input: dto_ai.AIAnalysisResult{
 				ExceptionType:      "DELIVERY_FAILURE",
 				Severity:           "CRITICAL",
 				LikelyReason:       "Driver reported package lost",
@@ -62,7 +64,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 		},
 		{
 			name: "valid_alternative_delivery",
-			input: dto.ExceptionOutput{
+			input: dto_ai.AIAnalysisResult{
 				ExceptionType:      "ALTERNATIVE_DELIVERY",
 				Severity:           "LOW",
 				LikelyReason:       "Package left at reception desk per customer arrangement",
@@ -74,7 +76,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 		// ── Invalid cases ──────────────────────────────────────────────
 		{
 			name: "invalid_exception_type",
-			input: dto.ExceptionOutput{
+			input: dto_ai.AIAnalysisResult{
 				ExceptionType:      "UNKNOWN_TYPE",
 				Severity:           "HIGH",
 				LikelyReason:       "Some reason",
@@ -86,7 +88,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 		},
 		{
 			name: "invalid_severity",
-			input: dto.ExceptionOutput{
+			input: dto_ai.AIAnalysisResult{
 				ExceptionType:      "STUCK_ORDER",
 				Severity:           "EXTREME",
 				LikelyReason:       "Some reason",
@@ -98,7 +100,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 		},
 		{
 			name: "invalid_empty_likely_reason",
-			input: dto.ExceptionOutput{
+			input: dto_ai.AIAnalysisResult{
 				ExceptionType:      "STUCK_ORDER",
 				Severity:           "HIGH",
 				LikelyReason:       "",
@@ -110,7 +112,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 		},
 		{
 			name: "invalid_empty_next_action",
-			input: dto.ExceptionOutput{
+			input: dto_ai.AIAnalysisResult{
 				ExceptionType:      "STUCK_ORDER",
 				Severity:           "HIGH",
 				LikelyReason:       "Some reason",
@@ -122,7 +124,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 		},
 		{
 			name: "invalid_likely_reason_too_long",
-			input: dto.ExceptionOutput{
+			input: dto_ai.AIAnalysisResult{
 				ExceptionType:      "STUCK_ORDER",
 				Severity:           "HIGH",
 				LikelyReason:       strings.Repeat("x", 201),
@@ -134,7 +136,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 		},
 		{
 			name: "invalid_next_action_too_long",
-			input: dto.ExceptionOutput{
+			input: dto_ai.AIAnalysisResult{
 				ExceptionType:      "STUCK_ORDER",
 				Severity:           "HIGH",
 				LikelyReason:       "Some reason",
@@ -146,7 +148,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 		},
 		{
 			name: "invalid_confidence_negative",
-			input: dto.ExceptionOutput{
+			input: dto_ai.AIAnalysisResult{
 				ExceptionType:      "STUCK_ORDER",
 				Severity:           "HIGH",
 				LikelyReason:       "Some reason",
@@ -158,7 +160,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 		},
 		{
 			name: "invalid_confidence_above_one",
-			input: dto.ExceptionOutput{
+			input: dto_ai.AIAnalysisResult{
 				ExceptionType:      "STUCK_ORDER",
 				Severity:           "HIGH",
 				LikelyReason:       "Some reason",
@@ -170,7 +172,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 		},
 		{
 			name: "invalid_multiple_violations",
-			input: dto.ExceptionOutput{
+			input: dto_ai.AIAnalysisResult{
 				ExceptionType:      "BAD_TYPE",
 				Severity:           "BAD_SEV",
 				LikelyReason:       "",
@@ -184,7 +186,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := ParseAndValidateAIOutput(&tc.input)
+			err := ai.ParseAndValidateAIOutput(&tc.input)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -197,7 +199,7 @@ func TestParseAndValidateAIOutput(t *testing.T) {
 }
 
 func TestParseAndValidateAIOutput_MultipleViolationsCollected(t *testing.T) {
-	input := dto.ExceptionOutput{
+	input := dto_ai.AIAnalysisResult{
 		ExceptionType:      "INVALID",
 		Severity:           "WRONG",
 		LikelyReason:       "",
@@ -205,10 +207,10 @@ func TestParseAndValidateAIOutput_MultipleViolationsCollected(t *testing.T) {
 		ConfidenceScore:    -1.0,
 	}
 
-	err := ParseAndValidateAIOutput(&input)
+	err := ai.ParseAndValidateAIOutput(&input)
 	require.Error(t, err)
 
-	valErr, ok := err.(*ValidationError)
+	valErr, ok := err.(*ai.ValidationError)
 	require.True(t, ok, "error should be *ValidationError")
 	assert.GreaterOrEqual(t, len(valErr.Fields), 4, "should collect multiple violations")
 }
@@ -227,7 +229,7 @@ func TestStripMarkdownFences(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := stripMarkdownFences(tc.input)
+			got := helpers.StripFences(tc.input)
 			assert.Equal(t, tc.want, got)
 		})
 	}

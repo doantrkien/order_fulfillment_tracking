@@ -9,25 +9,25 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"main/internal/ai"
-	"main/internal/dto"
+	dto_ai "main/internal/dto/ai"
+	dto_api "main/internal/dto/api"
 )
 
 func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
-	expectedOutput := dto.ExceptionOutput{
-		Severity:        "HIGH",
-		LikelyReason:    "Traffic congestion in metropolitan area",
-		Suggestion:      "Assign backup driver",
-		ShouldAlert:     true,
-		ConfidenceScore: 0.95,
+	expectedOutput := dto_ai.AIAnalysisResult{
+		Severity:           "HIGH",
+		LikelyReason:       "Traffic congestion in metropolitan area",
+		InternalNextAction: "Assign backup driver",
+		ConfidenceScore:    0.95,
 	}
 
-	expectedSummary := dto.ReportSummaryOutput{
+	expectedSummary := dto_api.ReportSummaryOutput{
 		Summary:     "Operational efficiency is stable with some traffic delay exceptions.",
 		Highlights:  []string{"High traffic delay"},
 		Suggestions: []string{"Reroute delivery path"},
 	}
 
-	input := dto.ExceptionInput{
+	input := dto_ai.ExceptionPromptContext{
 		OrderID:         12345,
 		CurrentStatus:   "shipped",
 		TotalAmount:     500000,
@@ -35,14 +35,14 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 		ShippingAddress: "123 Main St",
 		CreatedAt:       "2023-10-27T10:00:00Z",
 		DriverNotes:     "Driver got stuck in traffic",
-		EventHistory:    nil,
+		EventTimeline:   nil,
 	}
 
 	tests := []struct {
 		name      string
 		setup     func(f *ai.FakeAIAdapter)
 		assertErr func(t *testing.T, err error)
-		assertOut func(t *testing.T, output dto.ExceptionOutput, rawText string)
+		assertOut func(t *testing.T, output dto_ai.AIAnalysisResult, rawText string)
 	}{
 		{
 			name: "Happy Path - Normal AI response",
@@ -52,7 +52,7 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 			assertErr: func(t *testing.T, err error) {
 				assert.NoError(t, err)
 			},
-			assertOut: func(t *testing.T, output dto.ExceptionOutput, rawText string) {
+			assertOut: func(t *testing.T, output dto_ai.AIAnalysisResult, rawText string) {
 				assert.Equal(t, expectedOutput.Severity, output.Severity)
 				assert.Contains(t, rawText, expectedOutput.Severity)
 				t.Logf("[HAPPY PATH OUTPUT] Output: %+v", output)
@@ -68,7 +68,7 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 				assert.Equal(t, ai.ErrAIDisabled, err)
 				t.Logf("[AI DISABLED ERROR] Gặp lỗi giả lập khi AI disabled: %v", err)
 			},
-			assertOut: func(t *testing.T, output dto.ExceptionOutput, rawText string) {
+			assertOut: func(t *testing.T, output dto_ai.AIAnalysisResult, rawText string) {
 				assert.Empty(t, output.ExceptionType)
 				assert.Empty(t, rawText)
 			},
@@ -83,7 +83,7 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 				assert.True(t, errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled))
 				t.Logf("[TIMEOUT ERROR] Gặp lỗi giả lập AI Timeout: %v", err)
 			},
-			assertOut: func(t *testing.T, output dto.ExceptionOutput, rawText string) {
+			assertOut: func(t *testing.T, output dto_ai.AIAnalysisResult, rawText string) {
 				assert.Empty(t, output.ExceptionType)
 				assert.Empty(t, rawText)
 			},
@@ -96,7 +96,7 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 			assertErr: func(t *testing.T, err error) {
 				assert.Error(t, err) // invalid response now returns an error
 			},
-			assertOut: func(t *testing.T, output dto.ExceptionOutput, rawText string) {
+			assertOut: func(t *testing.T, output dto_ai.AIAnalysisResult, rawText string) {
 				assert.Empty(t, output.ExceptionType)
 				assert.Equal(t, "{invalid-json}", rawText)
 				t.Logf("[INVALID RESPONSE OUTPUT] Error returned for invalid response")
@@ -110,7 +110,7 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 			assertErr: func(t *testing.T, err error) {
 				assert.NoError(t, err)
 			},
-			assertOut: func(t *testing.T, output dto.ExceptionOutput, rawText string) {
+			assertOut: func(t *testing.T, output dto_ai.AIAnalysisResult, rawText string) {
 				assert.Equal(t, 0.3, output.ConfidenceScore)
 				assert.Contains(t, rawText, `"confidence_score":0.3`)
 				t.Logf("[LOW CONFIDENCE OUTPUT] Output with low confidence: %+v", output)
@@ -126,7 +126,7 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 				assert.Contains(t, err.Error(), "connection reset by peer")
 				t.Logf("[CONNECTION ERROR] Gặp lỗi mất kết nối mạng: %v", err)
 			},
-			assertOut: func(t *testing.T, output dto.ExceptionOutput, rawText string) {
+			assertOut: func(t *testing.T, output dto_ai.AIAnalysisResult, rawText string) {
 				assert.Empty(t, output.ExceptionType)
 				assert.Empty(t, rawText)
 			},
@@ -149,11 +149,11 @@ func TestFakeAIAdapter_AnalyzeException(t *testing.T) {
 }
 
 func TestFakeAIAdapter_SummarizeReport(t *testing.T) {
-	expectedOutput := dto.ExceptionOutput{
+	expectedOutput := dto_ai.AIAnalysisResult{
 		Severity: "HIGH",
 	}
 
-	expectedSummary := dto.ReportSummaryOutput{
+	expectedSummary := dto_api.ReportSummaryOutput{
 		Summary:     "Weekly summary details.",
 		Highlights:  []string{"Delay on Monday"},
 		Suggestions: []string{"Optimize route"},
@@ -163,7 +163,7 @@ func TestFakeAIAdapter_SummarizeReport(t *testing.T) {
 		name      string
 		setup     func(f *ai.FakeAIAdapter)
 		assertErr func(t *testing.T, err error)
-		assertOut func(t *testing.T, output dto.ReportSummaryOutput)
+		assertOut func(t *testing.T, output dto_api.ReportSummaryOutput)
 	}{
 		{
 			name: "Happy Path - Normal Summary",
@@ -173,7 +173,7 @@ func TestFakeAIAdapter_SummarizeReport(t *testing.T) {
 			assertErr: func(t *testing.T, err error) {
 				assert.NoError(t, err)
 			},
-			assertOut: func(t *testing.T, output dto.ReportSummaryOutput) {
+			assertOut: func(t *testing.T, output dto_api.ReportSummaryOutput) {
 				assert.Equal(t, expectedSummary.Summary, output.Summary)
 				assert.Equal(t, expectedSummary.Highlights, output.Highlights)
 				t.Logf("[HAPPY PATH SUMMARY OUTPUT] Summary: %s, Highlights: %v, Suggestions: %v",
@@ -190,7 +190,7 @@ func TestFakeAIAdapter_SummarizeReport(t *testing.T) {
 				assert.Equal(t, ai.ErrAIDisabled, err)
 				t.Logf("[AI DISABLED ERROR ON SUMMARY] Lỗi khi AI bị disabled: %v", err)
 			},
-			assertOut: func(t *testing.T, output dto.ReportSummaryOutput) {
+			assertOut: func(t *testing.T, output dto_api.ReportSummaryOutput) {
 				assert.Empty(t, output)
 			},
 		},
@@ -203,7 +203,7 @@ func TestFakeAIAdapter_SummarizeReport(t *testing.T) {
 				assert.Error(t, err)
 				t.Logf("[TIMEOUT ERROR ON SUMMARY] Lỗi AI Timeout khi tóm tắt: %v", err)
 			},
-			assertOut: func(t *testing.T, output dto.ReportSummaryOutput) {
+			assertOut: func(t *testing.T, output dto_api.ReportSummaryOutput) {
 				assert.Empty(t, output)
 			},
 		},
@@ -225,8 +225,8 @@ func TestFakeAIAdapter_SummarizeReport(t *testing.T) {
 }
 
 func TestFakeAIAdapter_Ping(t *testing.T) {
-	expectedOutput := dto.ExceptionOutput{}
-	expectedSummary := dto.ReportSummaryOutput{}
+	expectedOutput := dto_ai.AIAnalysisResult{}
+	expectedSummary := dto_api.ReportSummaryOutput{}
 
 	tests := []struct {
 		name      string

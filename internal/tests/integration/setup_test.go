@@ -11,7 +11,8 @@ import (
 	"time"
 
 	"main/internal/ai"
-	"main/internal/dto"
+	dto_ai "main/internal/dto/ai"
+	dto_api "main/internal/dto/api"
 	"main/internal/handlers"
 	"main/internal/models"
 	"main/internal/repositories"
@@ -133,8 +134,8 @@ func TestMain(m *testing.M) {
 	}
 
 	aiRepo := repositories.NewAIRepository(db)
-	expectedOutput := dto.ExceptionOutput{}
-	expectedSummary := dto.ReportSummaryOutput{}
+	expectedOutput := dto_ai.AIAnalysisResult{}
+	expectedSummary := dto_api.ReportSummaryOutput{}
 	testFakeAIAdapter = ai.NewFakeAIAdapter(expectedOutput, expectedSummary)
 
 	aiAnalyzer := ai.NewExceptionAnalyzer(testFakeAIAdapter, ai.ExceptionAnalyzerConfig{

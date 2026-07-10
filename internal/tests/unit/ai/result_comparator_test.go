@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"main/internal/ai"
-	"main/internal/dto"
+	dto_ai "main/internal/dto/ai"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -12,18 +12,18 @@ import (
 func TestCompareResult(t *testing.T) {
 	tests := []struct {
 		name     string
-		expected dto.EvaluationCase
-		actual   *ai.AnalysisResult
+		expected dto_ai.EvaluationCase
+		actual   *dto_ai.AIAnalysisResult
 		validate func(t *testing.T, res *ai.CaseResult)
 	}{
 		{
 			name: "Exact match -> PASSED",
-			expected: dto.EvaluationCase{
+			expected: dto_ai.EvaluationCase{
 				CaseID:                "case_01",
 				ExpectedExceptionType: "STUCK_ORDER",
 				ExpectedSeverity:      "HIGH",
 			},
-			actual: &ai.AnalysisResult{
+			actual: &dto_ai.AIAnalysisResult{
 				ExceptionType: "STUCK_ORDER",
 				Severity:      "HIGH",
 				FallbackUsed:  false,
@@ -39,12 +39,12 @@ func TestCompareResult(t *testing.T) {
 		},
 		{
 			name: "Type match but Severity mismatch -> FAILED",
-			expected: dto.EvaluationCase{
+			expected: dto_ai.EvaluationCase{
 				CaseID:                "case_02",
 				ExpectedExceptionType: "STUCK_ORDER",
 				ExpectedSeverity:      "CRITICAL",
 			},
-			actual: &ai.AnalysisResult{
+			actual: &dto_ai.AIAnalysisResult{
 				ExceptionType: "STUCK_ORDER",
 				Severity:      "HIGH",
 			},
@@ -54,12 +54,12 @@ func TestCompareResult(t *testing.T) {
 		},
 		{
 			name: "Type mismatch -> FAILED",
-			expected: dto.EvaluationCase{
+			expected: dto_ai.EvaluationCase{
 				CaseID:                "case_03",
 				ExpectedExceptionType: "SKIPPED_STATUS",
 				ExpectedSeverity:      "HIGH",
 			},
-			actual: &ai.AnalysisResult{
+			actual: &dto_ai.AIAnalysisResult{
 				ExceptionType: "STUCK_ORDER",
 				Severity:      "HIGH",
 			},
@@ -69,12 +69,12 @@ func TestCompareResult(t *testing.T) {
 		},
 		{
 			name: "Fallback used but matches expected -> PASSED",
-			expected: dto.EvaluationCase{
+			expected: dto_ai.EvaluationCase{
 				CaseID:                "case_04",
 				ExpectedExceptionType: "OTHER",
 				ExpectedSeverity:      "LOW",
 			},
-			actual: &ai.AnalysisResult{
+			actual: &dto_ai.AIAnalysisResult{
 				ExceptionType: "OTHER",
 				Severity:      "LOW",
 				FallbackUsed:  true,
@@ -86,7 +86,7 @@ func TestCompareResult(t *testing.T) {
 		},
 		{
 			name: "Nil actual result -> FAILED",
-			expected: dto.EvaluationCase{
+			expected: dto_ai.EvaluationCase{
 				CaseID:                "case_05",
 				ExpectedExceptionType: "OTHER",
 				ExpectedSeverity:      "LOW",

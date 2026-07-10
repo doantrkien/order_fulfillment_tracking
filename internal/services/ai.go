@@ -4,11 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"main/constant"
 	"main/errs"
 	"main/internal/ai"
-	"main/internal/dto"
+	dto_ai "main/internal/dto/ai"
+	dto_api "main/internal/dto/api"
+
 	"main/internal/models"
 	"main/internal/repositories"
+	"main/utils/helpers"
 	"os"
 	"strconv"
 	"strings"
@@ -20,12 +24,12 @@ import (
 
 type AIService interface {
 	// AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error)
-	AnalyzeException(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error)
-	GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error)
-	GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIRequest) (*dto.GenerateDraftAPIResponse, error)
-	TriggerEvaluation(ctx context.Context, req dto.TriggerEvaluationRequest) (*dto.TriggerEvaluationResponse, error)
-	GetEvaluationRun(ctx context.Context, runID int64) (*dto.GetEvaluationRunResponse, error)
-	GetEvaluationDetails(ctx context.Context, runID int64) (*dto.GetEvaluationDetailsResponse, error)
+	AnalyzeException(ctx context.Context, orderID int64) (*dto_api.AnalyzeExceptionResponse, error)
+	GetLatestAnalysis(ctx context.Context, orderID int64) (*dto_api.AnalyzeExceptionResponse, error)
+	GenerateDraft(ctx context.Context, req dto_api.GenerateDraftAPIRequest) (*dto_api.GenerateDraftAPIResponse, error)
+	TriggerEvaluation(ctx context.Context, req dto_api.TriggerEvaluationRequest) (*dto_api.TriggerEvaluationResponse, error)
+	GetEvaluationRun(ctx context.Context, runID int64) (*dto_ai.GetEvaluationRunResponse, error)
+	GetEvaluationDetails(ctx context.Context, runID int64) (*dto_ai.GetEvaluationDetailsResponse, error)
 	ReloadKnowledge(ctx context.Context) error
 }
 
@@ -52,7 +56,7 @@ func (s *aiService) ReloadKnowledge(ctx context.Context) error {
 }
 
 // func (s *aiService) AnalyzeException(ctx context.Context, orderID int64, notes string) (*dto.AnalyzeExceptionResponse, error) {
-func (s *aiService) AnalyzeException(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error) {
+func (s *aiService) AnalyzeException(ctx context.Context, orderID int64) (*dto_api.AnalyzeExceptionResponse, error) {
 
 	aiCtx, err := s.aiRepo.GetAIContextByOrderID(ctx, orderID)
 	if err != nil {
@@ -65,21 +69,21 @@ func (s *aiService) AnalyzeException(ctx context.Context, orderID int64) (*dto.A
 		return nil, fmt.Errorf("Error in Analyze Service: %w", err)
 	}
 
-	exception := mapResultToModel(orderID, result)
+	exception := helpers.MapResultAnalystExceptionToModel(orderID, result)
 	if saveErr := s.aiRepo.Save(ctx, exception); saveErr != nil {
 		return nil, fmt.Errorf("Error in save AI result: %w", saveErr)
 	}
 
-	return mapToResponse(exception), nil
+	return helpers.MapModelExceptionToResponse(exception), nil
 }
 
-func (s *aiService) GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.AnalyzeExceptionResponse, error) {
+func (s *aiService) GetLatestAnalysis(ctx context.Context, orderID int64) (*dto_api.AnalyzeExceptionResponse, error) {
 	exception, err := s.aiRepo.GetLatestAnalysisByOrderID(ctx, orderID)
 	if err != nil {
 		return nil, errs.ERR_NOT_FOUND
 	}
 
-	resp := mapToResponse(exception)
+	resp := helpers.MapModelExceptionToResponse(exception)
 
 	// Fetch latest customer update draft for this order (best-effort, not required)
 	// draft, draftErr := s.aiDraftRepo.GetLatestByOrderID(ctx, orderID)
@@ -90,7 +94,7 @@ func (s *aiService) GetLatestAnalysis(ctx context.Context, orderID int64) (*dto.
 	return resp, nil
 }
 
-func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIRequest) (*dto.GenerateDraftAPIResponse, error) {
+func (s *aiService) GenerateDraft(ctx context.Context, req dto_api.GenerateDraftAPIRequest) (*dto_api.GenerateDraftAPIResponse, error) {
 
 	aiCtx, err := s.aiRepo.GetAIContextByOrderID(ctx, req.OrderID)
 	if err != nil {
@@ -118,7 +122,7 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		return nil, errs.ERR_NOT_FOUND
 	}
 
-	adapterInput := dto.CustomerUpdateDraftInput{
+	adapterInput := dto_ai.CustomerUpdateDraftInput{
 		OrderID:         req.OrderID,
 		CustomerName:    aiCtx.CustomerName,
 		ShippingAddress: aiCtx.ShippingAddress,
@@ -170,7 +174,7 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		FallbackUsed:          result.FallbackUsed,
 		FallbackReason:        fallbackReason,
 		RawResponse:           rawResponse,
-		PromptTemplateVersion: ai.PromptTemplateVersion,
+		PromptTemplateVersion: constant.PromptTemplateVersion,
 		DurationMs:            durationMs,
 		ReviewStatus:          models.DraftReviewStatusPending,
 		RequestID:             &reqID,
@@ -180,93 +184,18 @@ func (s *aiService) GenerateDraft(ctx context.Context, req dto.GenerateDraftAPIR
 		return nil, errs.ERR_INTERNAL_SERVER
 	}
 
-	return &dto.GenerateDraftAPIResponse{
+	return &dto_api.GenerateDraftAPIResponse{
 		OrderID:               req.OrderID,
 		DraftMessage:          result.CustomerUpdateDraft,
 		Tone:                  tone,
 		ConfidenceScore:       result.ConfidenceScore,
 		FallbackUsed:          result.FallbackUsed,
-		PromptTemplateVersion: ai.PromptTemplateVersion,
+		PromptTemplateVersion: constant.PromptTemplateVersion,
 		GeneratedAt:           time.Now(),
 	}, nil
 }
 
-func stripMarkdownFences(s string) string {
-	s = strings.TrimSpace(s)
-	if strings.HasPrefix(s, "```") {
-		if idx := strings.Index(s, "\n"); idx != -1 {
-			s = s[idx+1:]
-		}
-		if idx := strings.LastIndex(s, "```"); idx != -1 {
-			s = s[:idx]
-		}
-		s = strings.TrimSpace(s)
-	}
-	return s
-}
-
-func mapResultToModel(orderID int64, result *ai.AnalysisResult) *models.AIException {
-	now := time.Now()
-
-	var fallbackReason *string
-	if result.FallbackUsed && result.FallbackReason != "" {
-		reason := result.FallbackReason
-		fallbackReason = &reason
-	}
-
-	var durationMs *int
-	if result.DurationMs > 0 {
-		d := result.DurationMs
-		durationMs = &d
-	}
-
-	var rawResponse datatypes.JSON
-	if result.RawResponse != "" {
-		var js interface{}
-		if err := json.Unmarshal([]byte(result.RawResponse), &js); err == nil {
-			rawResponse = datatypes.JSON(result.RawResponse)
-		} else {
-			if bytes, marshalErr := json.Marshal(result.RawResponse); marshalErr == nil {
-				rawResponse = datatypes.JSON(bytes)
-			}
-		}
-	}
-
-	reqID := uuid.NewString()
-
-	return &models.AIException{
-		OrderID:               orderID,
-		ExceptionType:         result.ExceptionType,
-		Severity:              result.Severity,
-		LikelyReason:          result.LikelyReason,
-		InternalNextAction:    result.InternalNextAction,
-		ConfidenceScore:       result.ConfidenceScore,
-		FallbackUsed:          result.FallbackUsed,
-		FallbackReason:        fallbackReason,
-		PromptTemplateVersion: ai.PromptTemplateVersion,
-		DurationMs:            durationMs,
-		RawResponse:           rawResponse,
-		RequestID:             &reqID,
-		EvaluatedAt:           now,
-	}
-}
-
-func mapToResponse(e *models.AIException) *dto.AnalyzeExceptionResponse {
-	return &dto.AnalyzeExceptionResponse{
-		ResultID:              fmt.Sprintf("res-%d", e.ID),
-		OrderID:               fmt.Sprintf("%d", e.OrderID),
-		ExceptionType:         e.ExceptionType,
-		Severity:              e.Severity,
-		LikelyReason:          e.LikelyReason,
-		InternalNextAction:    e.InternalNextAction,
-		ConfidenceScore:       e.ConfidenceScore,
-		FallbackUsed:          e.FallbackUsed,
-		PromptTemplateVersion: e.PromptTemplateVersion,
-		EvaluatedAt:           e.EvaluatedAt,
-	}
-}
-
-func (s *aiService) TriggerEvaluation(ctx context.Context, req dto.TriggerEvaluationRequest) (*dto.TriggerEvaluationResponse, error) {
+func (s *aiService) TriggerEvaluation(ctx context.Context, req dto_api.TriggerEvaluationRequest) (*dto_api.TriggerEvaluationResponse, error) {
 	// 1. Read evaluation_cases.json
 	datasetFile := "evaluation_cases.json"
 	bytes, err := os.ReadFile(datasetFile)
@@ -274,7 +203,7 @@ func (s *aiService) TriggerEvaluation(ctx context.Context, req dto.TriggerEvalua
 		return nil, fmt.Errorf("could not read dataset file: %w", err)
 	}
 
-	var dataset dto.EvaluationDataset
+	var dataset dto_ai.EvaluationDataset
 	if err := json.Unmarshal(bytes, &dataset); err != nil {
 		return nil, fmt.Errorf("could not parse dataset JSON: %w", err)
 	}
@@ -301,20 +230,19 @@ func (s *aiService) TriggerEvaluation(ctx context.Context, req dto.TriggerEvalua
 	go worker.Run(runRecord.ID, dataset.Cases)
 
 	// 5. Return immediate response
-	return &dto.TriggerEvaluationResponse{
+	return &dto_api.TriggerEvaluationResponse{
 		RunID: runRecord.ID,
 		// Status:  string(runRecord.Status),
 		Message: "Batch evaluation started in background",
 	}, nil
 }
 
-// GetEvaluationRun trả về summary metrics của 1 evaluation run (dùng để poll status / xem kết quả tổng).
-func (s *aiService) GetEvaluationRun(ctx context.Context, runID int64) (*dto.GetEvaluationRunResponse, error) {
+func (s *aiService) GetEvaluationRun(ctx context.Context, runID int64) (*dto_ai.GetEvaluationRunResponse, error) {
 	run, err := s.evalRepo.GetRunByID(ctx, runID)
 	if err != nil {
 		return nil, errs.ERR_NOT_FOUND
 	}
-	return &dto.GetEvaluationRunResponse{
+	return &dto_ai.GetEvaluationRunResponse{
 		RunID:         run.ID,
 		DatasetName:   run.DatasetName,
 		Status:        run.Status,
@@ -329,8 +257,7 @@ func (s *aiService) GetEvaluationRun(ctx context.Context, runID int64) (*dto.Get
 	}, nil
 }
 
-// GetEvaluationDetails trả về danh sách chi tiết PASS/FAIL của từng test case trong 1 run.
-func (s *aiService) GetEvaluationDetails(ctx context.Context, runID int64) (*dto.GetEvaluationDetailsResponse, error) {
+func (s *aiService) GetEvaluationDetails(ctx context.Context, runID int64) (*dto_ai.GetEvaluationDetailsResponse, error) {
 	run, err := s.evalRepo.GetRunByID(ctx, runID)
 	if err != nil {
 		return nil, errs.ERR_NOT_FOUND
@@ -341,9 +268,9 @@ func (s *aiService) GetEvaluationDetails(ctx context.Context, runID int64) (*dto
 		return nil, fmt.Errorf("could not fetch evaluation details: %w", err)
 	}
 
-	items := make([]dto.EvaluationDetailItem, 0, len(details))
+	items := make([]dto_ai.EvaluationDetailItem, 0, len(details))
 	for _, d := range details {
-		items = append(items, dto.EvaluationDetailItem{
+		items = append(items, dto_ai.EvaluationDetailItem{
 			ID:             d.ID,
 			Status:         d.Status,
 			LatencyMs:      d.LatencyMs,
@@ -353,7 +280,7 @@ func (s *aiService) GetEvaluationDetails(ctx context.Context, runID int64) (*dto
 		})
 	}
 
-	return &dto.GetEvaluationDetailsResponse{
+	return &dto_ai.GetEvaluationDetailsResponse{
 		RunID:   runID,
 		Status:  run.Status,
 		Details: items,

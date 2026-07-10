@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	dto_ai "main/internal/dto/ai"
+	dto_api "main/internal/dto/api"
 	"time"
-
-	"main/internal/dto"
 )
 
-// ErrAIDisabled is returned when the AI module is simulated as disabled.
 var ErrAIDisabled = errors.New("AI module is disabled")
 
 // FakeAIAdapter implements AIAdapter for testing purposes.
@@ -19,14 +18,14 @@ type FakeAIAdapter struct {
 	SimulateInvalidResponse bool
 	SimulateLowConfidence   bool
 	SimulateConnectionError bool
-	ExpectedOutput          dto.ExceptionOutput
-	ExpectedSummary         dto.ReportSummaryOutput
+	ExpectedOutput          dto_ai.AIAnalysisResult
+	ExpectedSummary         dto_api.ReportSummaryOutput
 }
 
 // NewFakeAIAdapter creates a new instance of FakeAIAdapter.
 func NewFakeAIAdapter(
-	expected dto.ExceptionOutput,
-	summary dto.ReportSummaryOutput,
+	expected dto_ai.AIAnalysisResult,
+	summary dto_api.ReportSummaryOutput,
 ) *FakeAIAdapter {
 	return &FakeAIAdapter{
 		ExpectedOutput:  expected,
@@ -37,37 +36,35 @@ func NewFakeAIAdapter(
 // AnalyzeException simulates AI analysis for order exception detection.
 func (f *FakeAIAdapter) AnalyzeException(
 	ctx context.Context,
-	input dto.ExceptionInput,
-) (dto.ExceptionOutput, string, error) {
+	input dto_ai.ExceptionPromptContext,
+) (dto_ai.AIAnalysisResult, string, error) {
 	if f.SimulateAIDisabled {
-		return dto.ExceptionOutput{}, "", ErrAIDisabled
+		return dto_ai.AIAnalysisResult{}, "", ErrAIDisabled
 	}
 
 	if f.SimulateConnectionError {
-		return dto.ExceptionOutput{}, "", errors.New("connection reset by peer")
+		return dto_ai.AIAnalysisResult{}, "", errors.New("connection reset by peer")
 	}
 
 	if f.SimulateTimeout {
 		select {
 		case <-ctx.Done():
-			return dto.ExceptionOutput{}, "", ctx.Err()
+			return dto_ai.AIAnalysisResult{}, "", ctx.Err()
 		case <-time.After(100 * time.Millisecond):
-			return dto.ExceptionOutput{}, "", context.DeadlineExceeded
+			return dto_ai.AIAnalysisResult{}, "", context.DeadlineExceeded
 		}
 	}
 
 	if f.SimulateInvalidResponse {
-		return dto.ExceptionOutput{}, "{invalid-json}", errors.New("AI response is not valid JSON")
+		return dto_ai.AIAnalysisResult{}, "{invalid-json}", errors.New("AI response is not valid JSON")
 	}
 
 	if f.SimulateLowConfidence {
-		out := dto.ExceptionOutput{
+		out := dto_ai.AIAnalysisResult{
 			ExceptionType:      "STUCK_ORDER",
 			Severity:           "HIGH",
 			LikelyReason:       "Order stuck in status packed too long",
 			InternalNextAction: "Contact warehouse manager",
-			Suggestion:         "Contact warehouse manager",
-			ShouldAlert:        true,
 			ConfidenceScore:    0.3,
 		}
 		rawTextBytes, _ := json.Marshal(out)
@@ -99,7 +96,7 @@ func (f *FakeAIAdapter) AnalyzeException(
 // DraftCustomerUpdate simulates AI drafting a customer update message.
 func (f *FakeAIAdapter) DraftCustomerUpdate(
 	ctx context.Context,
-	input dto.CustomerUpdateDraftInput,
+	input dto_ai.CustomerUpdateDraftInput,
 ) (string, error) {
 	if f.SimulateAIDisabled {
 		return "", ErrAIDisabled
@@ -141,25 +138,24 @@ func (f *FakeAIAdapter) DraftCustomerUpdate(
 // SummarizeReport simulates AI report summarization.
 func (f *FakeAIAdapter) SummarizeReport(
 	ctx context.Context,
-	input dto.ExceptionOutput,
-) (dto.ReportSummaryOutput, error) {
+	input dto_ai.AIAnalysisResult,
+) (dto_api.ReportSummaryOutput, error) {
 	if f.SimulateAIDisabled {
-		return dto.ReportSummaryOutput{}, ErrAIDisabled
+		return dto_api.ReportSummaryOutput{}, ErrAIDisabled
 	}
 
 	if f.SimulateTimeout {
 		select {
 		case <-ctx.Done():
-			return dto.ReportSummaryOutput{}, ctx.Err()
+			return dto_api.ReportSummaryOutput{}, ctx.Err()
 		case <-time.After(100 * time.Millisecond):
-			return dto.ReportSummaryOutput{}, context.DeadlineExceeded
+			return dto_api.ReportSummaryOutput{}, context.DeadlineExceeded
 		}
 	}
 
 	return f.ExpectedSummary, nil
 }
 
-// Ping simulates checking connectivity/credentials for the AI adapter.
 func (f *FakeAIAdapter) Ping(ctx context.Context) error {
 	if f.SimulateAIDisabled {
 		return ErrAIDisabled
@@ -177,7 +173,6 @@ func (f *FakeAIAdapter) Ping(ctx context.Context) error {
 	return nil
 }
 
-// ReloadKnowledge is a no-op for the fake adapter.
 func (f *FakeAIAdapter) ReloadKnowledge(_ context.Context) error {
 	return nil
 }

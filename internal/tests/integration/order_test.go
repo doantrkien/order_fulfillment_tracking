@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"main/internal/dto"
+
+	dto_api "main/internal/dto/api"
 	"main/internal/models"
 	"net/http/httptest"
 	"testing"
@@ -24,7 +25,7 @@ func TestIntegrationCreateOrder(t *testing.T) {
 	}{
 		{
 			name: "Success",
-			body: dto.OrderRequest{
+			body: dto_api.OrderRequest{
 				TotalAmount:     10,
 				Username:        "integration_user",
 				UserPhone:       "0901234567",
@@ -43,7 +44,7 @@ func TestIntegrationCreateOrder(t *testing.T) {
 		},
 		{
 			name: "unauthenticated",
-			body: dto.OrderRequest{
+			body: dto_api.OrderRequest{
 				TotalAmount: 1000,
 			},
 			expectedStatus: 401,
@@ -51,7 +52,7 @@ func TestIntegrationCreateOrder(t *testing.T) {
 		},
 		{
 			name: "Invalid Input",
-			body: dto.OrderRequest{
+			body: dto_api.OrderRequest{
 				TotalAmount:     -10,
 				Username:        "integration_user",
 				UserPhone:       "0901234567",
@@ -63,7 +64,7 @@ func TestIntegrationCreateOrder(t *testing.T) {
 		},
 		{
 			name: "wrong role - driver",
-			body: dto.OrderRequest{
+			body: dto_api.OrderRequest{
 				TotalAmount: 1000,
 			},
 			token:          driverToken,
@@ -108,7 +109,7 @@ func TestIntegrationCreateOrder(t *testing.T) {
 				err = db.First(&order).Error
 				require.NoError(t, err)
 
-				if reqBody, ok := tt.body.(dto.OrderRequest); ok {
+				if reqBody, ok := tt.body.(dto_api.OrderRequest); ok {
 					assert.Equal(t, reqBody.TotalAmount, order.TotalAmount)
 					assert.Equal(t, models.ORDER_STATUS_CREATED, order.CurrentStatus)
 
@@ -299,8 +300,8 @@ func TestIntegrationGetAllOrders(t *testing.T) {
 
 			if !tt.expectError {
 				var body struct {
-					Status     string             `json:"status"`
-					Data       []dto.OrderReponse `json:"data"`
+					Status     string                 `json:"status"`
+					Data       []dto_api.OrderReponse `json:"data"`
 					Pagination struct {
 						TotalItems int64 `json:"total_items"`
 					} `json:"pagination"`
@@ -464,8 +465,8 @@ func TestIntegrationGetOrderDetail(t *testing.T) {
 
 			if !tt.expectError {
 				var body struct {
-					Status string           `json:"status"`
-					Data   dto.OrderReponse `json:"data"`
+					Status string               `json:"status"`
+					Data   dto_api.OrderReponse `json:"data"`
 				}
 
 				err = json.NewDecoder(resp.Body).Decode(&body)
@@ -501,7 +502,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 				UpdatedAt:     time.Now(),
 			},
 			orderID: "1",
-			body: dto.UpdateStatusRequest{
+			body: dto_api.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_PAID,
 			},
 			token:          adminToken,
@@ -518,7 +519,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 				UpdatedAt:     time.Now(),
 			},
 			orderID: "1",
-			body: dto.UpdateStatusRequest{
+			body: dto_api.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_PACKED,
 			},
 			token:          adminToken,
@@ -535,7 +536,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 				UpdatedAt:     time.Now(),
 			},
 			orderID: "1",
-			body: dto.UpdateStatusRequest{
+			body: dto_api.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_SHIPPED,
 			},
 			token:          adminToken,
@@ -552,7 +553,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 				UpdatedAt:     time.Now(),
 			},
 			orderID: "1",
-			body: dto.UpdateStatusRequest{
+			body: dto_api.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_DELIVERED,
 			},
 			token:          adminToken,
@@ -569,7 +570,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 				UpdatedAt:     time.Now(),
 			},
 			orderID: "1",
-			body: dto.UpdateStatusRequest{
+			body: dto_api.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_CANCELLED,
 			},
 			token:          adminToken,
@@ -586,7 +587,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 				UpdatedAt:     time.Now(),
 			},
 			orderID: "1",
-			body: dto.UpdateStatusRequest{
+			body: dto_api.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_REFUNDED,
 			},
 			token:          adminToken,
@@ -620,7 +621,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 				UpdatedAt:     time.Now(),
 			},
 			orderID: "1",
-			body: dto.UpdateStatusRequest{
+			body: dto_api.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_CREATED,
 			},
 			token:          adminToken,
@@ -630,7 +631,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 		{
 			name:    "invalid order id",
 			orderID: "abc",
-			body: dto.UpdateStatusRequest{
+			body: dto_api.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_PAID,
 			},
 			token:          adminToken,
@@ -640,7 +641,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 		{
 			name:    "empty status",
 			orderID: "1",
-			body:    dto.UpdateStatusRequest{},
+			body:    dto_api.UpdateStatusRequest{},
 			token:   adminToken,
 
 			expectedStatus: 400,
@@ -649,7 +650,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 		{
 			name:    "order not found",
 			orderID: "999",
-			body: dto.UpdateStatusRequest{
+			body: dto_api.UpdateStatusRequest{
 				Status: models.ORDER_STATUS_PAID,
 			},
 			token:          adminToken,
@@ -708,7 +709,7 @@ func TestIntegrationUpdateOrderStatus(t *testing.T) {
 				require.NoError(t, err)
 
 				var expectedStatus models.OrderStatus
-				if reqBody, ok := tt.body.(dto.UpdateStatusRequest); ok {
+				if reqBody, ok := tt.body.(dto_api.UpdateStatusRequest); ok {
 					expectedStatus = reqBody.Status
 				} else {
 					expectedStatus = models.ORDER_STATUS_PAID // Fallback

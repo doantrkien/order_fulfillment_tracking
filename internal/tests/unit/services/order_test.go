@@ -2,7 +2,8 @@ package services_test
 
 import (
 	"encoding/json"
-	"main/internal/dto"
+
+	dto_api "main/internal/dto/api"
 	"main/internal/models"
 	"main/internal/services"
 	"main/internal/tests/unit/mocks"
@@ -16,21 +17,21 @@ import (
 func TestOrderServiceCreateOrder(t *testing.T) {
 	testCases := []struct {
 		name           string
-		input          dto.OrderRequest
+		input          dto_api.OrderRequest
 		setupMock      func(*mocks.OrderRepository)
 		expectError    bool
-		expectedResult *dto.CreateOrderResponse
+		expectedResult *dto_api.CreateOrderResponse
 	}{
 		{
 			name: "Success",
-			input: dto.OrderRequest{
+			input: dto_api.OrderRequest{
 				TotalAmount:     2000,
 				Username:        "testuser",
 				UserPhone:       "0987654321",
 				ShippingAddress: "123 Test Street, HCM City",
 			},
 			setupMock: func(mockRepo *mocks.OrderRepository) {
-				req := dto.OrderRequest{
+				req := dto_api.OrderRequest{
 					TotalAmount:     2000,
 					Username:        "testuser",
 					UserPhone:       "0987654321",
@@ -48,7 +49,7 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 					Once()
 			},
 			expectError: false,
-			expectedResult: &dto.CreateOrderResponse{
+			expectedResult: &dto_api.CreateOrderResponse{
 				ID:          1,
 				TotalAmount: 2000,
 				Status:      models.ORDER_STATUS_CREATED,
@@ -56,12 +57,12 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 		},
 		{
 			name: "Create error",
-			input: dto.OrderRequest{
+			input: dto_api.OrderRequest{
 				TotalAmount: 1000,
 				Username:    "failuser",
 			},
 			setupMock: func(mockRepo *mocks.OrderRepository) {
-				req := dto.OrderRequest{
+				req := dto_api.OrderRequest{
 					TotalAmount: 1000,
 					Username:    "failuser",
 				}
@@ -76,12 +77,12 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 		},
 		{
 			name: "Invalid max total amount",
-			input: dto.OrderRequest{
+			input: dto_api.OrderRequest{
 				TotalAmount: math.MaxInt64,
 				Username:    "bigspender",
 			},
 			setupMock: func(mockRepo *mocks.OrderRepository) {
-				req := dto.OrderRequest{
+				req := dto_api.OrderRequest{
 					TotalAmount: math.MaxInt64,
 					Username:    "bigspender",
 				}
@@ -97,7 +98,7 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 					Once()
 			},
 			expectError: false,
-			expectedResult: &dto.CreateOrderResponse{
+			expectedResult: &dto_api.CreateOrderResponse{
 				ID:          4,
 				TotalAmount: math.MaxInt64,
 				Status:      models.ORDER_STATUS_CREATED,
@@ -134,15 +135,15 @@ func TestOrderServiceCreateOrder(t *testing.T) {
 func TestOrderServiceGetAllOrder(t *testing.T) {
 	testCases := []struct {
 		name           string
-		input          dto.OrderQuery
+		input          dto_api.OrderQuery
 		setupMock      func(*mocks.OrderRepository)
 		expectError    bool
-		expectedOrders []dto.OrderReponse
+		expectedOrders []dto_api.OrderReponse
 		expectedTotal  int64
 	}{
 		{
 			name:  "Success",
-			input: dto.OrderQuery{PageNumber: 1, LimitItems: 10},
+			input: dto_api.OrderQuery{PageNumber: 1, LimitItems: 10},
 			setupMock: func(mockRepo *mocks.OrderRepository) {
 				mockOrders := []models.Order{
 					{
@@ -162,13 +163,13 @@ func TestOrderServiceGetAllOrder(t *testing.T) {
 				}
 
 				mockRepo.
-					On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}).
+					On("GetAllOrder", dto_api.OrderQuery{PageNumber: 1, LimitItems: 10}).
 					Return(mockOrders, int64(2), nil).
 					Once()
 			},
 			expectError:   false,
 			expectedTotal: 2,
-			expectedOrders: []dto.OrderReponse{
+			expectedOrders: []dto_api.OrderReponse{
 				{
 					ID:              1,
 					Username:        "alice",
@@ -189,10 +190,10 @@ func TestOrderServiceGetAllOrder(t *testing.T) {
 		},
 		{
 			name:  "Get data error",
-			input: dto.OrderQuery{PageNumber: 1, LimitItems: 10},
+			input: dto_api.OrderQuery{PageNumber: 1, LimitItems: 10},
 			setupMock: func(mockRepo *mocks.OrderRepository) {
 				mockRepo.
-					On("GetAllOrder", dto.OrderQuery{PageNumber: 1, LimitItems: 10}).
+					On("GetAllOrder", dto_api.OrderQuery{PageNumber: 1, LimitItems: 10}).
 					Return(nil, int64(0), assert.AnError).
 					Once()
 			},
@@ -247,7 +248,7 @@ func TestOrderServiceGetOrder(t *testing.T) {
 		orderID        int64
 		setupMock      func(*mocks.OrderRepository)
 		expectError    bool
-		expectedResult *dto.OrderReponse
+		expectedResult *dto_api.OrderReponse
 	}{
 		{
 			name:    "Success",
@@ -265,7 +266,7 @@ func TestOrderServiceGetOrder(t *testing.T) {
 					Once()
 			},
 			expectError: false,
-			expectedResult: &dto.OrderReponse{
+			expectedResult: &dto_api.OrderReponse{
 				ID:              123,
 				Username:        "testuser",
 				UserPhone:       "0123456789",
@@ -375,7 +376,7 @@ func TestOrderServiceUpdateOrderStatus(t *testing.T) {
 	}
 }
 
-func buildExpectedOrder(req dto.OrderRequest) models.Order {
+func buildExpectedOrder(req dto_api.OrderRequest) models.Order {
 	userInfo := models.UserInfo{
 		Username:        req.Username,
 		UserPhone:       req.UserPhone,
@@ -390,7 +391,7 @@ func buildExpectedOrder(req dto.OrderRequest) models.Order {
 	}
 }
 
-func marshalUserInfo(req dto.OrderRequest) []byte {
+func marshalUserInfo(req dto_api.OrderRequest) []byte {
 	userInfo := models.UserInfo{
 		Username:        req.Username,
 		UserPhone:       req.UserPhone,

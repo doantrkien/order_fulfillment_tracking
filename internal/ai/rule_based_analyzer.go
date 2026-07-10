@@ -2,6 +2,7 @@ package ai
 
 import (
 	"fmt"
+	"main/constant"
 	"main/internal/models"
 	"strings"
 	"time"
@@ -53,17 +54,17 @@ var deliveryFailureLowKeywords = []string{
 type RuleFunc func(aiCtx *models.AIContext, now time.Time) *RuleBasedResult
 
 var rules = []RuleFunc{
-	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDuplicateEvents(ctx.Events) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return DetectDuplicateEvents(ctx.Events) },
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult {
-		return detectInvalidTransitions(ctx.Events)
+		return DetectInvalidTransitions(ctx.Events)
 	},
-	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectSkippedStatuses(ctx.Events) },
-	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectStuckOrder(ctx, now) },
-	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDeliveryFailure(ctx) },
-	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectCancellationAnomaly(ctx) },
-	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectRefundAnomaly(ctx) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return DetectSkippedStatuses(ctx.Events) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return DetectStuckOrder(ctx, now) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return DetectDeliveryFailure(ctx) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return DetectCancellationAnomaly(ctx) },
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return DetectRefundAnomaly(ctx) },
 
-	detectHealthyDelivered,
+	DetectHealthyDelivered,
 }
 
 func AnalyzeByRules(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
@@ -75,7 +76,7 @@ func AnalyzeByRules(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
 	return nil
 }
 
-func detectDeliveryFailure(aiCtx *models.AIContext) *RuleBasedResult {
+func DetectDeliveryFailure(aiCtx *models.AIContext) *RuleBasedResult {
 	if aiCtx.CurrentStatus != models.ORDER_STATUS_SHIPPED {
 		return nil
 	}
@@ -143,7 +144,7 @@ func detectDeliveryFailure(aiCtx *models.AIContext) *RuleBasedResult {
 	return nil
 }
 
-func detectHealthyDelivered(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
+func DetectHealthyDelivered(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
 	if aiCtx.CurrentStatus != models.ORDER_STATUS_DELIVERED {
 		return nil
 	}
@@ -166,7 +167,7 @@ func detectHealthyDelivered(aiCtx *models.AIContext, now time.Time) *RuleBasedRe
 	}
 }
 
-func detectDuplicateEvents(events []models.AIEvent) *RuleBasedResult {
+func DetectDuplicateEvents(events []models.AIEvent) *RuleBasedResult {
 	seen := make(map[models.OrderStatus]bool)
 	for _, e := range events {
 		if e.NewStatus != "" {
@@ -212,7 +213,7 @@ func detectDuplicateEvents(events []models.AIEvent) *RuleBasedResult {
 	return nil
 }
 
-func detectSkippedStatuses(events []models.AIEvent) *RuleBasedResult {
+func DetectSkippedStatuses(events []models.AIEvent) *RuleBasedResult {
 	statusIdx := map[models.OrderStatus]int{
 		models.ORDER_STATUS_CREATED:   0,
 		models.ORDER_STATUS_PAID:      1,
@@ -307,7 +308,7 @@ func detectSkippedStatuses(events []models.AIEvent) *RuleBasedResult {
 	return nil
 }
 
-func detectInvalidTransitions(events []models.AIEvent) *RuleBasedResult {
+func DetectInvalidTransitions(events []models.AIEvent) *RuleBasedResult {
 	for _, e := range events {
 		if e.PreviousStatus == "" || e.NewStatus == "" || e.PreviousStatus == e.NewStatus {
 			continue
@@ -325,7 +326,7 @@ func detectInvalidTransitions(events []models.AIEvent) *RuleBasedResult {
 	return nil
 }
 
-func detectStuckOrder(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
+func DetectStuckOrder(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
 	currentStatus := aiCtx.CurrentStatus
 
 	threshold, exists := stuckThresholds[currentStatus]
@@ -384,22 +385,7 @@ func detectStuckOrder(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
 	}
 }
 
-// cancellationSeverity maps the last meaningful status before cancellation to a severity level.
-// Per the state machine, only created → cancelled is a valid transition.
-// Cancellations from any other status are caught earlier as INVALID_TRANSITION.
-var cancellationSeverity = map[models.OrderStatus]string{
-	models.ORDER_STATUS_CREATED: "LOW",
-}
-
-// refundSeverity maps the last meaningful status before refund to a severity level.
-var refundSeverity = map[models.OrderStatus]string{
-	models.ORDER_STATUS_PAID:      "LOW",
-	models.ORDER_STATUS_PACKED:    "MEDIUM",
-	models.ORDER_STATUS_SHIPPED:   "HIGH",
-	models.ORDER_STATUS_DELIVERED: "CRITICAL",
-}
-
-func detectCancellationAnomaly(aiCtx *models.AIContext) *RuleBasedResult {
+func DetectCancellationAnomaly(aiCtx *models.AIContext) *RuleBasedResult {
 	if aiCtx.CurrentStatus != models.ORDER_STATUS_CANCELLED {
 		return nil
 	}
@@ -413,7 +399,7 @@ func detectCancellationAnomaly(aiCtx *models.AIContext) *RuleBasedResult {
 		}
 	}
 
-	severity, ok := cancellationSeverity[prevStatus]
+	severity, ok := constant.CancellationSeverity[prevStatus]
 	if !ok {
 		severity = "LOW"
 	}
@@ -443,12 +429,11 @@ func detectCancellationAnomaly(aiCtx *models.AIContext) *RuleBasedResult {
 	}
 }
 
-func detectRefundAnomaly(aiCtx *models.AIContext) *RuleBasedResult {
+func DetectRefundAnomaly(aiCtx *models.AIContext) *RuleBasedResult {
 	if aiCtx.CurrentStatus != models.ORDER_STATUS_REFUNDED {
 		return nil
 	}
 
-	// Find the status immediately before the refund event.
 	var prevStatus models.OrderStatus
 	for _, e := range aiCtx.Events {
 		if e.NewStatus == models.ORDER_STATUS_REFUNDED {
@@ -457,7 +442,7 @@ func detectRefundAnomaly(aiCtx *models.AIContext) *RuleBasedResult {
 		}
 	}
 
-	severity, ok := refundSeverity[prevStatus]
+	severity, ok := constant.RefundSeverity[prevStatus]
 	if !ok {
 		severity = "LOW"
 	}

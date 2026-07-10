@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"main/internal/ai"
 	"main/internal/models"
 	"testing"
 	"time"
@@ -47,7 +48,7 @@ func TestDetectInvalidTransitions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := detectInvalidTransitions(tc.events)
+			result := ai.DetectInvalidTransitions(tc.events)
 			if tc.wantNil {
 				assert.Nil(t, result)
 			} else {
@@ -85,7 +86,7 @@ func TestDetectDuplicateEvents(t *testing.T) {
 			},
 			wantType:     "DUPLICATE_EVENT",
 			wantSeverity: "MEDIUM",
-			wantScore: 1,
+			wantScore:    1,
 		},
 		{
 			name: "single event - no duplicate possible",
@@ -103,7 +104,7 @@ func TestDetectDuplicateEvents(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := detectDuplicateEvents(tc.events)
+			result := ai.DetectDuplicateEvents(tc.events)
 			if tc.wantNil {
 				assert.Nil(t, result)
 			} else {
@@ -166,7 +167,7 @@ func TestDetectSkippedStatuses(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := detectSkippedStatuses(tc.events)
+			result := ai.DetectSkippedStatuses(tc.events)
 			if tc.wantNil {
 				assert.Nil(t, result)
 			} else {
@@ -209,7 +210,7 @@ func TestDetectStuckOrder(t *testing.T) {
 			now:          baseTime.Add(25 * time.Hour),
 			wantType:     "STUCK_ORDER",
 			wantSeverity: "LOW",
-			wantScore: 1,
+			wantScore:    1,
 		},
 		{
 			name: "created status - escalated (over 48h = 2×24h)",
@@ -220,7 +221,7 @@ func TestDetectStuckOrder(t *testing.T) {
 			now:          baseTime.Add(49 * time.Hour),
 			wantType:     "STUCK_ORDER",
 			wantSeverity: "HIGH",
-			wantScore: 1,
+			wantScore:    1,
 		},
 		{
 			name: "shipped status - stuck (over 72h)",
@@ -234,7 +235,7 @@ func TestDetectStuckOrder(t *testing.T) {
 			now:          baseTime.Add(145 * time.Hour), // 144h age (2x threshold)
 			wantType:     "STUCK_ORDER",
 			wantSeverity: "MEDIUM",
-			wantScore: 1,
+			wantScore:    1,
 		},
 		{
 			name: "delivered (terminal) - never stuck",
@@ -279,7 +280,7 @@ func TestDetectStuckOrder(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := detectStuckOrder(tc.aiCtx, tc.now)
+			result := ai.DetectStuckOrder(tc.aiCtx, tc.now)
 			if tc.wantNil {
 				assert.Nil(t, result)
 			} else {
@@ -308,7 +309,7 @@ func TestAnalyzeByRules_PriorityOrder(t *testing.T) {
 				{PreviousStatus: models.ORDER_STATUS_PAID, NewStatus: models.ORDER_STATUS_DELIVERED, EventAt: now.Add(-97 * time.Hour)},
 			},
 		}
-		result := AnalyzeByRules(aiCtx, now)
+		result := ai.AnalyzeByRules(aiCtx, now)
 		assert.NotNil(t, result)
 		assert.Equal(t, "DUPLICATE_EVENT", result.ExceptionType)
 	})
@@ -324,7 +325,7 @@ func TestAnalyzeByRules_PriorityOrder(t *testing.T) {
 				{PreviousStatus: models.ORDER_STATUS_PAID, NewStatus: models.ORDER_STATUS_PACKED, EventAt: now.Add(-7 * time.Hour)},
 			},
 		}
-		result := AnalyzeByRules(aiCtx, now)
+		result := ai.AnalyzeByRules(aiCtx, now)
 		assert.NotNil(t, result)
 		assert.Equal(t, "DUPLICATE_EVENT", result.ExceptionType)
 	})
@@ -337,7 +338,7 @@ func TestAnalyzeByRules_PriorityOrder(t *testing.T) {
 				{PreviousStatus: models.ORDER_STATUS_CREATED, NewStatus: models.ORDER_STATUS_PAID, EventAt: now.Add(-30 * time.Minute)},
 			},
 		}
-		result := AnalyzeByRules(aiCtx, now)
+		result := ai.AnalyzeByRules(aiCtx, now)
 		assert.Nil(t, result)
 	})
 }
@@ -378,7 +379,7 @@ func TestDetectCancellationAnomaly(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := detectCancellationAnomaly(tc.aiCtx)
+			result := ai.DetectCancellationAnomaly(tc.aiCtx)
 			if tc.wantNil {
 				assert.Nil(t, result)
 			} else {
@@ -468,7 +469,7 @@ func TestDetectRefundAnomaly(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := detectRefundAnomaly(tc.aiCtx)
+			result := ai.DetectRefundAnomaly(tc.aiCtx)
 			if tc.wantNil {
 				assert.Nil(t, result)
 			} else {

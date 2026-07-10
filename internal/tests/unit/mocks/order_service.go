@@ -1,7 +1,7 @@
 package mocks
 
 import (
-	dto "main/internal/dto"
+	dto_api "main/internal/dto/api"
 	models "main/internal/models"
 
 	mock "github.com/stretchr/testify/mock"
@@ -11,7 +11,7 @@ type OrderService struct {
 	mock.Mock
 }
 
-func (_m *OrderService) CreateOrder(_a0 dto.OrderRequest) (*models.Order, error) {
+func (_m *OrderService) CreateOrder(_a0 dto_api.OrderRequest) (*models.Order, error) {
 	ret := _m.Called(_a0)
 
 	if len(ret) == 0 {
@@ -20,10 +20,10 @@ func (_m *OrderService) CreateOrder(_a0 dto.OrderRequest) (*models.Order, error)
 
 	var r0 *models.Order
 	var r1 error
-	if rf, ok := ret.Get(0).(func(dto.OrderRequest) (*models.Order, error)); ok {
+	if rf, ok := ret.Get(0).(func(dto_api.OrderRequest) (*models.Order, error)); ok {
 		return rf(_a0)
 	}
-	if rf, ok := ret.Get(0).(func(dto.OrderRequest) *models.Order); ok {
+	if rf, ok := ret.Get(0).(func(dto_api.OrderRequest) *models.Order); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
@@ -31,7 +31,7 @@ func (_m *OrderService) CreateOrder(_a0 dto.OrderRequest) (*models.Order, error)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(dto.OrderRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(dto_api.OrderRequest) error); ok {
 		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
@@ -40,34 +40,34 @@ func (_m *OrderService) CreateOrder(_a0 dto.OrderRequest) (*models.Order, error)
 	return r0, r1
 }
 
-func (_m *OrderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, int64, error) {
+func (_m *OrderService) GetAllOrder(query dto_api.OrderQuery) ([]dto_api.OrderReponse, int64, error) {
 	ret := _m.Called(query)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAllOrder")
 	}
 
-	var r0 []dto.OrderReponse
+	var r0 []dto_api.OrderReponse
 	var r1 int64
 	var r2 error
-	if rf, ok := ret.Get(0).(func(dto.OrderQuery) ([]dto.OrderReponse, int64, error)); ok {
+	if rf, ok := ret.Get(0).(func(dto_api.OrderQuery) ([]dto_api.OrderReponse, int64, error)); ok {
 		return rf(query)
 	}
-	if rf, ok := ret.Get(0).(func(dto.OrderQuery) []dto.OrderReponse); ok {
+	if rf, ok := ret.Get(0).(func(dto_api.OrderQuery) []dto_api.OrderReponse); ok {
 		r0 = rf(query)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]dto.OrderReponse)
+			r0 = ret.Get(0).([]dto_api.OrderReponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(dto.OrderQuery) int64); ok {
+	if rf, ok := ret.Get(1).(func(dto_api.OrderQuery) int64); ok {
 		r1 = rf(query)
 	} else {
 		r1 = ret.Get(1).(int64)
 	}
 
-	if rf, ok := ret.Get(2).(func(dto.OrderQuery) error); ok {
+	if rf, ok := ret.Get(2).(func(dto_api.OrderQuery) error); ok {
 		r2 = rf(query)
 	} else {
 		r2 = ret.Error(2)
@@ -76,23 +76,23 @@ func (_m *OrderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, i
 	return r0, r1, r2
 }
 
-func (_m *OrderService) GetOrder(id int64) (*dto.OrderReponse, error) {
+func (_m *OrderService) GetOrder(id int64) (*dto_api.OrderReponse, error) {
 	ret := _m.Called(id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetOrder")
 	}
 
-	var r0 *dto.OrderReponse
+	var r0 *dto_api.OrderReponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(int64) (*dto.OrderReponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(int64) (*dto_api.OrderReponse, error)); ok {
 		return rf(id)
 	}
-	if rf, ok := ret.Get(0).(func(int64) *dto.OrderReponse); ok {
+	if rf, ok := ret.Get(0).(func(int64) *dto_api.OrderReponse); ok {
 		r0 = rf(id)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*dto.OrderReponse)
+			r0 = ret.Get(0).(*dto_api.OrderReponse)
 		}
 	}
 

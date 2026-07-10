@@ -1,6 +1,9 @@
 package ai
 
 import (
+	"main/constant"
+	"main/internal/ai"
+	dto_ai "main/internal/dto/ai"
 	"strings"
 	"testing"
 
@@ -22,9 +25,9 @@ func TestSanitizePromptContext_EventTimelineCapped(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			events := make([]EventTimelineEntry, tc.numEvents)
+			events := make([]dto_ai.EventTimelineEntry, tc.numEvents)
 			for i := range events {
-				events[i] = EventTimelineEntry{
+				events[i] = dto_ai.EventTimelineEntry{
 					FromStatus: "created",
 					ToStatus:   "paid",
 					UpdatedBy:  "admin_1",
@@ -32,21 +35,21 @@ func TestSanitizePromptContext_EventTimelineCapped(t *testing.T) {
 				}
 			}
 
-			ctx := &ExceptionPromptContext{
+			ctx := &dto_ai.ExceptionPromptContext{
 				OrderID:       1,
 				EventTimeline: events,
 			}
 
-			SanitizePromptContext(ctx)
+			ai.SanitizePromptContext(ctx)
 			assert.Equal(t, tc.wantEvents, len(ctx.EventTimeline))
 		})
 	}
 }
 
 func TestSanitizePromptContext_KeepsMostRecentEvents(t *testing.T) {
-	events := make([]EventTimelineEntry, 60)
+	events := make([]dto_ai.EventTimelineEntry, 60)
 	for i := range events {
-		events[i] = EventTimelineEntry{
+		events[i] = dto_ai.EventTimelineEntry{
 			FromStatus: "created",
 			ToStatus:   "paid",
 			UpdatedBy:  "admin_1",
@@ -54,12 +57,12 @@ func TestSanitizePromptContext_KeepsMostRecentEvents(t *testing.T) {
 		}
 	}
 
-	ctx := &ExceptionPromptContext{
+	ctx := &dto_ai.ExceptionPromptContext{
 		OrderID:       1,
 		EventTimeline: events,
 	}
 
-	SanitizePromptContext(ctx)
+	ai.SanitizePromptContext(ctx)
 
 	assert.Equal(t, 50, len(ctx.EventTimeline))
 	assert.Equal(t, events[10].EventAt, ctx.EventTimeline[0].EventAt)
@@ -82,15 +85,15 @@ func TestSanitizePromptContext_DriverNotesCapped(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			notes := strings.Repeat("n", tc.notesLen)
-			ctx := &ExceptionPromptContext{
+			ctx := &dto_ai.ExceptionPromptContext{
 				OrderID:     1,
 				DriverNotes: notes,
 			}
 
-			SanitizePromptContext(ctx)
+			ai.SanitizePromptContext(ctx)
 
 			if tc.wantCapped {
-				assert.LessOrEqual(t, len(ctx.DriverNotes), MaxDriverNotesLength+len("...[truncated]"))
+				assert.LessOrEqual(t, len(ctx.DriverNotes), constant.MaxDriverNotesLength+len("...[truncated]"))
 				assert.True(t, strings.HasSuffix(ctx.DriverNotes, "...[truncated]"))
 			} else {
 				assert.Equal(t, tc.notesLen, len(ctx.DriverNotes))
@@ -100,49 +103,49 @@ func TestSanitizePromptContext_DriverNotesCapped(t *testing.T) {
 }
 
 func TestSanitizePromptContext_PIIRedacted(t *testing.T) {
-	ctx := &ExceptionPromptContext{
+	ctx := &dto_ai.ExceptionPromptContext{
 		OrderID:         1,
 		CustomerName:    "Nguyen Van A",
 		ShippingAddress: "123 Le Loi, HCM",
 	}
 
-	SanitizePromptContext(ctx)
+	ai.SanitizePromptContext(ctx)
 
 	assert.Equal(t, "[REDACTED_CUSTOMER_NAME]", ctx.CustomerName)
 	assert.Equal(t, "[REDACTED_SHIPPING_ADDRESS]", ctx.ShippingAddress)
 }
 
 func TestSanitizePromptContext_EmptyPIINotRedacted(t *testing.T) {
-	ctx := &ExceptionPromptContext{
+	ctx := &dto_ai.ExceptionPromptContext{
 		OrderID:         1,
 		CustomerName:    "",
 		ShippingAddress: "",
 	}
 
-	SanitizePromptContext(ctx)
+	ai.SanitizePromptContext(ctx)
 
 	assert.Equal(t, "", ctx.CustomerName)
 	assert.Equal(t, "", ctx.ShippingAddress)
 }
 
 func TestBuildExceptionAnalysisPrompt_ContainsAllSections(t *testing.T) {
-	ctx := ExceptionPromptContext{
+	ctx := dto_ai.ExceptionPromptContext{
 		OrderID:         123,
 		CurrentStatus:   "shipped",
 		TotalAmount:     500000,
 		CustomerName:    "Nguyen Van A",
 		ShippingAddress: "123 HCM",
 		CreatedAt:       "2026-06-01 08:00:00",
-		EventTimeline: []EventTimelineEntry{
+		EventTimeline: []dto_ai.EventTimelineEntry{
 			{FromStatus: "created", ToStatus: "paid", UpdatedBy: "admin_1", EventAt: "2026-06-01 09:00:00"},
 			{FromStatus: "paid", ToStatus: "packed", UpdatedBy: "admin_1", EventAt: "2026-06-01 10:00:00"},
 		},
 		DriverNotes: "Package looks damaged",
 	}
 
-	SanitizePromptContext(&ctx)
-	knowledge := ClassifyDriverNote(ctx.DriverNotes)
-	prompt := BuildExceptionAnalysisPrompt(ctx, knowledge)
+	ai.SanitizePromptContext(&ctx)
+	knowledge := ai.GetKnowledgeBase(ctx.DriverNotes)
+	prompt := ai.BuildExceptionAnalysisPrompt(ctx, knowledge)
 
 	assert.Contains(t, prompt, "[SYSTEM]")
 	assert.Contains(t, prompt, "[CONTEXT]")
@@ -170,23 +173,23 @@ func TestBuildExceptionAnalysisPrompt_ContainsAllSections(t *testing.T) {
 }
 
 func TestBuildExceptionAnalysisPrompt_EmptyTimeline(t *testing.T) {
-	ctx := ExceptionPromptContext{
+	ctx := dto_ai.ExceptionPromptContext{
 		OrderID:       1,
 		CurrentStatus: "created",
 	}
 
-	prompt := BuildExceptionAnalysisPrompt(ctx, nil)
+	prompt := ai.BuildExceptionAnalysisPrompt(ctx, nil)
 	assert.Contains(t, prompt, "(no events recorded)")
 }
 
 func TestBuildExceptionAnalysisPrompt_NoDriverNotes(t *testing.T) {
-	ctx := ExceptionPromptContext{
+	ctx := dto_ai.ExceptionPromptContext{
 		OrderID:       1,
 		CurrentStatus: "created",
 		DriverNotes:   "",
 	}
 
-	prompt := BuildExceptionAnalysisPrompt(ctx, nil)
+	prompt := ai.BuildExceptionAnalysisPrompt(ctx, nil)
 	// Make sure we didn't inject the Driver Note field into the context section.
 	// Since the KB itself contains the words "Driver Note", we check for the specific formatting
 	assert.NotContains(t, prompt, "Driver Note: \n")
@@ -196,7 +199,7 @@ func TestBuildExceptionAnalysisPrompt_NoDriverNotes(t *testing.T) {
 // ── ClassifyDriverNote tests ─────────────────────────────────────────────────
 
 // kbTitles extracts the Title field from a slice of KnowledgeEntry for easy assertion.
-func kbTitles(entries []KnowledgeEntry) []string {
+func kbTitles(entries []ai.KnowledgeEntry) []string {
 	titles := make([]string, len(entries))
 	for i, e := range entries {
 		titles[i] = e.Title
@@ -205,20 +208,20 @@ func kbTitles(entries []KnowledgeEntry) []string {
 }
 
 func TestClassifyDriverNote_ReturnsCombinedKnowledge(t *testing.T) {
-	entries := ClassifyDriverNote("any random note")
+	entries := ai.GetKnowledgeBase("any random note")
 	titles := kbTitles(entries)
 	assert.Contains(t, titles, "Order Fulfillment Knowledge Base")
 	assert.Len(t, entries, 1)
 }
 
 func TestBuildExceptionAnalysisPrompt_InjectsCombinedKB(t *testing.T) {
-	ctx := ExceptionPromptContext{
+	ctx := dto_ai.ExceptionPromptContext{
 		OrderID:       999,
 		CurrentStatus: "shipped",
 		DriverNotes:   "vehicle breakdown on the way",
 	}
-	knowledge := ClassifyDriverNote(ctx.DriverNotes)
-	prompt := BuildExceptionAnalysisPrompt(ctx, knowledge)
+	knowledge := ai.GetKnowledgeBase(ctx.DriverNotes)
+	prompt := ai.BuildExceptionAnalysisPrompt(ctx, knowledge)
 
 	assert.Contains(t, prompt, "Order Fulfillment Knowledge Base")
 }

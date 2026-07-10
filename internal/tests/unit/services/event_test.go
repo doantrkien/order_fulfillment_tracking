@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"main/internal/dto"
+	dto_api "main/internal/dto/api"
 	"main/internal/models"
 	"main/internal/repositories"
 	"main/internal/services"
@@ -29,14 +29,14 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 
 	testCases := []struct {
 		name      string
-		requests  []dto.ImportOrderEventRequest
+		requests  []dto_api.ImportOrderEventRequest
 		setupMock func(*mocks.OrderEventRepository)
 		expectErr bool
-		validate  func(t *testing.T, resp dto.ImportOrderEventsResponse)
+		validate  func(t *testing.T, resp dto_api.ImportOrderEventsResponse)
 	}{
 		{
 			name: "all events accepted",
-			requests: []dto.ImportOrderEventRequest{
+			requests: []dto_api.ImportOrderEventRequest{
 				{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 				{OrderID: 2, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
@@ -55,7 +55,7 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 					}, nil,
 				)
 			},
-			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
+			validate: func(t *testing.T, resp dto_api.ImportOrderEventsResponse) {
 				assert.Equal(t, 2, resp.Accepted)
 				assert.Equal(t, 0, resp.Rejected)
 				assert.Equal(t, 0, resp.Duplicate)
@@ -64,12 +64,12 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 		},
 		{
 			name: "invalid order_id rejected by validation",
-			requests: []dto.ImportOrderEventRequest{
+			requests: []dto_api.ImportOrderEventRequest{
 				{OrderID: 0, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 				{OrderID: -1, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {},
-			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
+			validate: func(t *testing.T, resp dto_api.ImportOrderEventsResponse) {
 				assert.Equal(t, 0, resp.Accepted)
 				assert.Equal(t, 2, resp.Rejected)
 				assert.Len(t, resp.Errors, 2)
@@ -78,11 +78,11 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 		},
 		{
 			name: "invalid status rejected by validation",
-			requests: []dto.ImportOrderEventRequest{
+			requests: []dto_api.ImportOrderEventRequest{
 				{OrderID: 1, Status: "unknown_status", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {},
-			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
+			validate: func(t *testing.T, resp dto_api.ImportOrderEventsResponse) {
 				assert.Equal(t, 0, resp.Accepted)
 				assert.Equal(t, 1, resp.Rejected)
 				assert.Equal(t, "unknown status value", resp.Errors[0].Reason)
@@ -90,11 +90,11 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 		},
 		{
 			name: "missing event_at rejected by validation",
-			requests: []dto.ImportOrderEventRequest{
+			requests: []dto_api.ImportOrderEventRequest{
 				{OrderID: 1, Status: "paid", UpdatedBy: "admin"}, // EventAt is zero
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {},
-			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
+			validate: func(t *testing.T, resp dto_api.ImportOrderEventsResponse) {
 				assert.Equal(t, 0, resp.Accepted)
 				assert.Equal(t, 1, resp.Rejected)
 				assert.Equal(t, "event_at is required", resp.Errors[0].Reason)
@@ -102,7 +102,7 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 		},
 		{
 			name: "duplicate events counted correctly",
-			requests: []dto.ImportOrderEventRequest{
+			requests: []dto_api.ImportOrderEventRequest{
 				{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
@@ -117,7 +117,7 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 					}, nil,
 				)
 			},
-			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
+			validate: func(t *testing.T, resp dto_api.ImportOrderEventsResponse) {
 				assert.Equal(t, 0, resp.Accepted)
 				assert.Equal(t, 1, resp.Duplicate)
 				assert.Len(t, resp.Errors, 1)
@@ -126,7 +126,7 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 		},
 		{
 			name: "rejected by repo - invalid transition",
-			requests: []dto.ImportOrderEventRequest{
+			requests: []dto_api.ImportOrderEventRequest{
 				{OrderID: 1, Status: "delivered", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
@@ -141,7 +141,7 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 					}, nil,
 				)
 			},
-			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
+			validate: func(t *testing.T, resp dto_api.ImportOrderEventsResponse) {
 				assert.Equal(t, 0, resp.Accepted)
 				assert.Equal(t, 1, resp.Rejected)
 				assert.Contains(t, resp.Errors[0].Reason, "Invalid transition")
@@ -149,7 +149,7 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 		},
 		{
 			name: "repository error propagated",
-			requests: []dto.ImportOrderEventRequest{
+			requests: []dto_api.ImportOrderEventRequest{
 				{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
@@ -158,14 +158,14 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 				)
 			},
 			expectErr: true,
-			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
+			validate: func(t *testing.T, resp dto_api.ImportOrderEventsResponse) {
 				// When batch fails entirely, no individual results are tallied
 				assert.Equal(t, 0, resp.Accepted)
 			},
 		},
 		{
 			name: "mixed results - validation fail + accepted + duplicate",
-			requests: []dto.ImportOrderEventRequest{
+			requests: []dto_api.ImportOrderEventRequest{
 				{OrderID: 0, Status: "paid", EventAt: now, UpdatedBy: "admin"}, // validation fail
 				{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"}, // will be accepted
 				{OrderID: 2, Status: "paid", EventAt: now, UpdatedBy: "admin"}, // will be duplicate
@@ -194,7 +194,7 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 					}, nil,
 				)
 			},
-			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
+			validate: func(t *testing.T, resp dto_api.ImportOrderEventsResponse) {
 				assert.Equal(t, 1, resp.Accepted)
 				assert.Equal(t, 1, resp.Rejected) // validation fail
 				assert.Equal(t, 1, resp.Duplicate)
@@ -202,9 +202,9 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 		},
 		{
 			name:      "empty request list",
-			requests:  []dto.ImportOrderEventRequest{},
+			requests:  []dto_api.ImportOrderEventRequest{},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {},
-			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
+			validate: func(t *testing.T, resp dto_api.ImportOrderEventsResponse) {
 				assert.Equal(t, 0, resp.Accepted)
 				assert.Equal(t, 0, resp.Rejected)
 				assert.Equal(t, 0, resp.Duplicate)
@@ -212,14 +212,14 @@ func TestOrderEventServiceImportOrderEvents(t *testing.T) {
 		},
 		{
 			name: "all events fail validation - repo never called",
-			requests: []dto.ImportOrderEventRequest{
+			requests: []dto_api.ImportOrderEventRequest{
 				{OrderID: -1, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 				{OrderID: 1, Status: "invalid_status", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockRepo *mocks.OrderEventRepository) {
 				// The mock's Cleanup will verify ProcessBatchEventsTx was NEVER called
 			},
-			validate: func(t *testing.T, resp dto.ImportOrderEventsResponse) {
+			validate: func(t *testing.T, resp dto_api.ImportOrderEventsResponse) {
 				assert.Equal(t, 0, resp.Accepted)
 				assert.Equal(t, 2, resp.Rejected)
 			},

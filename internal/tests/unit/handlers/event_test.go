@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"main/constant"
-	"main/internal/dto"
+	dto_api "main/internal/dto/api"
 	"main/internal/handlers"
 
 	"github.com/gofiber/fiber/v3"
@@ -42,17 +42,17 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 	}{
 		{
 			name: "all accepted",
-			body: []dto.ImportOrderEventRequest{
+			body: []dto_api.ImportOrderEventRequest{
 				{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 				{OrderID: 2, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockService *mocks.OrderEventService) {
-				mockService.On("ImportOrderEvents", mock.Anything, mock.AnythingOfType("[]dto.ImportOrderEventRequest")).Return(
-					dto.ImportOrderEventsResponse{
+				mockService.On("ImportOrderEvents", mock.Anything, mock.AnythingOfType("[]dto_api.ImportOrderEventRequest")).Return(
+					dto_api.ImportOrderEventsResponse{
 						Accepted:  2,
 						Rejected:  0,
 						Duplicate: 0,
-						Errors:    []dto.EventError{},
+						Errors:    []dto_api.EventError{},
 					}, nil,
 				).Once()
 			},
@@ -60,9 +60,9 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 			// expectedStatus: "SUCCESS",
 			validate: func(t *testing.T, respBody []byte) {
 				var resp struct {
-					Status  string                        `json:"status"`
-					Message string                        `json:"message"`
-					Data    dto.ImportOrderEventsResponse `json:"data"`
+					Status  string                            `json:"status"`
+					Message string                            `json:"message"`
+					Data    dto_api.ImportOrderEventsResponse `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &resp))
 				assert.Equal(t, "SUCCESS", resp.Status)
@@ -88,14 +88,14 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 		},
 		{
 			name: "service returns error",
-			body: []dto.ImportOrderEventRequest{
+			body: []dto_api.ImportOrderEventRequest{
 				{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockService *mocks.OrderEventService) {
-				mockService.On("ImportOrderEvents", mock.Anything, mock.AnythingOfType("[]dto.ImportOrderEventRequest")).Return(
-					dto.ImportOrderEventsResponse{
+				mockService.On("ImportOrderEvents", mock.Anything, mock.AnythingOfType("[]dto_api.ImportOrderEventRequest")).Return(
+					dto_api.ImportOrderEventsResponse{
 						Rejected: 1,
-						Errors: []dto.EventError{
+						Errors: []dto_api.EventError{
 							{OrderID: 1, Status: "paid", Reason: "database connection lost"},
 						},
 					}, assert.AnError,
@@ -105,9 +105,9 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 			// expectedStatus: "ERROR",
 			validate: func(t *testing.T, respBody []byte) {
 				var resp struct {
-					Status  string                        `json:"status"`
-					Message string                        `json:"message"`
-					Data    dto.ImportOrderEventsResponse `json:"data"`
+					Status  string                            `json:"status"`
+					Message string                            `json:"message"`
+					Data    dto_api.ImportOrderEventsResponse `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &resp))
 				assert.Equal(t, "ERROR", resp.Status)
@@ -116,18 +116,18 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 		},
 		{
 			name: "mixed results - partial success",
-			body: []dto.ImportOrderEventRequest{
+			body: []dto_api.ImportOrderEventRequest{
 				{OrderID: 1, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 				{OrderID: 2, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 				{OrderID: 3, Status: "paid", EventAt: now, UpdatedBy: "admin"},
 			},
 			setupMock: func(mockService *mocks.OrderEventService) {
-				mockService.On("ImportOrderEvents", mock.Anything, mock.AnythingOfType("[]dto.ImportOrderEventRequest")).Return(
-					dto.ImportOrderEventsResponse{
+				mockService.On("ImportOrderEvents", mock.Anything, mock.AnythingOfType("[]dto_api.ImportOrderEventRequest")).Return(
+					dto_api.ImportOrderEventsResponse{
 						Accepted:  1,
 						Rejected:  1,
 						Duplicate: 1,
-						Errors: []dto.EventError{
+						Errors: []dto_api.EventError{
 							{OrderID: 2, Status: "paid", Reason: "Invalid transition"},
 							{OrderID: 3, Status: "paid", Reason: "already in status 'paid'"},
 						},
@@ -138,7 +138,7 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 			// expectedStatus: "SUCCESS",
 			validate: func(t *testing.T, respBody []byte) {
 				var resp struct {
-					Data dto.ImportOrderEventsResponse `json:"data"`
+					Data dto_api.ImportOrderEventsResponse `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &resp))
 				assert.Equal(t, 1, resp.Data.Accepted)
@@ -149,14 +149,14 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 		},
 		{
 			name: "empty request body",
-			body: []dto.ImportOrderEventRequest{},
+			body: []dto_api.ImportOrderEventRequest{},
 			setupMock: func(mockService *mocks.OrderEventService) {
-				mockService.On("ImportOrderEvents", mock.Anything, mock.AnythingOfType("[]dto.ImportOrderEventRequest")).Return(
-					dto.ImportOrderEventsResponse{
+				mockService.On("ImportOrderEvents", mock.Anything, mock.AnythingOfType("[]dto_api.ImportOrderEventRequest")).Return(
+					dto_api.ImportOrderEventsResponse{
 						Accepted:  0,
 						Rejected:  0,
 						Duplicate: 0,
-						Errors:    []dto.EventError{},
+						Errors:    []dto_api.EventError{},
 					}, nil,
 				).Once()
 			},
@@ -164,7 +164,7 @@ func TestOrderEventHandlerImportOrderEvents(t *testing.T) {
 			// expectedStatus: "SUCCESS",
 			validate: func(t *testing.T, respBody []byte) {
 				var resp struct {
-					Data dto.ImportOrderEventsResponse `json:"data"`
+					Data dto_api.ImportOrderEventsResponse `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &resp))
 				assert.Equal(t, 0, resp.Data.Accepted)

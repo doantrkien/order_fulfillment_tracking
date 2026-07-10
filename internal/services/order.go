@@ -2,7 +2,7 @@ package services
 
 import (
 	"encoding/json"
-	"main/internal/dto"
+	dto_api "main/internal/dto/api"
 	"main/internal/models"
 	"main/internal/repositories"
 	"time"
@@ -11,10 +11,10 @@ import (
 var loc, _ = time.LoadLocation("Asia/Ho_Chi_Minh")
 
 type OrderService interface {
-	GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, int64, error)
-	GetOrder(id int64) (*dto.OrderReponse, error)
+	GetAllOrder(query dto_api.OrderQuery) ([]dto_api.OrderReponse, int64, error)
+	GetOrder(id int64) (*dto_api.OrderReponse, error)
 	IsDriverAssignedToOrder(orderID int64, driverID int64) (bool, error)
-	CreateOrder(req dto.OrderRequest, updatedBy string) (*dto.CreateOrderResponse, error)
+	CreateOrder(req dto_api.OrderRequest, updatedBy string) (*dto_api.CreateOrderResponse, error)
 	UpdateOrderStatus(id int64, status, updatedBy string, driverID *int64) (*models.Order, error)
 }
 
@@ -28,14 +28,14 @@ func NewOrderService(orderRepo repositories.OrderRepository) OrderService {
 	}
 }
 
-func (s *orderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, int64, error) {
+func (s *orderService) GetAllOrder(query dto_api.OrderQuery) ([]dto_api.OrderReponse, int64, error) {
 
 	orders, total, err := s.orderRepo.GetAllOrder(query)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	var response []dto.OrderReponse
+	var response []dto_api.OrderReponse
 
 	for _, order := range orders {
 		userInfo := &models.UserInfo{}
@@ -43,7 +43,7 @@ func (s *orderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, in
 			json.Unmarshal(order.UserInfo, userInfo)
 		}
 
-		response = append(response, dto.OrderReponse{
+		response = append(response, dto_api.OrderReponse{
 			ID:              order.ID,
 			TotalAmount:     order.TotalAmount,
 			Username:        userInfo.Username,
@@ -56,7 +56,7 @@ func (s *orderService) GetAllOrder(query dto.OrderQuery) ([]dto.OrderReponse, in
 	return response, total, nil
 }
 
-func (s *orderService) GetOrder(id int64) (*dto.OrderReponse, error) {
+func (s *orderService) GetOrder(id int64) (*dto_api.OrderReponse, error) {
 	order, err := s.orderRepo.GetOrderDetail(id)
 	if err != nil {
 
@@ -69,7 +69,7 @@ func (s *orderService) GetOrder(id int64) (*dto.OrderReponse, error) {
 		json.Unmarshal(order.UserInfo, userInfo)
 	}
 
-	response := dto.OrderReponse{
+	response := dto_api.OrderReponse{
 		ID:              order.ID,
 		TotalAmount:     order.TotalAmount,
 		Username:        userInfo.Username,
@@ -86,7 +86,7 @@ func (s *orderService) IsDriverAssignedToOrder(orderID int64, driverID int64) (b
 	return s.orderRepo.IsDriverAssignedToOrder(orderID, driverID)
 }
 
-func (s *orderService) CreateOrder(req dto.OrderRequest, updatedBy string) (*dto.CreateOrderResponse, error) {
+func (s *orderService) CreateOrder(req dto_api.OrderRequest, updatedBy string) (*dto_api.CreateOrderResponse, error) {
 	userInfo := models.UserInfo{
 		Username:        req.Username,
 		UserPhone:       req.UserPhone,
@@ -106,7 +106,7 @@ func (s *orderService) CreateOrder(req dto.OrderRequest, updatedBy string) (*dto
 		return nil, err
 	}
 
-	return &dto.CreateOrderResponse{
+	return &dto_api.CreateOrderResponse{
 		ID:              saved.ID,
 		Status:          saved.CurrentStatus,
 		TotalAmount:     saved.TotalAmount,

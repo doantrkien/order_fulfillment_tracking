@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"main/constant"
 	"main/errs"
-	"main/internal/dto"
+	dto "main/internal/dto/api"
 	"main/internal/models"
 	"main/internal/services"
 	"main/response"

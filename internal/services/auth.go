@@ -3,7 +3,7 @@ package services
 import (
 	"errors"
 	"main/errs"
-	"main/internal/dto"
+	dto_api "main/internal/dto/api"
 	"main/internal/repositories"
 	"os"
 	"strconv"
@@ -15,7 +15,7 @@ import (
 )
 
 type AuthService interface {
-	Login(email, password string) (*dto.LoginResponse, error)
+	Login(email, password string) (*dto_api.LoginResponse, error)
 }
 
 type authService struct {
@@ -26,7 +26,7 @@ func NewAuthService(userRepo repositories.AccountRepository) AuthService {
 	return &authService{userRepo: userRepo}
 }
 
-func (s *authService) Login(email, password string) (*dto.LoginResponse, error) {
+func (s *authService) Login(email, password string) (*dto_api.LoginResponse, error) {
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
 		if errors.Is(err, errs.ERR_NOT_FOUND) || errors.Is(err, gorm.ErrRecordNotFound) {
@@ -63,7 +63,7 @@ func (s *authService) Login(email, password string) (*dto.LoginResponse, error) 
 		return nil, err
 	}
 
-	return &dto.LoginResponse{
+	return &dto_api.LoginResponse{
 		AccessToken: signedToken,
 		TokenType:   "Bearer",
 		ExpiresIn:   expireHours * 3600,

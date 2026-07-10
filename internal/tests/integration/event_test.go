@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"io"
 	"main/constant"
-	"main/internal/dto"
+
+	dto_api "main/internal/dto/api"
 	"main/internal/models"
 	"net/http/httptest"
 	"testing"
@@ -32,25 +33,25 @@ func seedOrder(t *testing.T, totalAmount int64, status models.OrderStatus) model
 func TestIntegrationImportOrderEvents(t *testing.T) {
 	testCases := []struct {
 		name           string
-		seedDB         func(t *testing.T) []dto.ImportOrderEventRequest
+		seedDB         func(t *testing.T) []dto_api.ImportOrderEventRequest
 		rawBody        []byte
 		expectedStatus int
 		validate       func(t *testing.T, respBody []byte)
 	}{
 		{
 			name: "success - valid transition",
-			seedDB: func(t *testing.T) []dto.ImportOrderEventRequest {
+			seedDB: func(t *testing.T) []dto_api.ImportOrderEventRequest {
 				order := seedOrder(t, 5000, models.ORDER_STATUS_CREATED)
-				return []dto.ImportOrderEventRequest{
+				return []dto_api.ImportOrderEventRequest{
 					{OrderID: order.ID, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"},
 				}
 			},
 			expectedStatus: 200,
 			validate: func(t *testing.T, respBody []byte) {
 				var body struct {
-					Status  string                        `json:"status"`
-					Message string                        `json:"message"`
-					Data    dto.ImportOrderEventsResponse `json:"data"`
+					Status  string                            `json:"status"`
+					Message string                            `json:"message"`
+					Data    dto_api.ImportOrderEventsResponse `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &body))
 				assert.Equal(t, constant.SUCCESS.Message, body.Message)
@@ -70,16 +71,16 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 		},
 		{
 			name: "invalid transition rejected",
-			seedDB: func(t *testing.T) []dto.ImportOrderEventRequest {
+			seedDB: func(t *testing.T) []dto_api.ImportOrderEventRequest {
 				order := seedOrder(t, 5000, models.ORDER_STATUS_CREATED)
-				return []dto.ImportOrderEventRequest{
+				return []dto_api.ImportOrderEventRequest{
 					{OrderID: order.ID, Status: "delivered", EventAt: time.Now(), UpdatedBy: "admin"},
 				}
 			},
 			expectedStatus: 200,
 			validate: func(t *testing.T, respBody []byte) {
 				var body struct {
-					Data dto.ImportOrderEventsResponse `json:"data"`
+					Data dto_api.ImportOrderEventsResponse `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &body))
 				assert.Equal(t, 0, body.Data.Accepted)
@@ -93,16 +94,16 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 		},
 		{
 			name: "duplicate status",
-			seedDB: func(t *testing.T) []dto.ImportOrderEventRequest {
+			seedDB: func(t *testing.T) []dto_api.ImportOrderEventRequest {
 				order := seedOrder(t, 5000, models.ORDER_STATUS_PAID)
-				return []dto.ImportOrderEventRequest{
+				return []dto_api.ImportOrderEventRequest{
 					{OrderID: order.ID, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"},
 				}
 			},
 			expectedStatus: 200,
 			validate: func(t *testing.T, respBody []byte) {
 				var body struct {
-					Data dto.ImportOrderEventsResponse `json:"data"`
+					Data dto_api.ImportOrderEventsResponse `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &body))
 				assert.Equal(t, 0, body.Data.Accepted)
@@ -112,15 +113,15 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 		},
 		{
 			name: "order not found",
-			seedDB: func(t *testing.T) []dto.ImportOrderEventRequest {
-				return []dto.ImportOrderEventRequest{
+			seedDB: func(t *testing.T) []dto_api.ImportOrderEventRequest {
+				return []dto_api.ImportOrderEventRequest{
 					{OrderID: 99999, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"},
 				}
 			},
 			expectedStatus: 200,
 			validate: func(t *testing.T, respBody []byte) {
 				var body struct {
-					Data dto.ImportOrderEventsResponse `json:"data"`
+					Data dto_api.ImportOrderEventsResponse `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &body))
 				assert.Equal(t, 0, body.Data.Accepted)
@@ -130,8 +131,8 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 		},
 		{
 			name: "validation failure - multiple invalid fields",
-			seedDB: func(t *testing.T) []dto.ImportOrderEventRequest {
-				return []dto.ImportOrderEventRequest{
+			seedDB: func(t *testing.T) []dto_api.ImportOrderEventRequest {
+				return []dto_api.ImportOrderEventRequest{
 					{OrderID: -1, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"},
 					{OrderID: 1, Status: "unknown_status", EventAt: time.Now(), UpdatedBy: "admin"},
 					{OrderID: 1, Status: "paid", UpdatedBy: "admin"},
@@ -140,7 +141,7 @@ func TestIntegrationImportOrderEvents(t *testing.T) {
 			expectedStatus: 200,
 			validate: func(t *testing.T, respBody []byte) {
 				var body struct {
-					Data dto.ImportOrderEventsResponse `json:"data"`
+					Data dto_api.ImportOrderEventsResponse `json:"data"`
 				}
 				require.NoError(t, json.Unmarshal(respBody, &body))
 				assert.Equal(t, 0, body.Data.Accepted)
@@ -201,7 +202,7 @@ func TestIntegrationImportOrderEventsFullLifecycle(t *testing.T) {
 	transitions := []string{"paid", "packed", "shipped", "delivered"}
 
 	for _, status := range transitions {
-		reqBody := []dto.ImportOrderEventRequest{
+		reqBody := []dto_api.ImportOrderEventRequest{
 			{OrderID: order.ID, Status: status, EventAt: time.Now(), UpdatedBy: "admin"},
 		}
 		bodyBytes, _ := json.Marshal(reqBody)
@@ -215,7 +216,7 @@ func TestIntegrationImportOrderEventsFullLifecycle(t *testing.T) {
 		assert.Equal(t, 200, resp.StatusCode)
 
 		var body struct {
-			Data dto.ImportOrderEventsResponse `json:"data"`
+			Data dto_api.ImportOrderEventsResponse `json:"data"`
 		}
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
 
@@ -238,7 +239,7 @@ func TestIntegrationImportOrderEventsMixedBatch(t *testing.T) {
 	order2 := seedOrder(t, 2000, models.ORDER_STATUS_PAID)
 	order3 := seedOrder(t, 3000, models.ORDER_STATUS_CREATED)
 
-	reqBody := []dto.ImportOrderEventRequest{
+	reqBody := []dto_api.ImportOrderEventRequest{
 		{OrderID: order1.ID, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"},
 		{OrderID: order2.ID, Status: "paid", EventAt: time.Now(), UpdatedBy: "admin"},
 		{OrderID: order3.ID, Status: "delivered", EventAt: time.Now(), UpdatedBy: "admin"},
@@ -255,7 +256,7 @@ func TestIntegrationImportOrderEventsMixedBatch(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 
 	var body struct {
-		Data dto.ImportOrderEventsResponse `json:"data"`
+		Data dto_api.ImportOrderEventsResponse `json:"data"`
 	}
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
 

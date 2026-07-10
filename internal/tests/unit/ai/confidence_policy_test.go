@@ -1,7 +1,8 @@
 package ai
 
 import (
-	"main/internal/dto"
+	dto_ai "main/internal/dto/ai"
+	"main/utils/validates"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -54,7 +55,7 @@ func TestShouldFallback(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			output := &dto.ExceptionOutput{
+			output := &dto_ai.AIAnalysisResult{
 				ExceptionType:      "STUCK_ORDER",
 				Severity:           "HIGH",
 				LikelyReason:       "test reason",
@@ -62,7 +63,7 @@ func TestShouldFallback(t *testing.T) {
 				ConfidenceScore:    tc.confidence,
 			}
 
-			gotFallback, gotReason := ShouldFallback(output)
+			gotFallback, gotReason := validates.ShouldFallback(output)
 			assert.Equal(t, tc.wantFallback, gotFallback)
 			assert.Equal(t, tc.wantReason, gotReason)
 		})

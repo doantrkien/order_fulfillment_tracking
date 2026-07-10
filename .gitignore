@@ -27,3 +27,5 @@ ai/*
 !/internal/ai/
 !/internal/ai/knowledge/
 !/internal/ai/knowledge/*
+!/internal/dto/ai
+!/internal/tests/unit/ai

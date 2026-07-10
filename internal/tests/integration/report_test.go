@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"main/internal/dto"
+	dto_api "main/internal/dto/api"
 	"main/internal/models"
 	"net/http"
 	"net/http/httptest"
@@ -51,7 +51,7 @@ func TestIntegrationReport(t *testing.T) {
 			method: "POST",
 			path:   "/api/v1/reports/daily",
 			body: func() []byte {
-				b, _ := json.Marshal(dto.GetDailyReportRequest{Date: "2026-05-03"})
+				b, _ := json.Marshal(dto_api.GetDailyReportRequest{Date: "2026-05-03"})
 				return b
 			}(),
 			expectedStatus: 201,

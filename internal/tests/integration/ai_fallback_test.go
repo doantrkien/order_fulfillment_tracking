@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"main/internal/dto"
+	dto_ai "main/internal/dto/ai"
+	dto_api "main/internal/dto/api"
 	"main/internal/models"
 	"net/http/httptest"
 	"testing"
@@ -22,7 +23,7 @@ func resetFakeAIAdapter() {
 		testFakeAIAdapter.SimulateInvalidResponse = false
 		testFakeAIAdapter.SimulateLowConfidence = false
 		testFakeAIAdapter.SimulateConnectionError = false
-		testFakeAIAdapter.ExpectedOutput = dto.ExceptionOutput{}
+		testFakeAIAdapter.ExpectedOutput = dto_ai.AIAnalysisResult{}
 	}
 }
 
@@ -59,13 +60,11 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		order := seedOrderWithNote(t, 10000, models.ORDER_STATUS_CREATED, actionableNote, time.Now())
 
 		// Mock standard successful AI response (must use a valid exception type, e.g. STUCK_ORDER)
-		testFakeAIAdapter.ExpectedOutput = dto.ExceptionOutput{
+		testFakeAIAdapter.ExpectedOutput = dto_ai.AIAnalysisResult{
 			ExceptionType:      "STUCK_ORDER",
 			Severity:           "MEDIUM",
 			LikelyReason:       "AI thinks delivery is delayed due to weather",
 			InternalNextAction: "Check weather report and call driver",
-			Suggestion:         "Check weather report and call driver",
-			ShouldAlert:        false,
 			ConfidenceScore:    0.92,
 		}
 
@@ -82,9 +81,9 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resp.Body.Close()
 
 		var apiResp struct {
-			Status  string                       `json:"status"`
-			Message string                       `json:"message"`
-			Data    dto.AnalyzeExceptionResponse `json:"data"`
+			Status  string                           `json:"status"`
+			Message string                           `json:"message"`
+			Data    dto_api.AnalyzeExceptionResponse `json:"data"`
 		}
 		require.NoError(t, json.Unmarshal(respBody, &apiResp), "Response was: %s", string(respBody))
 
@@ -127,9 +126,9 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resp.Body.Close()
 
 		var apiResp struct {
-			Status  string                       `json:"status"`
-			Message string                       `json:"message"`
-			Data    dto.AnalyzeExceptionResponse `json:"data"`
+			Status  string                           `json:"status"`
+			Message string                           `json:"message"`
+			Data    dto_api.AnalyzeExceptionResponse `json:"data"`
 		}
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 
@@ -168,9 +167,9 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resp.Body.Close()
 
 		var apiResp struct {
-			Status  string                       `json:"status"`
-			Message string                       `json:"message"`
-			Data    dto.AnalyzeExceptionResponse `json:"data"`
+			Status  string                           `json:"status"`
+			Message string                           `json:"message"`
+			Data    dto_api.AnalyzeExceptionResponse `json:"data"`
 		}
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 
@@ -209,9 +208,9 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resp.Body.Close()
 
 		var apiResp struct {
-			Status  string                       `json:"status"`
-			Message string                       `json:"message"`
-			Data    dto.AnalyzeExceptionResponse `json:"data"`
+			Status  string                           `json:"status"`
+			Message string                           `json:"message"`
+			Data    dto_api.AnalyzeExceptionResponse `json:"data"`
 		}
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 
@@ -250,9 +249,9 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resp.Body.Close()
 
 		var apiResp struct {
-			Status  string                       `json:"status"`
-			Message string                       `json:"message"`
-			Data    dto.AnalyzeExceptionResponse `json:"data"`
+			Status  string                           `json:"status"`
+			Message string                           `json:"message"`
+			Data    dto_api.AnalyzeExceptionResponse `json:"data"`
 		}
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 
@@ -291,9 +290,9 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resp.Body.Close()
 
 		var apiResp struct {
-			Status  string                       `json:"status"`
-			Message string                       `json:"message"`
-			Data    dto.AnalyzeExceptionResponse `json:"data"`
+			Status  string                           `json:"status"`
+			Message string                           `json:"message"`
+			Data    dto_api.AnalyzeExceptionResponse `json:"data"`
 		}
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 

@@ -2,7 +2,7 @@ package services
 
 import (
 	"context"
-	"main/internal/dto"
+	dto_api "main/internal/dto/api"
 	"main/internal/models"
 	"main/internal/repositories"
 	"sort"
@@ -11,7 +11,7 @@ import (
 )
 
 type OrderEventService interface {
-	ImportOrderEvents(ctx context.Context, reqs []dto.ImportOrderEventRequest) (dto.ImportOrderEventsResponse, error)
+	ImportOrderEvents(ctx context.Context, reqs []dto_api.ImportOrderEventRequest) (dto_api.ImportOrderEventsResponse, error)
 }
 
 type orderEventService struct {
@@ -31,16 +31,16 @@ type batchResult struct {
 	err     error
 }
 
-func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto.ImportOrderEventRequest) (dto.ImportOrderEventsResponse, error) {
-	resp := dto.ImportOrderEventsResponse{
-		Errors: []dto.EventError{},
+func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto_api.ImportOrderEventRequest) (dto_api.ImportOrderEventsResponse, error) {
+	resp := dto_api.ImportOrderEventsResponse{
+		Errors: []dto_api.EventError{},
 	}
 
-	var validReqs []dto.ImportOrderEventRequest
+	var validReqs []dto_api.ImportOrderEventRequest
 	for _, req := range reqs {
 		if reason := validateBasic(req); reason != "" {
 			resp.Rejected++
-			resp.Errors = append(resp.Errors, dto.EventError{
+			resp.Errors = append(resp.Errors, dto_api.EventError{
 				OrderID: req.OrderID,
 				Status:  req.Status,
 				Reason:  reason,
@@ -54,7 +54,7 @@ func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto.Im
 		return resp, nil
 	}
 
-	orderGroups := make(map[int64][]dto.ImportOrderEventRequest)
+	orderGroups := make(map[int64][]dto_api.ImportOrderEventRequest)
 	for _, req := range validReqs {
 		orderGroups[req.OrderID] = append(orderGroups[req.OrderID], req)
 	}
@@ -112,14 +112,14 @@ func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto.Im
 				resp.Accepted++
 			case repositories.Rejected:
 				resp.Rejected++
-				resp.Errors = append(resp.Errors, dto.EventError{
+				resp.Errors = append(resp.Errors, dto_api.EventError{
 					OrderID: detail.OrderID,
 					Status:  detail.Status,
 					Reason:  detail.Reason,
 				})
 			case repositories.Duplicate:
 				resp.Duplicate++
-				resp.Errors = append(resp.Errors, dto.EventError{
+				resp.Errors = append(resp.Errors, dto_api.EventError{
 					OrderID: detail.OrderID,
 					Status:  detail.Status,
 					Reason:  detail.Reason,
@@ -131,7 +131,7 @@ func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto.Im
 	return resp, processingErr
 }
 
-func splitIntoBatches(orderGroups map[int64][]dto.ImportOrderEventRequest, numBatches int) [][]models.OrderEvent {
+func splitIntoBatches(orderGroups map[int64][]dto_api.ImportOrderEventRequest, numBatches int) [][]models.OrderEvent {
 	if numBatches <= 0 {
 		numBatches = 1
 	}
@@ -190,7 +190,7 @@ func splitIntoBatches(orderGroups map[int64][]dto.ImportOrderEventRequest, numBa
 	return batches
 }
 
-func validateBasic(req dto.ImportOrderEventRequest) string {
+func validateBasic(req dto_api.ImportOrderEventRequest) string {
 	if req.OrderID <= 0 {
 		return "order_id must be greater than 0"
 	}

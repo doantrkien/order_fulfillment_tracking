@@ -1,4 +1,4 @@
-package dto
+package dto_api
 
 type LoginRequest struct {
 	Email    string `json:"email"    validate:"required,email" example:"admin@order.com"`
