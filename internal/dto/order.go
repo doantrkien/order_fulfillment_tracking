@@ -40,4 +40,5 @@ type OrderQuery struct {
 	LimitItems int    `query:"limit"`
 	Status     string `query:"status"`
 	Date       string `query:"date"`
+	DriverID   int64  `query:"driver_id"`
 }

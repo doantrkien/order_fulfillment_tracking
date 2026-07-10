@@ -43,17 +43,22 @@ func (r *orderRepository) GetAllOrder(query dto.OrderQuery) ([]models.Order, int
 	offset := (query.PageNumber - 1) * query.LimitItems
 	db := r.db.Model(&models.Order{})
 
+	if query.DriverID != 0 {
+		db = db.Distinct("orders.*").
+			Joins("JOIN order_events ON order_events.order_id = orders.id").
+			Where("order_events.driver_id = ?", query.DriverID)
+	}
 	if query.Status != "" {
-		db = db.Where("current_status = ?", query.Status)
+		db = db.Where("orders.current_status = ?", query.Status)
 	}
 	if query.Date != "" {
-		db = db.Where("DATE(created_at) = ?", query.Date)
+		db = db.Where("DATE(orders.created_at) = ?", query.Date)
 	}
 
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	if err := db.Limit(query.LimitItems).Offset(offset).Order("created_at DESC").Find(&orders).Error; err != nil {
+	if err := db.Limit(query.LimitItems).Offset(offset).Order("orders.created_at DESC").Find(&orders).Error; err != nil {
 		return nil, 0, err
 	}
 

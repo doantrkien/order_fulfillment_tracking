@@ -33,6 +33,7 @@ func NewOrderHandler(orderService services.OrderService) *OrderHandler {
 // @Param status query string false "Order Status"
 // @Param customer_name query string false "Customer Name"
 // @Param ordered_at query string false "Ordered Date"
+// @Param driver_id query int false "Driver ID (admin only; drivers automatically see their own orders)"
 // @Param page query int false "Page number"
 // @Param limit query int false "Page size"
 // @Success 200 {object} response.PaginatedResponse{data=[]dto.OrderReponse}
@@ -57,6 +58,13 @@ func (h *OrderHandler) GetAllOrder(c fiber.Ctx) error {
 	}
 	if query.LimitItems > 100 {
 		query.LimitItems = 100
+	}
+
+	// Drivers can only see orders assigned to them — inject their user_id automatically.
+	role, _ := c.Locals("role").(string)
+	if role == "driver" {
+		userID, _ := c.Locals("user_id").(int64)
+		query.DriverID = userID
 	}
 
 	result, totalItems, err := h.orderService.GetAllOrder(query)
