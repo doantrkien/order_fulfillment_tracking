@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"runtime"
@@ -15,6 +16,7 @@ import (
 	routers "main/internal/routers/v1"
 	"main/internal/services"
 	"main/pkg/aiclient"
+	"main/pkg/embedding"
 	"main/pkg/postgresql"
 
 	_ "main/docs"
@@ -81,9 +83,22 @@ func main() {
 
 	aiRepo := repositories.NewAIRepository(db)
 
+	knowledgeRepo := repositories.NewKnowledgeRepository(db)
+
+	embeddingClient, embErr := embedding.NewEmbeddingClientFromEnv()
+	if embErr != nil {
+		log.Printf("[WARNING] Cannot initialize embedding client: %v — KB will use keyword matching", embErr)
+		embeddingClient = nil
+	}
+
+	kbStore := ai.NewKnowledgeStore(knowledgeRepo, embeddingClient)
+	if err := kbStore.Initialize(context.Background()); err != nil {
+		log.Printf("[WARNING] Cannot initialize KnowledgeStore: %v", err)
+	}
+
 	aiConfig := configs.LoadAIConfig()
 
-	aiAdapter := ai.NewAIAdapter(aiClient)
+	aiAdapter := ai.NewAIAdapter(aiClient, kbStore)
 
 	analyzer := ai.NewExceptionAnalyzer(aiAdapter, ai.ExceptionAnalyzerConfig{
 		AIEnabled: aiConfig.Enabled,

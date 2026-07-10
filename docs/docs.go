@@ -206,6 +206,37 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/ai/knowledge/reload": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reload knowledge entries from database to memory cache.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Admin"
+                ],
+                "summary": "Reload Knowledge Base from DB",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.ResponseStruct"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorInternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ai/orders/customer-update-draft": {
             "post": {
                 "security": [
@@ -1330,11 +1361,11 @@ const docTemplate = `{
             "properties": {
                 "email": {
                     "type": "string",
-                    "example": "admin@order.com"
+                    "example": "admin@demo.com"
                 },
                 "password": {
                     "type": "string",
-                    "example": "12345"
+                    "example": "123456"
                 }
             }
         },
@@ -1435,13 +1466,11 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "message": {
+                    "description": "Status  string ` + "`" + `json:\"status\"` + "`" + `",
                     "type": "string"
                 },
                 "run_id": {
                     "type": "integer"
-                },
-                "status": {
-                    "type": "string"
                 }
             }
         },

@@ -49,8 +49,14 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 		resetFakeAIAdapter()
 		cleanAll()
 
-		// Seed a fresh order
-		order := seedOrderWithNote(t, 10000, models.ORDER_STATUS_CREATED, "test", time.Now())
+		// Use an actionable driver note that passes isNoteActionable() gates:
+		// - at least 10 runes
+		// - at least 40% letter characters
+		// - at least 3 words
+		actionableNote := "Driver reports delivery is delayed due to bad weather conditions"
+
+		// Seed a fresh order with an actionable driver note
+		order := seedOrderWithNote(t, 10000, models.ORDER_STATUS_CREATED, actionableNote, time.Now())
 
 		// Mock standard successful AI response (must use a valid exception type, e.g. STUCK_ORDER)
 		testFakeAIAdapter.ExpectedOutput = dto.ExceptionOutput{
@@ -63,7 +69,7 @@ func TestIntegrationAIFallbackFlow(t *testing.T) {
 			ConfidenceScore:    0.92,
 		}
 
-		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString(`{"note": "test"}`))
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/ai/orders/%d/exception-analysis", order.ID), bytes.NewBufferString(`{"note": "Driver reports delivery is delayed due to bad weather conditions"}`))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 

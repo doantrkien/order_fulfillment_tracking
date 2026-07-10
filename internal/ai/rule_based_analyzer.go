@@ -53,11 +53,11 @@ var deliveryFailureLowKeywords = []string{
 type RuleFunc func(aiCtx *models.AIContext, now time.Time) *RuleBasedResult
 
 var rules = []RuleFunc{
+	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDuplicateEvents(ctx.Events) },
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult {
 		return detectInvalidTransitions(ctx.Events)
 	},
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectSkippedStatuses(ctx.Events) },
-	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDuplicateEvents(ctx.Events) },
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectStuckOrder(ctx, now) },
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectDeliveryFailure(ctx) },
 	func(ctx *models.AIContext, now time.Time) *RuleBasedResult { return detectCancellationAnomaly(ctx) },
@@ -221,7 +221,6 @@ func detectSkippedStatuses(events []models.AIEvent) *RuleBasedResult {
 		models.ORDER_STATUS_DELIVERED: 4,
 	}
 
-	// ---------- Rule 1: Detect skip inside a single event ----------
 	for _, e := range events {
 		if e.PreviousStatus == "" || e.NewStatus == "" {
 			continue
@@ -268,7 +267,6 @@ func detectSkippedStatuses(events []models.AIEvent) *RuleBasedResult {
 		}
 	}
 
-	// ---------- Rule 2: Detect missing event between consecutive events ----------
 	for i := 1; i < len(events); i++ {
 
 		prevEvent := events[i-1]
@@ -278,7 +276,6 @@ func detectSkippedStatuses(events []models.AIEvent) *RuleBasedResult {
 			continue
 		}
 
-		// trạng thái không nối tiếp nhau
 		if prevEvent.NewStatus != currEvent.PreviousStatus {
 
 			prevIdx, ok1 := statusIdx[prevEvent.NewStatus]
@@ -384,14 +381,10 @@ func detectStuckOrder(aiCtx *models.AIContext, now time.Time) *RuleBasedResult {
 	}
 }
 
-// cancellationSeverity maps the last meaningful status before cancellation to a severity level.
-// Per the state machine, only created → cancelled is a valid transition.
-// Cancellations from any other status are caught earlier as INVALID_TRANSITION.
 var cancellationSeverity = map[models.OrderStatus]string{
 	models.ORDER_STATUS_CREATED: "LOW",
 }
 
-// refundSeverity maps the last meaningful status before refund to a severity level.
 var refundSeverity = map[models.OrderStatus]string{
 	models.ORDER_STATUS_PAID:      "LOW",
 	models.ORDER_STATUS_PACKED:    "MEDIUM",
@@ -404,7 +397,6 @@ func detectCancellationAnomaly(aiCtx *models.AIContext) *RuleBasedResult {
 		return nil
 	}
 
-	// Find the status immediately before the cancel event.
 	var prevStatus models.OrderStatus
 	for _, e := range aiCtx.Events {
 		if e.NewStatus == models.ORDER_STATUS_CANCELLED {
@@ -448,7 +440,6 @@ func detectRefundAnomaly(aiCtx *models.AIContext) *RuleBasedResult {
 		return nil
 	}
 
-	// Find the status immediately before the refund event.
 	var prevStatus models.OrderStatus
 	for _, e := range aiCtx.Events {
 		if e.NewStatus == models.ORDER_STATUS_REFUNDED {

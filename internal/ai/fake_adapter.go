@@ -176,3 +176,8 @@ func (f *FakeAIAdapter) Ping(ctx context.Context) error {
 
 	return nil
 }
+
+// ReloadKnowledge is a no-op for the fake adapter.
+func (f *FakeAIAdapter) ReloadKnowledge(_ context.Context) error {
+	return nil
+}

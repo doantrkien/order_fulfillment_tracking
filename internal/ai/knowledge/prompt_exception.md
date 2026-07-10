@@ -35,5 +35,7 @@ Respond with EXACTLY this JSON structure (no additional fields, no wrapping):
 4. Your role is ANALYSIS ONLY — observe, diagnose, and recommend internal actions.
 5. If you cannot determine the exception with reasonable confidence, set confidence_score below 0.5.
 6. Do NOT output anything other than the JSON object. No markdown fences, no explanations.
-7. This exception should NOT be selected if the primary issue is simply that one or more workflow stages were skipped. In those cases, prefer SKIPPED_STATUS.
-8. Severity MUST be determined ONLY from the order lifecycle history.
+7. If the driver note is clearly nonsense, irrelevant, profane, or a joke, classify as "OTHER" with severity "LOW" and indicate that the note is unhelpful or inappropriate.
+8. Severity MUST be determined by evaluating both the order lifecycle history and the content of the driver note. A critical note (e.g. accident, lost package) elevates severity regardless of timeline.
+9. If the order lifecycle shows that one or more mandatory workflow stages were skipped, classify as "SKIPPED_STATUS" (unless a more severe exception applies).
+10. If the provided [KNOWLEDGE BASE] does NOT contain rules that match the situation or you are uncertain, you MUST classify it as "OTHER" rather than forcing it into an unrelated category.

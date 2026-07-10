@@ -35,6 +35,10 @@ func (m *mockAdapter) DraftCustomerUpdate(_ context.Context, _ dto.CustomerUpdat
 	return m.outputStr, m.err
 }
 
+func (m *mockAdapter) ReloadKnowledge(_ context.Context) error {
+	return nil
+}
+
 func newTestAIContext() *models.AIContext {
 	now := time.Now()
 	return &models.AIContext{
@@ -130,7 +134,7 @@ func TestExceptionAnalyzer_AIReturnsError(t *testing.T) {
 		AITimeout: 10 * time.Second,
 	})
 
-	aiCtx := newTestAIContextWithDriverNote("some note") // need driver note to trigger AI
+	aiCtx := newTestAIContextWithDriverNote("giao hàng thất bại vì hỏng xe giữa đường") // need actionable driver note to trigger AI
 	// result, err := analyzer.Analyze(context.Background(), aiCtx, "")
 	result, err := analyzer.Analyze(context.Background(), aiCtx)
 
@@ -149,7 +153,7 @@ func TestExceptionAnalyzer_AIReturnsTimeout(t *testing.T) {
 		AITimeout: 10 * time.Second,
 	})
 
-	aiCtx := newTestAIContextWithDriverNote("some note") // need driver note to trigger AI
+	aiCtx := newTestAIContextWithDriverNote("giao hàng thất bại vì hỏng xe giữa đường") // need actionable driver note to trigger AI
 	// result, err := analyzer.Analyze(context.Background(), aiCtx, "")
 	result, err := analyzer.Analyze(context.Background(), aiCtx)
 
@@ -169,7 +173,7 @@ func TestExceptionAnalyzer_AIReturnsInvalidResponse(t *testing.T) {
 		AITimeout: 10 * time.Second,
 	})
 
-	aiCtx := newTestAIContextWithDriverNote("some note") // need driver note to trigger AI
+	aiCtx := newTestAIContextWithDriverNote("giao hàng thất bại vì hỏng xe giữa đường") // need actionable driver note to trigger AI
 	// result, err := analyzer.Analyze(context.Background(), aiCtx, "")
 	result, err := analyzer.Analyze(context.Background(), aiCtx)
 
@@ -196,7 +200,7 @@ func TestExceptionAnalyzer_AIReturnsLowConfidence(t *testing.T) {
 		AITimeout: 10 * time.Second,
 	})
 
-	aiCtx := newTestAIContextWithDriverNote("some driver note") // need driver note to trigger AI
+	aiCtx := newTestAIContextWithDriverNote("giao hàng thất bại vì hỏng xe giữa đường") // need actionable driver note to trigger AI
 	// result, err := analyzer.Analyze(context.Background(), aiCtx, "test notes")
 	result, err := analyzer.Analyze(context.Background(), aiCtx)
 
@@ -235,7 +239,7 @@ func TestExceptionAnalyzer_FallbackProducesValidResult(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.FallbackUsed)
 	assert.Equal(t, FallbackReasonDisabled, result.FallbackReason)
-	assert.Equal(t, "SKIPPED_STATUS", result.ExceptionType)
+	assert.Equal(t, "INVALID_TRANSITION", result.ExceptionType)
 	assert.Equal(t, "CRITICAL", result.Severity)
 	assert.Equal(t, float64(1), result.ConfidenceScore)
 	assert.NotEmpty(t, result.LikelyReason)
@@ -290,7 +294,7 @@ func TestExceptionAnalyzer_NeverReturnsError_ForAIFailures(t *testing.T) {
 		})
 
 		// Must have a driver note so the AI path is exercised
-		aiCtx := newTestAIContextWithDriverNote("some note")
+		aiCtx := newTestAIContextWithDriverNote("giao hàng thất bại vì hỏng xe giữa đường")
 		// result, err := analyzer.Analyze(context.Background(), aiCtx, "")
 		result, err := analyzer.Analyze(context.Background(), aiCtx)
 		assert.NoError(t, err, "Analyze should not return error for: %v", testErr)
@@ -331,6 +335,96 @@ func TestBuildExceptionInput(t *testing.T) {
 	assert.Len(t, input.EventHistory, 1)
 	assert.Equal(t, "packed", input.EventHistory[0].FromStatus)
 	assert.Equal(t, "shipped", input.EventHistory[0].ToStatus)
+}
+
+func TestExceptionAnalyzer_StructuralRuleMatch(t *testing.T) {
+	// Setup structural exception context: Duplicate Event
+	now := time.Now()
+	aiCtx := &models.AIContext{
+		OrderID:       1001,
+		CreatedAt:     now.Add(-5 * time.Hour),
+		CurrentStatus: models.ORDER_STATUS_PAID,
+		TotalAmount:   100000,
+		Events: []models.AIEvent{
+			{
+				EventAt:        now.Add(-4 * time.Hour),
+				PreviousStatus: models.ORDER_STATUS_CREATED,
+				NewStatus:      models.ORDER_STATUS_PAID,
+				UpdatedBy:      "admin_1",
+			},
+			{
+				EventAt:        now.Add(-3 * time.Hour),
+				PreviousStatus: models.ORDER_STATUS_CREATED,
+				NewStatus:      models.ORDER_STATUS_PAID, // Duplicate event!
+				UpdatedBy:      "admin_1",
+				DriverNote:     func(s string) *string { return &s }("giao hàng thành công tận nơi"), // valid note but structural rules should skip AI
+			},
+		},
+	}
+
+	analyzer := NewExceptionAnalyzer(nil, ExceptionAnalyzerConfig{
+		AIEnabled: true,
+		AITimeout: 10 * time.Second,
+	})
+
+	result, err := analyzer.Analyze(context.Background(), aiCtx)
+	require.NoError(t, err)
+	assert.True(t, result.FallbackUsed)
+	assert.Equal(t, FallbackReasonStructuralRuleMatch, result.FallbackReason)
+	assert.Equal(t, "DUPLICATE_EVENT", result.ExceptionType)
+}
+
+func TestExceptionAnalyzer_SpamNotes(t *testing.T) {
+	tests := []struct {
+		name string
+		note string
+	}{
+		{"Too short", "ok"},
+		{"Too short 2", "đã giao"},
+		{"Low letter ratio", "123 456 7890"},
+		{"Low letter ratio 2", "!!! @@@ ###"},
+		{"Too few words", "xe hỏng"},
+		{"Too few words 2", "hàng mất"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			aiCtx := newTestAIContextWithDriverNote(tt.note)
+			analyzer := NewExceptionAnalyzer(nil, ExceptionAnalyzerConfig{
+				AIEnabled: true,
+				AITimeout: 10 * time.Second,
+			})
+
+			result, err := analyzer.Analyze(context.Background(), aiCtx)
+			require.NoError(t, err)
+			assert.True(t, result.FallbackUsed)
+			assert.Equal(t, FallbackReasonNoteNotActionable, result.FallbackReason)
+		})
+	}
+}
+
+func TestExceptionAnalyzer_ActionableNote_CallsAI(t *testing.T) {
+	// A valid, actionable note should pass the spam gate and call AI
+	adapter := &mockAdapter{
+		output: dto.ExceptionOutput{
+			ExceptionType:      "DELIVERY_FAILURE",
+			Severity:           "HIGH",
+			LikelyReason:       "Vehicle broke down",
+			InternalNextAction: "Reschedule",
+			ConfidenceScore:    0.9,
+		},
+		outputStr: `{"exception_type":"DELIVERY_FAILURE"}`,
+	}
+	analyzer := NewExceptionAnalyzer(adapter, ExceptionAnalyzerConfig{
+		AIEnabled: true,
+		AITimeout: 10 * time.Second,
+	})
+
+	aiCtx := newTestAIContextWithDriverNote("giao hàng thất bại vì hỏng xe giữa đường")
+	result, err := analyzer.Analyze(context.Background(), aiCtx)
+	require.NoError(t, err)
+	assert.False(t, result.FallbackUsed)
+	assert.Equal(t, "DELIVERY_FAILURE", result.ExceptionType)
 }
 
 

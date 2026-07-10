@@ -13,14 +13,16 @@ import (
 type AIAdapter interface {
 	AnalyzeException(ctx context.Context, input dto.ExceptionInput) (dto.ExceptionOutput, string, error)
 	DraftCustomerUpdate(ctx context.Context, input dto.CustomerUpdateDraftInput) (string, error)
+	ReloadKnowledge(ctx context.Context) error
 }
 
 type aiAdapter struct {
-	client aiclient.AIClient
+	client  aiclient.AIClient
+	kbStore *KnowledgeStore
 }
 
-func NewAIAdapter(client aiclient.AIClient) *aiAdapter {
-	return &aiAdapter{client: client}
+func NewAIAdapter(client aiclient.AIClient, kbStore *KnowledgeStore) *aiAdapter {
+	return &aiAdapter{client: client, kbStore: kbStore}
 }
 
 func (g *aiAdapter) AnalyzeException(
@@ -52,13 +54,18 @@ func (g *aiAdapter) AnalyzeException(
 
 	SanitizePromptContext(&promptCtx)
 
-	knowledge := ClassifyDriverNote(input.DriverNotes)
+	var knowledge []KnowledgeEntry
+	if g.kbStore != nil {
+		knowledge = g.kbStore.ClassifyDriverNote(ctx, input.DriverNotes)
+	} else {
+		knowledge = ClassifyDriverNote(input.DriverNotes)
+	}
 	prompt := BuildExceptionAnalysisPrompt(promptCtx, knowledge)
 
 	rawText, err := g.client.GenerateContent(ctx, prompt)
 	// fmt.Println("Raw Text Ai", rawText)
 	if err != nil {
-		return dto.ExceptionOutput{}, "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
+		return dto.ExceptionOutput{}, "", errs.ERR_AI_GENERATE_CONTENT_FAILED
 	}
 
 	var output dto.ExceptionOutput
@@ -79,8 +86,15 @@ func (g *aiAdapter) DraftCustomerUpdate(
 
 	rawText, err := g.client.GenerateContent(ctx, prompt)
 	if err != nil {
-		return "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
+		return "", errs.ERR_AI_GENERATE_CONTENT_FAILED
 	}
 
 	return rawText, nil
+}
+
+func (g *aiAdapter) ReloadKnowledge(ctx context.Context) error {
+	if g.kbStore != nil {
+		return g.kbStore.Reload(ctx)
+	}
+	return nil
 }

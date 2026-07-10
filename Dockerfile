@@ -4,22 +4,29 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 FROM golang:1.26-alpine3.23 AS builder
+
 WORKDIR /app
+
+RUN apk --no-cache add ca-certificates
 
 COPY --from=modules /go/pkg /go/pkg
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-w -s" -tags service -o /bin/app_service ./cmd/api
+    go build -ldflags="-w -s" -tags service -o /bin/app_service ./cmd/api
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-w -s" -tags migrate -o /bin/app_migrate ./cmd/migrate
+    go build -ldflags="-w -s" -tags migrate -o /bin/app_migrate ./cmd/migrate
 
 FROM scratch AS production
 
 WORKDIR /
+
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
 COPY --from=builder /app/configs /config
 COPY --from=builder /app/db/migrations /db/migrations
+COPY --from=builder /app/evaluation_cases.json /evaluation_cases.json
 
 COPY --from=builder /bin/app_service /app_service
 COPY --from=builder /bin/app_migrate /app_migrate

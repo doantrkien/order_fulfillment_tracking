@@ -212,10 +212,10 @@ definitions:
   dto.LoginRequest:
     properties:
       email:
-        example: admin@order.com
+        example: admin@demo.com
         type: string
       password:
-        example: "12345"
+        example: "123456"
         type: string
     required:
     - email
@@ -288,11 +288,10 @@ definitions:
   dto.TriggerEvaluationResponse:
     properties:
       message:
+        description: Status  string `json:"status"`
         type: string
       run_id:
         type: integer
-      status:
-        type: string
     type: object
   dto.UpdateStatusRequest:
     properties:
@@ -540,6 +539,25 @@ paths:
       summary: Trigger AI batch evaluation
       tags:
       - AI Evaluation
+  /api/v1/ai/knowledge/reload:
+    post:
+      description: Reload knowledge entries from database to memory cache.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.ResponseStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorInternalServerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Reload Knowledge Base from DB
+      tags:
+      - AI Admin
   /api/v1/ai/orders/{id}/exception-analysis:
     post:
       consumes:

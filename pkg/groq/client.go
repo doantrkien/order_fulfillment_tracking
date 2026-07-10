@@ -30,7 +30,7 @@ func NewClient() (*Client, error) {
 	fmt.Printf("[DEBUG][groq.NewClient] GROQ_API_KEY set: %v\n", apiKey != "")
 	if apiKey == "" {
 		fmt.Println("[DEBUG][groq.NewClient] ERROR: GROQ_API_KEY is empty")
-		return nil, errs.ERR_GEMINI_API_KEY_EMPTY
+		return nil, errs.ERR_AI_API_KEY_EMPTY
 	}
 
 	modelName := os.Getenv("GROQ_MODEL")
@@ -229,6 +229,6 @@ func (c *Client) GenerateContent(ctx context.Context, prompt string) (string, er
 		return text, nil
 	}
 
-	fmt.Println("[DEBUG][groq.GenerateContent] All attempts exhausted, returning ERR_GEMINI_GENERATE_CONTENT_FAILED")
-	return "", errs.ERR_GEMINI_GENERATE_CONTENT_FAILED
+	fmt.Println("[DEBUG][groq.GenerateContent] All attempts exhausted, returning ERR_AI_GENERATE_CONTENT_FAILED")
+	return "", errs.ERR_AI_GENERATE_CONTENT_FAILED
 }

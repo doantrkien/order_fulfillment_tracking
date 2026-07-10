@@ -4,7 +4,6 @@ import (
 	"main/internal/dto"
 )
 
-// CaseResult holds the evaluation result of a single test case.
 type CaseResult struct {
 	CaseID           string
 	IsPassed         bool
@@ -17,7 +16,6 @@ type CaseResult struct {
 	ErrorMessage     string
 }
 
-// RunMetrics holds the aggregated metrics for an entire evaluation batch.
 type RunMetrics struct {
 	TotalCases    int
 	PassedCases   int
@@ -27,8 +25,6 @@ type RunMetrics struct {
 	AvgLatencyMs  int
 }
 
-// CompareResult compares the ground truth (expected) with the actual AI analysis result.
-// It requires an exact match on both ExceptionType and Severity to be considered PASSED.
 func CompareResult(expected dto.EvaluationCase, actual *AnalysisResult) *CaseResult {
 	if actual == nil {
 		return &CaseResult{
@@ -56,7 +52,6 @@ func CompareResult(expected dto.EvaluationCase, actual *AnalysisResult) *CaseRes
 	}
 }
 
-// CalculateRunMetrics aggregates a slice of CaseResults into overall RunMetrics.
 func CalculateRunMetrics(results []*CaseResult) RunMetrics {
 	metrics := RunMetrics{
 		TotalCases: len(results),

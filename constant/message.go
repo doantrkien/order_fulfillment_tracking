@@ -24,15 +24,15 @@ var (
 
 	SUCCESS = MessageInfo{Code: "SUCCESS", Message: "Success"}
 
-	GEMINI_API_KEY_EMPTY = MessageInfo{Code: "GEMINI_API_KEY_EMPTY", Message: "Gemini API key is empty"}
+	AI_API_KEY_EMPTY = MessageInfo{Code: "AI_API_KEY_EMPTY", Message: "AI API key is empty"}
 
-	GEMINI_CLIENT_CREATE_FAILED = MessageInfo{Code: "GEMINI_CLIENT_CREATE_FAILED", Message: "Failed to create gemini client"}
+	AI_CLIENT_CREATE_FAILED = MessageInfo{Code: "AI_CLIENT_CREATE_FAILED", Message: "Failed to create AI client"}
 
-	GEMINI_CLIENT_TIMEOUT = MessageInfo{Code: "GEMINI_CLIENT_TIMEOUT", Message: "Gemini client timeout"}
+	AI_CLIENT_TIMEOUT = MessageInfo{Code: "AI_CLIENT_TIMEOUT", Message: "AI client timeout"}
 
-	GEMINI_CLIENT_RETRY_LIMIT = MessageInfo{Code: "GEMINI_CLIENT_RETRY_LIMIT", Message: "Gemini client retry limit"}
+	AI_CLIENT_RETRY_LIMIT = MessageInfo{Code: "AI_CLIENT_RETRY_LIMIT", Message: "AI client retry limit"}
 
-	GEMINI_GENERATE_CONTENT_FAILED = MessageInfo{Code: "GEMINI_GENERATE_CONTENT_FAILED", Message: "Gemini generate content failed"}
+	AI_GENERATE_CONTENT_FAILED = MessageInfo{Code: "AI_GENERATE_CONTENT_FAILED", Message: "AI generate content failed"}
 
 	AI_RESPONSE_VALIDATION_FAILED = MessageInfo{Code: "AI_RESPONSE_VALIDATION_FAILED", Message: "AI response validation failed"}
 	

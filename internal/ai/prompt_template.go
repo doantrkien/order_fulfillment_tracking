@@ -89,7 +89,7 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext, knowledge []Knowle
 
 	// 2. Build knowledge base string
 	if len(knowledge) == 0 {
-		knowledge = []KnowledgeEntry{kbStateMachine}
+		knowledge = ClassifyDriverNote("")
 	}
 	var kbSb strings.Builder
 	for _, kb := range knowledge {

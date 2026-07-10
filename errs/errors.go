@@ -21,11 +21,11 @@ var (
 	ERR_BATCH_TOO_LARGE    = &AppError{Err: constant.BATCH_TOO_LARGE, StatusCode: 400}
 	ERR_INVALID_CREDENTAIL = &AppError{Err: constant.INVALID_CREDENTAIL, StatusCode: 401}
 
-	ERR_GEMINI_API_KEY_EMPTY           = &AppError{Err: constant.GEMINI_API_KEY_EMPTY, StatusCode: 400}
-	ERR_GEMINI_CLIENT_CREATE_FAILED    = &AppError{Err: constant.GEMINI_CLIENT_CREATE_FAILED, StatusCode: 500}
-	ERR_GEMINI_CLIENT_TIMEOUT          = &AppError{Err: constant.GEMINI_CLIENT_TIMEOUT, StatusCode: 504}
-	ERR_GEMINI_CLIENT_RETRY_LIMIT      = &AppError{Err: constant.GEMINI_CLIENT_RETRY_LIMIT, StatusCode: 503}
-	ERR_GEMINI_GENERATE_CONTENT_FAILED = &AppError{Err: constant.GEMINI_GENERATE_CONTENT_FAILED, StatusCode: 500}
+	ERR_AI_API_KEY_EMPTY           = &AppError{Err: constant.AI_API_KEY_EMPTY, StatusCode: 400}
+	ERR_AI_CLIENT_CREATE_FAILED    = &AppError{Err: constant.AI_CLIENT_CREATE_FAILED, StatusCode: 500}
+	ERR_AI_CLIENT_TIMEOUT          = &AppError{Err: constant.AI_CLIENT_TIMEOUT, StatusCode: 504}
+	ERR_AI_CLIENT_RETRY_LIMIT      = &AppError{Err: constant.AI_CLIENT_RETRY_LIMIT, StatusCode: 503}
+	ERR_AI_GENERATE_CONTENT_FAILED = &AppError{Err: constant.AI_GENERATE_CONTENT_FAILED, StatusCode: 500}
 	ERR_AI_DISABLED                    = &AppError{Err: constant.AI_DISABLED, StatusCode: 503}
 	ERR_AI_INPUT_TOO_LARGE             = &AppError{Err: constant.AI_INPUT_TOO_LARGE, StatusCode: 400}
 	ERR_AI_PING_FAILED                 = &AppError{Err: constant.AI_PING_FAILED, StatusCode: 503}
