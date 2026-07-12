@@ -27,7 +27,6 @@ const formatDate = (dateString: string) =>
     hour: '2-digit', minute: '2-digit',
   });
 
-const EMPTY_CELL: React.CSSProperties = { padding: '32px 16px', textAlign: 'center', color: 'rgba(201,168,76,0.35)', fontStyle: 'italic', fontSize: '13px' };
 
 export const OrderTable: React.FC<OrderTableProps> = ({ orders, isLoading, pagination, onPageChange, baseRoute }) => {
   const navigate = useNavigate();

@@ -149,10 +149,10 @@ const injectStyles = () => {
     .emblem-sub {
       font-family: 'Inter', sans-serif;
       font-size: 11px;
-      font-weight: 300;
-      letter-spacing: 0.35em;
+      font-weight: 400;
+      letter-spacing: 0.30em;
       text-transform: uppercase;
-      color: rgba(201,168,76,0.45);
+      color: rgba(201,168,76,0.70);
       margin-top: 5px;
     }
 
@@ -268,18 +268,19 @@ const injectStyles = () => {
       font-size: 9px;
       letter-spacing: 0.30em;
       text-transform: uppercase;
-      color: rgba(201,168,76,0.28);
-      margin-bottom: 8px;
+      color: rgba(201,168,76,0.50);
+      margin-bottom: 10px;
     }
     .demo-hints p {
       font-family: 'Inter', sans-serif;
-      font-size: 11px;
-      color: rgba(201,168,76,0.25);
-      margin: 3px 0;
+      font-size: 12px;
+      color: rgba(232,213,163,0.55);
+      margin: 5px 0;
       letter-spacing: 0.02em;
     }
     .demo-hints span {
-      color: rgba(201,168,76,0.45);
+      color: rgba(240,192,64,0.80);
+      font-weight: 500;
     }
 
     .loading-screen {

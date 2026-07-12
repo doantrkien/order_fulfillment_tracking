@@ -153,8 +153,9 @@ export const GREEK_CSS = `
 }
 .greek-muted {
   font-family: 'Inter', sans-serif;
-  color: rgba(201,168,76,0.35);
+  color: rgba(232,213,163,0.55);
   font-size: 12px;
+  line-height: 1.5;
 }
 
 /* ---------- Divider ---------- */
@@ -303,7 +304,7 @@ export const GREEK_CSS = `
   font-weight: 600;
   letter-spacing: 0.25em;
   text-transform: uppercase;
-  color: rgba(201,168,76,0.50);
+  color: rgba(201,168,76,0.60);
   padding: 10px 16px;
   text-align: left;
 }
@@ -341,11 +342,12 @@ export const GREEK_CSS = `
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(201,168,76,0.45);
+  color: rgba(201,168,76,0.55);
   cursor: pointer;
   transition: color 0.2s, background 0.2s, border-color 0.2s;
   border-left: 2px solid transparent;
   text-decoration: none;
+  white-space: nowrap;
 }
 .greek-sidebar-item:hover {
   color: rgba(201,168,76,0.80);
@@ -392,7 +394,7 @@ export const GREEK_CSS = `
   font-size: 11px;
   letter-spacing: 0.35em;
   text-transform: uppercase;
-  color: rgba(201,168,76,0.45);
+  color: rgba(201,168,76,0.55);
   animation: greek-glow-pulse 2s ease-in-out infinite;
 }
 .greek-spinner {

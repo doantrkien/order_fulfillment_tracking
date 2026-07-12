@@ -3,58 +3,116 @@ import { useOrders } from '../../hooks/useOrders';
 import { DriverOrderCard } from '../../components/driver/DriverOrderCard';
 import { injectGreekStyles } from '../../styles/greekTheme';
 
+const IconTruck = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+    <path d="M1 4h11v9H1zM12 7h4l3 3v3h-7V7z" stroke="#C9A84C" strokeWidth="1.2" strokeLinejoin="round" fill="none" opacity="0.6" />
+    <circle cx="4.5" cy="14.5" r="1.5" stroke="#C9A84C" strokeWidth="1.1" fill="none" opacity="0.6" />
+    <circle cx="14.5" cy="14.5" r="1.5" stroke="#C9A84C" strokeWidth="1.1" fill="none" opacity="0.6" />
+  </svg>
+);
+
 export const DriverOrdersPage: React.FC = () => {
   const { orders, pagination, isLoading, setPage } = useOrders();
   useEffect(() => { injectGreekStyles(); }, []);
 
   return (
-    <div>
-      {/* Header */}
-      <div style={{ marginBottom: '28px' }}>
-        <h1 className="greek-heading" style={{ fontSize: '22px' }}>My Deliveries</h1>
-        <div className="greek-divider" style={{ marginTop: '12px' }}>
-          <div className="greek-divider-line" />
-          <div className="greek-divider-diamond" />
-          <div className="greek-divider-line" />
-        </div>
-      </div>
+    <div className="greek-bg">
+      <div className="greek-page">
 
-      {isLoading ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '32px' }}>
-          <span className="greek-spinner" />
-          <span className="greek-muted">Loading deliveries…</span>
+        {/* ── Page header ── */}
+        <div style={{ marginBottom: 36 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <IconTruck />
+            <h1 className="greek-heading" style={{ fontSize: 22, margin: 0 }}>My Deliveries</h1>
+          </div>
+          <p className="greek-muted">
+            {isLoading
+              ? 'Loading your assigned orders…'
+              : orders.length > 0
+                ? `${orders.length} order${orders.length !== 1 ? 's' : ''} assigned to you`
+                : 'No deliveries currently assigned'}
+          </p>
+          <div className="greek-divider" style={{ marginTop: 14 }}>
+            <div className="greek-divider-line" />
+            <div className="greek-divider-diamond" />
+            <div className="greek-divider-line" />
+          </div>
         </div>
-      ) : orders.length === 0 ? (
-        <div className="greek-card-static" style={{ padding: '40px', textAlign: 'center' }}>
-          <span className="greek-muted">No deliveries assigned.</span>
-        </div>
-      ) : (
-        <div>
-          {orders.map(order => (
-            <DriverOrderCard key={order.id} order={order} />
-          ))}
 
-          {pagination.totalPages > 1 && (
-            <div className="flex justify-between items-center mt-4 mb-8">
-              <button
-                className="greek-btn-secondary"
-                disabled={pagination.page <= 1}
-                onClick={() => setPage(pagination.page - 1)}
-              >
-                Previous
-              </button>
-              <span className="greek-muted">Page {pagination.page} / {pagination.totalPages}</span>
-              <button
-                className="greek-btn-secondary"
-                disabled={pagination.page >= pagination.totalPages}
-                onClick={() => setPage(pagination.page + 1)}
-              >
-                Next
-              </button>
+        {/* ── States ── */}
+        {isLoading ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '48px 0' }}>
+            <span className="greek-spinner" style={{ width: 20, height: 20, borderTopColor: '#C9A84C' }} />
+            <span className="greek-loading-text" style={{ fontSize: 11 }}>Loading deliveries…</span>
+          </div>
+
+        ) : orders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '64px 0' }}>
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style={{ margin: '0 auto 20px', display: 'block', opacity: 0.25 }}>
+              <rect x="4" y="14" width="28" height="22" rx="2" stroke="#C9A84C" strokeWidth="1.4" fill="none" />
+              <path d="M32 20h8l4 6v8h-12V20z" stroke="#C9A84C" strokeWidth="1.4" strokeLinejoin="round" fill="none" />
+              <circle cx="12" cy="37" r="3.5" stroke="#C9A84C" strokeWidth="1.2" fill="none" />
+              <circle cx="38" cy="37" r="3.5" stroke="#C9A84C" strokeWidth="1.2" fill="none" />
+            </svg>
+            <p className="greek-muted" style={{ fontSize: 14, margin: 0 }}>No deliveries assigned to you yet.</p>
+            <p className="greek-caption" style={{ marginTop: 8 }}>Check back later or contact your dispatcher.</p>
+          </div>
+
+        ) : (
+          <div>
+            {/* Order cards with stagger */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {orders.map((order, i) => (
+                <div
+                  key={order.id}
+                  style={{ animation: 'greek-fade-in 0.35s ease both', animationDelay: `${i * 55}ms` }}
+                >
+                  <DriverOrderCard order={order} />
+                </div>
+              ))}
             </div>
-          )}
-        </div>
-      )}
+
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginTop: 28,
+                padding: '16px 20px',
+                background: 'linear-gradient(160deg, #13131C 0%, #0D0D15 100%)',
+                border: '1px solid rgba(201,168,76,0.18)',
+                borderRadius: 4,
+              }}>
+                <button
+                  className="greek-btn-secondary"
+                  disabled={pagination.page <= 1}
+                  onClick={() => setPage(pagination.page - 1)}
+                >
+                  ← Previous
+                </button>
+
+                <div style={{ textAlign: 'center' }}>
+                  <span style={{ fontFamily: "'Cinzel', serif", fontSize: 11, fontWeight: 600, color: '#C9A84C', letterSpacing: '0.15em' }}>
+                    {pagination.page}
+                  </span>
+                  <span className="greek-caption" style={{ margin: '0 8px' }}>/</span>
+                  <span className="greek-caption">{pagination.totalPages}</span>
+                </div>
+
+                <button
+                  className="greek-btn-secondary"
+                  disabled={pagination.page >= pagination.totalPages}
+                  onClick={() => setPage(pagination.page + 1)}
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
     </div>
   );
 };
