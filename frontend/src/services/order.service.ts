@@ -21,6 +21,13 @@ export interface PaginatedOrders {
   total_pages: number;
 }
 
+export interface OrderStatsResponse {
+  totalOrders: number;
+  created: number;
+  delivered: number;
+  cancelled: number;
+}
+
 // In some standard response wrappers, data might be nested inside 'data' again or 'meta' might be top level.
 // Let's assume standard response structure from backend: { data: [...], page, limit, total_items }
 export interface ApiResponse<T> {
@@ -29,6 +36,11 @@ export interface ApiResponse<T> {
   page?: number;
   limit?: number;
   total_items?: number;
+  pagination?: {
+    current_page: number;
+    limit_items: number;
+    total_items: number;
+  };
 }
 
 export interface OrderQuery {
@@ -65,12 +77,16 @@ export const orderService = {
     
     const res = await api.get(url) as ApiResponse<Order[]>;
     
+    const totalItems = res.pagination?.total_items || res.total_items || 0;
+    const page = res.pagination?.current_page || res.page || query.page || 1;
+    const limit = res.pagination?.limit_items || res.limit || query.limit || 10;
+    
     return {
-      data: res.data,
-      page: res.page || query.page || 1,
-      limit: res.limit || query.limit || 10,
-      total_items: res.total_items || 0,
-      total_pages: Math.ceil((res.total_items || 0) / (res.limit || 10)),
+      data: res.data || [],
+      page: page,
+      limit: limit,
+      total_items: totalItems,
+      total_pages: Math.ceil(totalItems / limit) || 1,
     };
   },
 
@@ -86,5 +102,10 @@ export const orderService = {
 
   updateStatus: async (id: number, data: UpdateOrderStatusRequest): Promise<void> => {
     await api.patch(`/orders/${id}/status`, { data });
+  },
+
+  getOrderStats: async (): Promise<OrderStatsResponse> => {
+    const res = await api.get('/orders/stats') as ApiResponse<OrderStatsResponse>;
+    return res.data;
   },
 };

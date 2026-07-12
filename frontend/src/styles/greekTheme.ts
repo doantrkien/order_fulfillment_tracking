@@ -504,6 +504,167 @@ export const GREEK_CSS = `
   font-weight: 700;
   color: rgba(232,213,163,0.70);
 }
+
+/* ============================================================
+   LIGHT MODE OVERRIDES
+   Applied when <html data-theme="light">
+   All selectors use [data-theme="light"] prefix so they win
+   over the dark defaults with zero specificity tricks.
+============================================================ */
+
+/* Page background */
+[data-theme="light"] .greek-bg {
+  background: #F5F0E8;
+}
+[data-theme="light"] .greek-bg::before {
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%,   rgba(160,120,20,0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 30% at 50% 100%, rgba(160,120,20,0.05) 0%, transparent 70%);
+}
+[data-theme="light"] .greek-bg::after {
+  background-image:
+    linear-gradient(rgba(160,120,20,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(160,120,20,0.06) 1px, transparent 1px);
+}
+
+/* Main card */
+[data-theme="light"] .greek-card,
+[data-theme="light"] .greek-card-static {
+  background: linear-gradient(160deg, #FFFDF7 0%, #FDF8EE 60%, #FAF4E6 100%);
+  border-color: rgba(160,120,20,0.28);
+}
+[data-theme="light"] .greek-card-static:hover {
+  border-color: rgba(160,120,20,0.50);
+  box-shadow: 0 4px 20px rgba(160,120,20,0.10);
+}
+
+/* Corner ornaments */
+[data-theme="light"] .greek-card::before,
+[data-theme="light"] .greek-card::after,
+[data-theme="light"] .greek-card-corners::before,
+[data-theme="light"] .greek-card-corners::after {
+  border-color: #A07814;
+  opacity: 0.60;
+}
+
+/* Body text */
+[data-theme="light"] .greek-bg,
+[data-theme="light"] .greek-page {
+  color: #2C1F05;
+}
+
+/* Headings — shimmer stays, but gradient anchors darken */
+[data-theme="light"] .greek-heading {
+  background: linear-gradient(135deg, #8B6510 0%, #C9920A 40%, #6B4D08 60%, #8B6510 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+[data-theme="light"] .greek-subheading { color: #7A5C0A; }
+[data-theme="light"] .greek-label      { color: rgba(80,55,5,0.80); }
+[data-theme="light"] .greek-text       { color: rgba(44,31,5,0.85); }
+[data-theme="light"] .greek-muted      { color: rgba(44,31,5,0.58); }
+[data-theme="light"] .greek-caption    { color: rgba(90,60,5,0.52); }
+
+/* Divider */
+[data-theme="light"] .greek-divider-line {
+  background: linear-gradient(90deg, transparent, rgba(160,120,20,0.35), transparent);
+}
+[data-theme="light"] .greek-divider-diamond { background: #A07814; opacity: 0.60; }
+
+/* Inputs */
+[data-theme="light"] .greek-input,
+[data-theme="light"] .greek-select {
+  background: rgba(160,120,20,0.05);
+  border-color: rgba(160,120,20,0.22);
+  color: #1E1300;
+}
+[data-theme="light"] .greek-input::placeholder,
+[data-theme="light"] .greek-select::placeholder {
+  color: rgba(90,60,5,0.30);
+}
+[data-theme="light"] .greek-input:focus,
+[data-theme="light"] .greek-select:focus {
+  border-color: rgba(160,120,20,0.60);
+  background: rgba(160,120,20,0.08);
+  box-shadow: 0 0 0 3px rgba(160,120,20,0.09), inset 0 1px 2px rgba(0,0,0,0.04);
+}
+
+/* Buttons — gold fill is unchanged; only text color adjusts */
+[data-theme="light"] .greek-btn-primary { color: #1A0E00; }
+[data-theme="light"] .greek-btn-primary:hover:not(:disabled) {
+  box-shadow: 0 6px 24px rgba(160,120,20,0.28);
+}
+[data-theme="light"] .greek-btn-secondary {
+  color: rgba(100,70,5,0.85);
+  border-color: rgba(160,120,20,0.32);
+}
+[data-theme="light"] .greek-btn-secondary:hover:not(:disabled) {
+  border-color: rgba(160,120,20,0.65);
+  color: #5A3C05;
+  background: rgba(160,120,20,0.07);
+}
+[data-theme="light"] .greek-btn-danger {
+  color: rgba(160,40,40,0.85);
+  border-color: rgba(160,40,40,0.35);
+}
+[data-theme="light"] .greek-btn-danger:hover:not(:disabled) {
+  color: #9B2020;
+  border-color: rgba(160,40,40,0.65);
+  background: rgba(160,40,40,0.06);
+}
+
+/* Spinner inside primary button */
+[data-theme="light"] .greek-btn-primary .greek-spinner {
+  border-color: rgba(26,14,0,0.25);
+  border-top-color: #1A0E00;
+}
+
+/* Badges — keep same hues, just slightly more saturated */
+[data-theme="light"] .greek-badge-gold  { color: #7A5C00; border-color: rgba(160,120,0,0.40);  background: rgba(160,120,0,0.10); }
+[data-theme="light"] .greek-badge-green { color: #1E6B2E; border-color: rgba(30,107,46,0.35);  background: rgba(30,107,46,0.08); }
+[data-theme="light"] .greek-badge-red   { color: #9B2020; border-color: rgba(155,32,32,0.35);  background: rgba(155,32,32,0.07); }
+[data-theme="light"] .greek-badge-blue  { color: #1A4D80; border-color: rgba(26,77,128,0.35);  background: rgba(26,77,128,0.07); }
+[data-theme="light"] .greek-badge-muted { color: rgba(80,55,5,0.55); border-color: rgba(80,55,5,0.20); }
+
+/* Alerts */
+[data-theme="light"] .greek-alert-error   { background: rgba(180,50,50,0.07);  border-color: rgba(155,32,32,0.28);  color: #9B2020; }
+[data-theme="light"] .greek-alert-success { background: rgba(30,107,46,0.07);  border-color: rgba(30,107,46,0.28);  color: #1E6B2E; }
+[data-theme="light"] .greek-alert-info    { background: rgba(160,120,20,0.07); border-color: rgba(160,120,20,0.28); color: rgba(80,55,5,0.90); }
+[data-theme="light"] .greek-alert-warning { background: rgba(180,120,10,0.08); border-color: rgba(180,120,10,0.30); color: rgba(100,65,0,0.90); }
+
+/* Table */
+[data-theme="light"] .greek-table thead tr { border-bottom-color: rgba(160,120,20,0.22); }
+[data-theme="light"] .greek-table th       { color: rgba(80,55,5,0.65); }
+[data-theme="light"] .greek-table td       { color: rgba(44,31,5,0.80); border-bottom-color: rgba(160,120,20,0.09); }
+[data-theme="light"] .greek-table tbody tr:hover { background: rgba(160,120,20,0.04); }
+
+/* Sidebar */
+[data-theme="light"] .greek-sidebar {
+  background: linear-gradient(180deg, #F0EAD8 0%, #EDE5CF 100%);
+  border-right-color: rgba(160,120,20,0.18);
+}
+[data-theme="light"] .greek-sidebar-item       { color: rgba(80,55,5,0.55); }
+[data-theme="light"] .greek-sidebar-item:hover { color: rgba(80,55,5,0.85); background: rgba(160,120,20,0.07); border-left-color: rgba(160,120,20,0.40); }
+[data-theme="light"] .greek-sidebar-item.active{ color: #5A3C05; background: rgba(160,120,20,0.10); border-left-color: #A07814; }
+[data-theme="light"] .greek-sidebar-section    { color: rgba(80,55,5,0.35); }
+
+/* Navbar */
+[data-theme="light"] .greek-navbar {
+  background: rgba(245,240,232,0.92);
+  border-bottom-color: rgba(160,120,20,0.18);
+}
+
+/* Loading screen */
+[data-theme="light"] .greek-loading-screen { background: #F5F0E8; }
+[data-theme="light"] .greek-loading-text   { color: rgba(80,55,5,0.55); }
+[data-theme="light"] .greek-spinner        { border-color: rgba(160,120,20,0.20); border-top-color: #A07814; }
+
+/* Scrollbar */
+[data-theme="light"] ::-webkit-scrollbar-track { background: #EDE5CF; }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(160,120,20,0.28); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(160,120,20,0.50); }
 `;
 
 export const injectGreekStyles = () => {
@@ -523,3 +684,24 @@ export const injectGreekStyles = () => {
     document.head.appendChild(style);
   }
 };
+
+// ── Theme persistence key ─────────────────────────────────────────────────────
+export const THEME_KEY = 'greek-theme-mode';
+
+// ── Read current theme ────────────────────────────────────────────────────────
+export const getStoredTheme = (): 'light' | 'dark' =>
+  (localStorage.getItem(THEME_KEY) as 'light' | 'dark') || 'dark';
+
+// ── Apply theme to <html> (call this once on app boot in main.tsx / App.tsx) ──
+export const applyTheme = (mode: 'light' | 'dark') => {
+  localStorage.setItem(THEME_KEY, mode);
+  document.documentElement.setAttribute('data-theme', mode);
+};
+
+// ── Toggle helper ─────────────────────────────────────────────────────────────
+export const toggleTheme = () => {
+  const next = getStoredTheme() === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+  return next;
+};
+

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { aiService, type AIDraftResponse } from '../../services/ai.service';
 import { toast } from 'react-hot-toast';
+import { useTheme } from '../../hooks/useTheme';
 
 interface DraftPanelProps {
   orderId: number;
 }
 
 export const DraftPanel: React.FC<DraftPanelProps> = ({ orderId }) => {
+  const { isLight } = useTheme();
   const [channel, setChannel] = useState('email');
   const [tone, setTone] = useState('neutral');
   const [draft, setDraft] = useState<AIDraftResponse | null>(null);
@@ -64,21 +66,21 @@ export const DraftPanel: React.FC<DraftPanelProps> = ({ orderId }) => {
       {draft && (
         <div style={{
           padding: '16px 20px',
-          background: 'rgba(201,168,76,0.04)',
-          border: '1px solid rgba(201,168,76,0.18)',
+          background: isLight ? 'rgba(160,120,20,0.04)' : 'rgba(201,168,76,0.04)',
+          border: `1px solid ${isLight ? 'rgba(160,120,20,0.18)' : 'rgba(201,168,76,0.18)'}`,
           borderRadius: '2px',
         }}>
           <div className="flex justify-between items-center" style={{ marginBottom: '12px' }}>
             <span className="greek-badge greek-badge-gold">{(draft.channel || channel).toUpperCase()}</span>
             {draft.fallback_used && <span className="greek-badge greek-badge-muted">Rule-Based Fallback</span>}
           </div>
-          <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, color: 'rgba(232,213,163,0.80)', fontSize: '13px', fontFamily: "'Inter', sans-serif" }}>
+          <p className="greek-text" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: '13px', fontFamily: "'Inter', sans-serif" }}>
             {draft.draft_message}
           </p>
           <div style={{
             marginTop: '14px',
             paddingTop: '10px',
-            borderTop: '1px solid rgba(201,168,76,0.10)',
+            borderTop: `1px solid ${isLight ? 'rgba(160,120,20,0.10)' : 'rgba(201,168,76,0.10)'}`,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',

@@ -1,5 +1,5 @@
-import React from 'react';
 import type { AIExceptionAnalysis } from '../../services/ai.service';
+import { useTheme } from '../../hooks/useTheme';
 
 interface ExceptionPanelProps {
   analysis: AIExceptionAnalysis | null;
@@ -22,17 +22,17 @@ const FIELD_LABEL: React.CSSProperties = {
   fontWeight: 600,
   letterSpacing: '0.22em',
   textTransform: 'uppercase',
-  color: 'rgba(201,168,76,0.50)',
   marginBottom: '4px',
 };
 const FIELD_VALUE: React.CSSProperties = {
   fontFamily: "'Inter', sans-serif",
   fontSize: '13px',
-  color: 'rgba(232,213,163,0.85)',
   lineHeight: 1.5,
 };
 
 export const ExceptionPanel: React.FC<ExceptionPanelProps> = ({ analysis, isLoading, onTriggerAnalysis }) => {
+  const { isLight } = useTheme();
+
   if (isLoading) {
     return (
       <div className="greek-card-static mb-4" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '20px 24px' }}>
@@ -54,7 +54,7 @@ export const ExceptionPanel: React.FC<ExceptionPanelProps> = ({ analysis, isLoad
   }
 
   return (
-    <div className="greek-card-static mb-4" style={{ borderLeft: '3px solid rgba(201,168,76,0.45)' }}>
+    <div className="greek-card-static mb-4" style={{ borderLeft: `3px solid ${isLight ? 'rgba(160,120,20,0.45)' : 'rgba(201,168,76,0.45)'}` }}>
       <div className="flex justify-between items-center" style={{ marginBottom: '16px' }}>
         <h3 className="greek-subheading">AI Exception Insights</h3>
         <div className="flex items-center gap-2">
@@ -75,27 +75,27 @@ export const ExceptionPanel: React.FC<ExceptionPanelProps> = ({ analysis, isLoad
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
         <div>
-          <p style={FIELD_LABEL}>Exception Type</p>
-          <p style={FIELD_VALUE}>{analysis.exception_type}</p>
+          <p className="greek-label" style={FIELD_LABEL}>Exception Type</p>
+          <p className="greek-text" style={FIELD_VALUE}>{analysis.exception_type}</p>
         </div>
         <div>
-          <p style={FIELD_LABEL}>Severity</p>
+          <p className="greek-label" style={FIELD_LABEL}>Severity</p>
           <span className={getSeverityClass(analysis.severity)}>{analysis.severity.toUpperCase()}</span>
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
-          <p style={FIELD_LABEL}>Likely Reason</p>
-          <p style={FIELD_VALUE}>{analysis.likely_reason}</p>
+          <p className="greek-label" style={FIELD_LABEL}>Likely Reason</p>
+          <p className="greek-text" style={FIELD_VALUE}>{analysis.likely_reason}</p>
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
-          <p style={FIELD_LABEL}>Recommended Next Action</p>
-          <p style={FIELD_VALUE}>{analysis.internal_next_action}</p>
+          <p className="greek-label" style={FIELD_LABEL}>Recommended Next Action</p>
+          <p className="greek-text" style={FIELD_VALUE}>{analysis.internal_next_action}</p>
         </div>
       </div>
 
       <div style={{
         marginTop: '16px',
         paddingTop: '12px',
-        borderTop: '1px solid rgba(201,168,76,0.10)',
+        borderTop: `1px solid ${isLight ? 'rgba(160,120,20,0.10)' : 'rgba(201,168,76,0.10)'}`,
         display: 'flex',
         justifyContent: 'space-between',
       }}>

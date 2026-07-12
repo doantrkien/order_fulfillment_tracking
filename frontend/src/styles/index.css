@@ -92,6 +92,15 @@ body {
     linear-gradient(rgba(201,168,76,0.025) 1px, transparent 1px),
     linear-gradient(90deg, rgba(201,168,76,0.025) 1px, transparent 1px);
   background-size: 60px 60px;
+  transition: background-color 0.4s, color 0.4s, background-image 0.4s;
+}
+
+[data-theme="light"] body {
+  background-color: #F5F0E8;
+  color: #2C1F05;
+  background-image:
+    linear-gradient(rgba(160,120,20,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(160,120,20,0.06) 1px, transparent 1px);
 }
 
 a {

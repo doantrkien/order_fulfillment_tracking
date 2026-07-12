@@ -19,7 +19,7 @@ export const OrdersPage: React.FC = () => {
         <div style={{ marginBottom: 36 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
             <div>
-              <h1 className="greek-heading" style={{ fontSize: 22, margin: 0 }}>Orders Management</h1>
+              <h1 className="greek-heading" style={{ fontSize: 24, margin: 0 }}>Orders Management</h1>
               <p className="greek-muted" style={{ marginTop: 5 }}>
                 {pagination?.totalItems != null
                   ? `${pagination.totalItems} orders total`

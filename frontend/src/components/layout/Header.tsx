@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { injectGreekStyles } from '../../styles/greekTheme';
+import { ThemeToggle } from '../ui/ThemeToggle';
 
 export const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -13,13 +14,9 @@ export const Header: React.FC = () => {
       <div style={{ flex: 1 }} />
 
       <div className="flex items-center gap-4">
+        <ThemeToggle />
         <div className="flex items-center gap-2">
-          <span style={{
-            fontFamily: "'Inter', sans-serif",
-            fontSize: '13px',
-            color: 'rgba(232,213,163,0.70)',
-            letterSpacing: '0.02em',
-          }}>
+          <span className="greek-text" style={{ fontSize: '13px', letterSpacing: '0.02em' }}>
             {user.email}
           </span>
           <span className="greek-badge greek-badge-gold">{user.role}</span>

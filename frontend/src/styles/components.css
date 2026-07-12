@@ -137,6 +137,11 @@
   display: flex;
   min-height: 100vh;
   background: var(--obsidian);
+  transition: background 0.4s;
+}
+
+[data-theme="light"] .dashboard-layout {
+  background: #F5F0E8;
 }
 
 .dashboard-main {
@@ -359,7 +364,9 @@
 
 /* --- Modal --- */
 .greek-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 200; animation: greek-fade-in 0.2s ease; }
-.greek-modal { position: relative; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; margin: 0 20px; background: linear-gradient(160deg, #13131C 0%, #0D0D15 100%); border: 1px solid rgba(201,168,76,0.30); border-radius: 4px; animation: greek-fade-in 0.3s cubic-bezier(0.16,1,0.3,1); }
+[data-theme="light"] .greek-modal-overlay { background: rgba(255,255,255,0.75); }
+.greek-modal { position: relative; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; margin: 0 20px; background: linear-gradient(160deg, #13131C 0%, #0D0D15 100%); border: 1px solid rgba(201,168,76,0.30); border-radius: 4px; animation: greek-fade-in 0.3s cubic-bezier(0.16,1,0.3,1); transition: background 0.4s, border-color 0.4s; }
+[data-theme="light"] .greek-modal { background: linear-gradient(160deg, #FFFDF7 0%, #FAF4E6 100%); border-color: rgba(160,120,20,0.28); }
 .greek-modal-header { padding: 20px 28px; border-bottom: 1px solid rgba(201,168,76,0.15); display: flex; align-items: center; justify-content: space-between; }
 .greek-modal-body { padding: 24px 28px; }
 .greek-modal-footer { padding: 16px 28px; border-top: 1px solid rgba(201,168,76,0.12); display: flex; justify-content: flex-end; gap: 12px; }

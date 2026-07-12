@@ -4,9 +4,9 @@ import type { ApiResponse } from './order.service';
 export interface DailyReportResponse {
   date: string;
   total_orders: number;
-  total_created: number;
+  total_new: number;
   total_delivered: number;
-  total_canceled: number;
+  total_cancelled: number;
   total_refunded: number;
   total_income: number;
   avg_deliver_time: number;

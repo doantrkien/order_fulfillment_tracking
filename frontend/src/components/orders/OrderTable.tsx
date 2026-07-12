@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Order } from '../../services/order.service';
 import { StatusBadge } from './StatusBadge';
+import { useTheme } from '../../hooks/useTheme';
 
 interface PaginationData {
   page: number;
@@ -30,6 +31,7 @@ const formatDate = (dateString: string) =>
 
 export const OrderTable: React.FC<OrderTableProps> = ({ orders, isLoading, pagination, onPageChange, baseRoute }) => {
   const navigate = useNavigate();
+  const { isLight } = useTheme();
 
   if (isLoading) {
     return (
@@ -68,7 +70,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, isLoading, pagin
                 onClick={() => navigate(`${baseRoute}/${order.id}`)}
                 style={{ cursor: 'pointer', animationDelay: `${i * 40}ms` }}
               >
-                <td><span style={{ fontWeight: 600, color: '#C9A84C' }}>#{order.id}</span></td>
+                <td><span style={{ fontWeight: 600, color: isLight ? '#A07814' : '#C9A84C' }}>#{order.id}</span></td>
                 <td>
                   <div>{order.username}</div>
                   <div className="greek-muted">{order.user_phone}</div>
@@ -85,7 +87,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, isLoading, pagin
       {pagination.totalPages > 1 && (
         <div style={{
           padding: '14px 20px',
-          borderTop: '1px solid rgba(201,168,76,0.12)',
+          borderTop: `1px solid ${isLight ? 'rgba(160,120,20,0.12)' : 'rgba(201,168,76,0.12)'}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
