@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"main/internal/models"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -28,6 +29,8 @@ type ProcessResultDetail struct {
 type OrderEventRepository interface {
 	ProcessSingleEventTx(ctx context.Context, event models.OrderEvent) (ProcessResultDetail, error)
 	ProcessBatchEventsTx(ctx context.Context, events []models.OrderEvent) ([]ProcessResultDetail, error)
+	UpdateDriverNote(ctx context.Context, orderID int64, note string) error
+	DriverUpdateStatus(ctx context.Context, orderID int64, newStatus models.OrderStatus, updatedBy string) error
 }
 
 type orderEventRepository struct {
@@ -228,4 +231,66 @@ func (r *orderEventRepository) ProcessBatchEventsTx(ctx context.Context, events 
 	})
 
 	return results, err
+}
+
+// UpdateDriverNote cập nhật driver_note vào event mới nhất của đơn hàng.
+// Không tạo event mới, không thay đổi status.
+func (r *orderEventRepository) UpdateDriverNote(ctx context.Context, orderID int64, note string) error {
+	result := r.db.WithContext(ctx).Model(&models.OrderEvent{}).
+		Where("order_id = ?", orderID).
+		Order("event_at DESC").
+		Limit(1).
+		Update("driver_note", note)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("no event found for order")
+	}
+	return nil
+}
+
+// DriverUpdateStatus cho phép driver chuyển trạng thái đơn, nhưng chỉ khi đơn đang ở "packed".
+// Tạo một event mới trong transaction, đảm bảo tính toàn vẹn dữ liệu.
+func (r *orderEventRepository) DriverUpdateStatus(ctx context.Context, orderID int64, newStatus models.OrderStatus, updatedBy string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var order models.Order
+		if err := tx.Raw("SELECT id, current_status FROM orders WHERE id = ? FOR UPDATE", orderID).Scan(&order).Error; err != nil {
+			return err
+		}
+		if order.ID == 0 {
+			return errors.New("order not found")
+		}
+
+		// Guard: driver chỉ được update khi đơn đang ở "packed"
+		if !models.IsDriverAllowedFromStatus(order.CurrentStatus) {
+			return fmt.Errorf("driver cannot update order in '%s' status: order must be in 'packed' status", order.CurrentStatus)
+		}
+
+		// Guard: chỉ cho phép target status hợp lệ cho driver
+		if !models.IsDriverAllowedStatus(newStatus) {
+			return fmt.Errorf("driver is not allowed to set status to '%s'", newStatus)
+		}
+
+		// Validate transition theo business rules
+		if !models.IsValidTransition(order.CurrentStatus, newStatus) {
+			return fmt.Errorf("invalid transition from '%s' to '%s'", order.CurrentStatus, newStatus)
+		}
+
+		prevStatus := order.CurrentStatus
+		now := time.Now()
+
+		if err := tx.Model(&models.Order{}).Where("id = ?", orderID).Update("current_status", newStatus).Error; err != nil {
+			return err
+		}
+
+		event := models.OrderEvent{
+			OrderID:        orderID,
+			PreviousStatus: prevStatus,
+			NewStatus:      newStatus,
+			UpdatedBy:      updatedBy,
+			EventAt:        now,
+		}
+		return tx.Create(&event).Error
+	})
 }

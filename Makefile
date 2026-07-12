@@ -77,9 +77,6 @@ docker-logs:
 docker-build:
 	docker compose up -d --build
 
-
-
-
 # =========================
 # OLLAMA SETUP
 # =========================

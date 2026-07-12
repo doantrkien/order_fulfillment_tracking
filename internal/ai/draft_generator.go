@@ -95,8 +95,12 @@ func (dg *DraftGenerator) Generate(ctx context.Context, input dto.CustomerUpdate
 		return dg.fallback(input, FallbackReasonLowConfidence, durationMs, rawText), nil
 	}
 
+	finalDraft := output.CustomerUpdateDraft
+	finalDraft = strings.ReplaceAll(finalDraft, "[REDACTED_CUSTOMER_NAME]", input.CustomerName)
+	finalDraft = strings.ReplaceAll(finalDraft, "[REDACTED_SHIPPING_ADDRESS]", input.ShippingAddress)
+
 	return &DraftResult{
-		CustomerUpdateDraft: output.CustomerUpdateDraft,
+		CustomerUpdateDraft: finalDraft,
 		ConfidenceScore:     output.ConfidenceScore,
 		FallbackUsed:        false,
 		DurationMs:          durationMs,
@@ -174,7 +178,7 @@ func (dg *DraftGenerator) shouldCallAI(input dto.CustomerUpdateDraftInput) bool 
 }
 
 func buildFallbackDraftMessage(input dto.CustomerUpdateDraftInput) string {
-	return GetFallbackTemplate(input.ExceptionType, input.CustomerName, input.ShippingAddress, input.CurrentStatus)
+	return GetFallbackTemplate(input.ExceptionType, input.CustomerName, input.ShippingAddress, input.CurrentStatus, input.Channel)
 }
 
 func stripDraftFences(s string) string {

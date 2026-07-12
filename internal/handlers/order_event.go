@@ -7,6 +7,8 @@ import (
 	"main/internal/dto"
 	"main/internal/services"
 	"main/response"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -51,4 +53,82 @@ func (h *OrderEventHandler) ImportOrderEvents(c fiber.Ctx) error {
 		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, result)
 	}
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, result)
+}
+
+// UpdateDriverNote godoc
+// @Summary Driver updates a note on an order
+// @Description Allows a driver to add or update a note on the latest event of an order. Does NOT create a new event or change the order status.
+// @Tags Order Event
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID"
+// @Param request body dto.UpdateDriverNoteRequest true "Driver note"
+// @Success 200 {object} response.ResponseStruct
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 403 {object} response.ErrorUnauthorizedResponse
+// @Failure 404 {object} response.ErrorNotFoundResponse
+// @Security BearerAuth
+// @Router /api/v1/orders/{id}/driver-note [patch]
+func (h *OrderEventHandler) UpdateDriverNote(c fiber.Ctx) error {
+	orderID, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil || orderID <= 0 {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	}
+
+	var req dto.UpdateDriverNoteRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	}
+	if strings.TrimSpace(req.Note) == "" {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	}
+
+	ctx, cancel := context.WithTimeout(c.Context(), 10*time.Second)
+	defer cancel()
+
+	if err := h.orderEventService.UpdateDriverNote(ctx, orderID, req.Note); err != nil {
+		return response.ResponseError(c, errs.ERR_NOT_FOUND, nil)
+	}
+	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, nil)
+}
+
+// DriverUpdateStatus godoc
+// @Summary Driver updates order status (packed -> shipped only)
+// @Description Allows a driver to update the status of an order. The order MUST currently be in 'packed' status. Driver can only set it to 'shipped'.
+// @Tags Order Event
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID"
+// @Param request body dto.DriverUpdateStatusRequest true "New status"
+// @Success 200 {object} response.ResponseStruct
+// @Failure 400 {object} response.ErrorBadReqResponse
+// @Failure 403 {object} response.ErrorUnauthorizedResponse
+// @Security BearerAuth
+// @Router /api/v1/orders/{id}/status [patch]
+func (h *OrderEventHandler) DriverUpdateStatus(c fiber.Ctx) error {
+	orderID, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil || orderID <= 0 {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	}
+
+	var req dto.DriverUpdateStatusRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	}
+	if strings.TrimSpace(req.Status) == "" {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	}
+
+	updatedBy, _ := c.Locals("email").(string)
+	if updatedBy == "" {
+		updatedBy = "driver"
+	}
+
+	ctx, cancel := context.WithTimeout(c.Context(), 10*time.Second)
+	defer cancel()
+
+	if err := h.orderEventService.DriverUpdateStatus(ctx, orderID, req.Status, updatedBy); err != nil {
+		return response.ResponseError(c, errs.ERR_INVALID_INPUT, nil)
+	}
+	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, nil)
 }

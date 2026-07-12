@@ -15,6 +15,7 @@ type AnalyzeExceptionResponse struct {
 	InternalNextAction    string    `json:"internal_next_action"`
 	ConfidenceScore       float64   `json:"confidence_score"`
 	FallbackUsed          bool      `json:"fallback_used"`
+	FallbackReason        *string   `json:"fallback_reason"`
 	PromptTemplateVersion string    `json:"prompt_template_version"`
 	EvaluatedAt           time.Time `json:"evaluated_at"`
 }

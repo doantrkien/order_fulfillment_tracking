@@ -28,3 +28,5 @@ Respond with EXACTLY this JSON structure:
 1. NO internal technical jargon.
 2. NO false promises.
 3. DO NOT output anything other than the JSON object.
+4. If Channel is "email": You MUST STRICTLY start the message with a standard subject line (e.g. "Subject: Update on your order") followed by EXACTLY this greeting on a new line: "Dear [REDACTED_CUSTOMER_NAME],". This is mandatory for ALL tones. Do not use any other greeting.
+5. If Channel is "sms": MUST NOT include a Subject line. MUST NOT include any formal greetings like "Dear [REDACTED_CUSTOMER_NAME]" or "Hello". Start directly with the message content. Keep it extremely concise.

@@ -23,3 +23,11 @@ type ImportOrderEventsResponse struct {
 	Duplicate int          `json:"duplicate_count" example:"1"`
 	Errors    []EventError `json:"errors"`
 }
+
+type UpdateDriverNoteRequest struct {
+	Note string `json:"note" example:"Package was left at the reception desk"`
+}
+
+type DriverUpdateStatusRequest struct {
+	Status string `json:"status" example:"shipped"`
+}

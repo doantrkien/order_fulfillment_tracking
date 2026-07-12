@@ -261,6 +261,7 @@ func mapToResponse(e *models.AIException) *dto.AnalyzeExceptionResponse {
 		InternalNextAction:    e.InternalNextAction,
 		ConfidenceScore:       e.ConfidenceScore,
 		FallbackUsed:          e.FallbackUsed,
+		FallbackReason:        e.FallbackReason,
 		PromptTemplateVersion: e.PromptTemplateVersion,
 		EvaluatedAt:           e.EvaluatedAt,
 	}

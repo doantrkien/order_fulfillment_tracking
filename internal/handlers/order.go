@@ -206,11 +206,16 @@ func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
 		updatedBy = "system"
 	}
 
-	// Layer 2: Role-based status restriction
-	// Drivers can only set delivery-related statuses (shipped, delivered).
-	// Financial statuses (cancelled, refunded) are admin-only.
-	if role == "driver" && !models.IsDriverAllowedStatus(req.Status) {
-		return response.ResponseError(c, errs.ERR_UNAUTHORIZED, nil)
+	// Layer 2: Role-based status restriction for drivers
+	if role == "driver" {
+		// Driver can only set 'shipped' (not delivered, cancelled, etc.)
+		if !models.IsDriverAllowedStatus(req.Status) {
+			return response.ResponseError(c, errs.ERR_UNAUTHORIZED, nil)
+		}
+		// Driver can only update when the current order status is 'packed'
+		if err := h.orderService.ValidateDriverCanUpdateStatus(id); err != nil {
+			return response.ResponseError(c, errs.ERR_UNAUTHORIZED, nil)
+		}
 	}
 
 	// Derive driver_id based on caller role

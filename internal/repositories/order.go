@@ -75,6 +75,13 @@ func (r *orderRepository) GetOrderDetail(id int64) (*models.Order, error) {
 		return nil, err
 	}
 
+	// Fetch the driver_note from the latest event (if any)
+	var latestNote struct {
+		DriverNote *string
+	}
+	r.db.Raw(`SELECT driver_note FROM order_events WHERE order_id = ? ORDER BY event_at DESC LIMIT 1`, id).Scan(&latestNote)
+	order.LatestDriverNote = latestNote.DriverNote
+
 	return &order, nil
 }
 

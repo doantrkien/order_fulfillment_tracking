@@ -1,0 +1,39 @@
+.header {
+  height: 60px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-xl);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: linear-gradient(90deg, var(--color-surface) 0%, rgba(19,19,28,0.97) 100%);
+}
+
+.header-spacer {
+  flex: 1;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+}
+
+.user-info .user-email {
+  color: var(--color-text);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* Fix for old .text-text utility used in Header.tsx */
+.text-text { color: var(--color-text); }

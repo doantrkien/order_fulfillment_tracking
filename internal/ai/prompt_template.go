@@ -106,9 +106,11 @@ func BuildExceptionAnalysisPrompt(ctx ExceptionPromptContext, knowledge []Knowle
 
 func SanitizeCustomerUpdateDraftInput(input *dto.CustomerUpdateDraftInput) {
 	if input.CustomerName != "" {
+		input.BaselineDraft = strings.ReplaceAll(input.BaselineDraft, input.CustomerName, "[REDACTED_CUSTOMER_NAME]")
 		input.CustomerName = "[REDACTED_CUSTOMER_NAME]"
 	}
 	if input.ShippingAddress != "" {
+		input.BaselineDraft = strings.ReplaceAll(input.BaselineDraft, input.ShippingAddress, "[REDACTED_SHIPPING_ADDRESS]")
 		input.ShippingAddress = "[REDACTED_SHIPPING_ADDRESS]"
 	}
 }

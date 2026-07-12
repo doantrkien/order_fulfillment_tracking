@@ -33,13 +33,24 @@ func ValidateEvent(e *OrderEvent) error {
 	return nil
 }
 
-// driverAllowedStatuses defines which statuses a driver is permitted to set.
-// Financial/administrative statuses (cancelled, refunded) are admin-only.
+// driverAllowedStatuses defines which target statuses a driver is permitted to set.
+// Financial/administrative statuses (cancelled, refunded, delivered) are admin-only.
 var driverAllowedStatuses = map[OrderStatus]bool{
 	ORDER_STATUS_SHIPPED:   true,
 	ORDER_STATUS_DELIVERED: true,
 }
 
+// driverAllowedFromStatus defines which source statuses a driver is allowed to transition FROM.
+// Driver can only update an order that is currently in "packed" state.
+var driverAllowedFromStatus = map[OrderStatus]bool{
+	ORDER_STATUS_PACKED:  true,
+	ORDER_STATUS_SHIPPED: true,
+}
+
 func IsDriverAllowedStatus(status OrderStatus) bool {
 	return driverAllowedStatuses[status]
+}
+
+func IsDriverAllowedFromStatus(status OrderStatus) bool {
+	return driverAllowedFromStatus[status]
 }

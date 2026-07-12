@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/repositories"
@@ -12,6 +13,8 @@ import (
 
 type OrderEventService interface {
 	ImportOrderEvents(ctx context.Context, reqs []dto.ImportOrderEventRequest) (dto.ImportOrderEventsResponse, error)
+	UpdateDriverNote(ctx context.Context, orderID int64, note string) error
+	DriverUpdateStatus(ctx context.Context, orderID int64, newStatus string, updatedBy string) error
 }
 
 type orderEventService struct {
@@ -129,6 +132,17 @@ func (s *orderEventService) ImportOrderEvents(ctx context.Context, reqs []dto.Im
 	}
 
 	return resp, processingErr
+}
+
+func (s *orderEventService) UpdateDriverNote(ctx context.Context, orderID int64, note string) error {
+	return s.orderEventRepo.UpdateDriverNote(ctx, orderID, note)
+}
+
+func (s *orderEventService) DriverUpdateStatus(ctx context.Context, orderID int64, newStatus string, updatedBy string) error {
+	if !models.IsDriverAllowedStatus(models.OrderStatus(newStatus)) {
+		return fmt.Errorf("status '%s' is not allowed for driver", newStatus)
+	}
+	return s.orderEventRepo.DriverUpdateStatus(ctx, orderID, models.OrderStatus(newStatus), updatedBy)
 }
 
 func splitIntoBatches(orderGroups map[int64][]dto.ImportOrderEventRequest, numBatches int) [][]models.OrderEvent {

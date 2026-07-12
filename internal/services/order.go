@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
 	"main/internal/dto"
 	"main/internal/models"
 	"main/internal/repositories"
@@ -16,6 +17,7 @@ type OrderService interface {
 	IsDriverAssignedToOrder(orderID int64, driverID int64) (bool, error)
 	CreateOrder(req dto.OrderRequest, updatedBy string) (*dto.CreateOrderResponse, error)
 	UpdateOrderStatus(id int64, status, updatedBy string, driverID *int64) (*models.Order, error)
+	ValidateDriverCanUpdateStatus(orderID int64) error
 }
 
 type orderService struct {
@@ -77,6 +79,7 @@ func (s *orderService) GetOrder(id int64) (*dto.OrderReponse, error) {
 		ShippingAddress: userInfo.ShippingAddress,
 		Status:          order.CurrentStatus,
 		Ordered_at:      order.CreatedAt.In(loc),
+		DriverNote:      order.LatestDriverNote,
 	}
 
 	return &response, nil
@@ -123,4 +126,16 @@ func (s *orderService) UpdateOrderStatus(id int64, status, updatedBy string, dri
 	}
 
 	return newOrder, nil
+}
+
+// ValidateDriverCanUpdateStatus ensures the order is currently in 'packed' state before a driver can change it.
+func (s *orderService) ValidateDriverCanUpdateStatus(orderID int64) error {
+	order, err := s.orderRepo.GetOrderDetail(orderID)
+	if err != nil {
+		return err
+	}
+	if !models.IsDriverAllowedFromStatus(order.CurrentStatus) {
+		return fmt.Errorf("order must be in 'packed' or 'shipped' status to be updated by driver, current: %s", order.CurrentStatus)
+	}
+	return nil
 }

@@ -25,6 +25,7 @@ type OrderReponse struct {
 	ShippingAddress string             `json:"shipping_address" example:"123 Nguyen Hue"`
 	Status          models.OrderStatus `json:"status" example:"paid"`
 	Ordered_at      time.Time          `json:"ordered_at" example:"2026-05-01T00:00:00Z"`
+	DriverNote      *string            `json:"driver_note,omitempty" example:"Left at reception"`
 }
 type CreateOrderResponse struct {
 	ID              int64              `json:"id" example:"1"`
