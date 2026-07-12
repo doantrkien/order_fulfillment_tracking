@@ -43,3 +43,10 @@ type OrderQuery struct {
 	Date       string `query:"date"`
 	DriverID   int64  `query:"driver_id"`
 }
+
+type OrderStatsResponse struct {
+	TotalOrders    int64 `json:"totalOrders"`
+	TotalCreated   int64 `json:"created"`
+	TotalDelivered int64 `json:"delivered"`
+	TotalCancelled int64 `json:"cancelled"`
+}

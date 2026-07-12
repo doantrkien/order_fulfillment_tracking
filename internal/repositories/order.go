@@ -17,6 +17,7 @@ type OrderRepository interface {
 	IsDriverAssignedToOrder(orderID int64, driverID int64) (bool, error)
 	CreateOrder(order models.Order, updatedBy string) (*models.Order, error)
 	UpdateOrderStatus(id int64, status, updatedBy string, driverID *int64) (*models.Order, error)
+	GetOrderStats() (*dto.OrderStatsResponse, error)
 }
 
 type orderRepository struct {
@@ -165,4 +166,22 @@ func (r *orderRepository) UpdateOrderStatus(id int64, status, updatedBy string, 
 		return nil, err
 	}
 	return &updatedOrder, nil
+}
+
+func (r *orderRepository) GetOrderStats() (*dto.OrderStatsResponse, error) {
+	var stats dto.OrderStatsResponse
+	err := r.db.Raw(`
+		SELECT 
+			COUNT(id) AS total_orders,
+			COUNT(CASE WHEN current_status = 'created' THEN 1 END) AS total_created,
+			COUNT(CASE WHEN current_status = 'delivered' THEN 1 END) AS total_delivered,
+			COUNT(CASE WHEN current_status = 'cancelled' THEN 1 END) AS total_cancelled
+		FROM orders
+	`).Scan(&stats).Error
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return &stats, nil
 }

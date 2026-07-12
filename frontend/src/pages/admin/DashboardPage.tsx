@@ -4,35 +4,13 @@ import { StatusBadge } from '../../components/orders/StatusBadge';
 import { useNavigate } from 'react-router-dom';
 import { injectGreekStyles } from '../../styles/greekTheme';
 
-const IconTotal = () => (
-  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-    <rect x="3" y="2" width="16" height="18" rx="1.5" stroke="#C9A84C" strokeWidth="1.2" fill="none" opacity="0.6" />
-    <path d="M7 7h8M7 11h8M7 15h5" stroke="#C9A84C" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
-  </svg>
-);
-const IconCreated = () => (
-  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-    <circle cx="11" cy="11" r="8.5" stroke="#80B4E8" strokeWidth="1.2" fill="none" opacity="0.6" />
-    <path d="M11 7v8M7 11h8" stroke="#80B4E8" strokeWidth="1.5" strokeLinecap="round" opacity="0.7" />
-  </svg>
-);
-const IconDelivered = () => (
-  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-    <path d="M4 11l5 5L18 7" stroke="#7EC88A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
-  </svg>
-);
-const IconCancelled = () => (
-  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-    <circle cx="11" cy="11" r="8.5" stroke="#E88080" strokeWidth="1.2" fill="none" opacity="0.6" />
-    <path d="M8 8l6 6M14 8l-6 6" stroke="#E88080" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
-  </svg>
-);
+
 
 const STAT_CONFIGS = [
-  { key: 'totalOrders', label: 'Total Orders', icon: <IconTotal />, color: '#F0C040', border: 'rgba(201,168,76,0.25)', bg: 'rgba(201,168,76,0.05)' },
-  { key: 'created', label: 'Recent Created', icon: <IconCreated />, color: '#80B4E8', border: 'rgba(128,180,232,0.25)', bg: 'rgba(128,180,232,0.05)' },
-  { key: 'delivered', label: 'Recent Delivered', icon: <IconDelivered />, color: '#7EC88A', border: 'rgba(126,200,138,0.25)', bg: 'rgba(126,200,138,0.05)' },
-  { key: 'cancelled', label: 'Recent Cancelled', icon: <IconCancelled />, color: '#E88080', border: 'rgba(232,128,128,0.25)', bg: 'rgba(232,128,128,0.05)' },
+  { key: 'totalOrders', label: 'Total Orders', color: '#F0C040', border: 'rgba(201,168,76,0.25)', bg: 'rgba(201,168,76,0.05)' },
+  { key: 'created', label: 'Recent Created', color: '#80B4E8', border: 'rgba(128,180,232,0.25)', bg: 'rgba(128,180,232,0.05)' },
+  { key: 'delivered', label: 'Recent Delivered', color: '#7EC88A', border: 'rgba(126,200,138,0.25)', bg: 'rgba(126,200,138,0.05)' },
+  { key: 'cancelled', label: 'Recent Cancelled', color: '#E88080', border: 'rgba(232,128,128,0.25)', bg: 'rgba(232,128,128,0.05)' },
 ] as const;
 
 export const DashboardPage: React.FC = () => {
@@ -118,12 +96,11 @@ export const DashboardPage: React.FC = () => {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                {s.icon}
                 <span style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(201,168,76,0.60)' }}>
                   {s.label}
                 </span>
               </div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 32, fontWeight: 600, color: s.color, lineHeight: 1, letterSpacing: '-0.02em' }}>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 32, fontWeight: 600, color: s.color, lineHeight: 1 }}>
                 {stats[s.key]}
               </div>
               <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${s.color}33, transparent)`, borderRadius: '0 0 4px 4px' }} />

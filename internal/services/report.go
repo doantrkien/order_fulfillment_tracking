@@ -25,11 +25,25 @@ func NewReportService(reportRepo repositories.ReportRepository) ReportService {
 }
 
 func (s *reportService) GetDailyReport(date time.Time) (*models.Report, error) {
+	loc := time.FixedZone("Asia/Ho_Chi_Minh", 7*3600)
+	now := time.Now().In(loc)
+	reqDateStr := date.Format("2006-01-02")
+
+	// Always generate dynamically if the requested date is today
+	if reqDateStr == now.Format("2006-01-02") {
+		v, err, _ := s.sf.Do(reqDateStr, func() (interface{}, error) {
+			return s.CreateDailyReport(date)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return v.(*models.Report), nil
+	}
+
 	report, err := s.reportRepo.GetDailyReport(date)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			key := date.Format("2006-01-02")
-			v, err, _ := s.sf.Do(key, func() (interface{}, error) {
+			v, err, _ := s.sf.Do(reqDateStr, func() (interface{}, error) {
 				return s.CreateDailyReport(date)
 			})
 			if err != nil {

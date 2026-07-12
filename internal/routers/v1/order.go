@@ -13,6 +13,7 @@ func SetupOrderRouter(app *fiber.App, orderHandler *handlers.OrderHandler) {
 	)
 
 	order.Get("", middlewares.Authorize([]string{"admin", "driver"}), orderHandler.GetAllOrder)
+	order.Get("/stats", middlewares.Authorize([]string{"admin"}), orderHandler.GetOrderStats)
 	order.Get("/:id", middlewares.Authorize([]string{"admin", "driver"}), orderHandler.GetOrderDetail)
 	order.Post("", middlewares.Authorize([]string{"admin"}), orderHandler.CreateOrder)
 	order.Patch("/:id/status", middlewares.Authorize([]string{"admin", "driver"}), orderHandler.UpdateOrderStatus)

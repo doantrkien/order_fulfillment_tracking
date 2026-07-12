@@ -18,6 +18,7 @@ type OrderService interface {
 	CreateOrder(req dto.OrderRequest, updatedBy string) (*dto.CreateOrderResponse, error)
 	UpdateOrderStatus(id int64, status, updatedBy string, driverID *int64) (*models.Order, error)
 	ValidateDriverCanUpdateStatus(orderID int64) error
+	GetOrderStats() (*dto.OrderStatsResponse, error)
 }
 
 type orderService struct {
@@ -138,4 +139,8 @@ func (s *orderService) ValidateDriverCanUpdateStatus(orderID int64) error {
 		return fmt.Errorf("order must be in 'packed' or 'shipped' status to be updated by driver, current: %s", order.CurrentStatus)
 	}
 	return nil
+}
+
+func (s *orderService) GetOrderStats() (*dto.OrderStatsResponse, error) {
+	return s.orderRepo.GetOrderStats()
 }

@@ -2,49 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { reportService, type DailyReportResponse } from '../../services/report.service';
 import { injectGreekStyles } from '../../styles/greekTheme';
 
-// ── Stat card icon SVGs ──────────────────────────────────────────────────────
-const IconOrders = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <rect x="3" y="2" width="14" height="16" rx="1" stroke="#C9A84C" strokeWidth="1.2" fill="none" opacity="0.6" />
-    <path d="M6 7h8M6 10h8M6 13h5" stroke="#C9A84C" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
-  </svg>
-);
-const IconIncome = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <circle cx="10" cy="10" r="7.5" stroke="#7EC88A" strokeWidth="1.2" fill="none" opacity="0.6" />
-    <path d="M10 6v8M7.5 8.5C7.5 7.4 8.6 6.5 10 6.5s2.5.9 2.5 2-.9 1.5-2.5 1.5-2.5.9-2.5 2 1.1 2 2.5 2 2.5-.9 2.5-2" stroke="#7EC88A" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
-  </svg>
-);
-const IconDelivered = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <path d="M3 10l5 5 9-9" stroke="#7EC88A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
-  </svg>
-);
-const IconCancelled = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <circle cx="10" cy="10" r="7.5" stroke="#E88080" strokeWidth="1.2" fill="none" opacity="0.6" />
-    <path d="M7 7l6 6M13 7l-6 6" stroke="#E88080" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
-  </svg>
-);
-const IconRefunded = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <path d="M4 10a6 6 0 0 1 6-6 6 6 0 0 1 4.24 1.76" stroke="#F0C040" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.6" />
-    <path d="M4 5v5h5" stroke="#F0C040" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
-    <path d="M16 10a6 6 0 0 1-10.24 4.24" stroke="#F0C040" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.6" />
-  </svg>
-);
-const IconTime = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <circle cx="10" cy="10" r="7.5" stroke="#80B4E8" strokeWidth="1.2" fill="none" opacity="0.6" />
-    <path d="M10 6v4l2.5 2.5" stroke="#80B4E8" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
-  </svg>
-);
-
 // ── Stat configs ─────────────────────────────────────────────────────────────
 type StatConfig = {
   label: string;
   key: keyof DailyReportResponse | 'avg_deliver_time_fmt';
-  icon: React.ReactNode;
   valueColor: string;
   borderColor: string;
   bgColor: string;
@@ -54,7 +15,6 @@ const STATS: StatConfig[] = [
   {
     label: 'Total Orders',
     key: 'total_orders',
-    icon: <IconOrders />,
     valueColor: '#F0C040',
     borderColor: 'rgba(201,168,76,0.25)',
     bgColor: 'rgba(201,168,76,0.05)',
@@ -62,7 +22,6 @@ const STATS: StatConfig[] = [
   {
     label: 'Total Income',
     key: 'total_income',
-    icon: <IconIncome />,
     valueColor: '#7EC88A',
     borderColor: 'rgba(126,200,138,0.25)',
     bgColor: 'rgba(126,200,138,0.05)',
@@ -70,7 +29,6 @@ const STATS: StatConfig[] = [
   {
     label: 'Delivered',
     key: 'total_delivered',
-    icon: <IconDelivered />,
     valueColor: '#7EC88A',
     borderColor: 'rgba(126,200,138,0.25)',
     bgColor: 'rgba(126,200,138,0.05)',
@@ -78,7 +36,6 @@ const STATS: StatConfig[] = [
   {
     label: 'Cancelled',
     key: 'total_canceled',
-    icon: <IconCancelled />,
     valueColor: '#E88080',
     borderColor: 'rgba(232,128,128,0.25)',
     bgColor: 'rgba(232,128,128,0.05)',
@@ -86,7 +43,6 @@ const STATS: StatConfig[] = [
   {
     label: 'Refunded',
     key: 'total_refunded',
-    icon: <IconRefunded />,
     valueColor: '#F0C040',
     borderColor: 'rgba(240,192,64,0.25)',
     bgColor: 'rgba(240,192,64,0.05)',
@@ -94,7 +50,6 @@ const STATS: StatConfig[] = [
   {
     label: 'Avg Deliver Time',
     key: 'avg_deliver_time_fmt',
-    icon: <IconTime />,
     valueColor: '#80B4E8',
     borderColor: 'rgba(128,180,232,0.25)',
     bgColor: 'rgba(128,180,232,0.05)',
@@ -231,7 +186,6 @@ export const DailyReportPage: React.FC = () => {
                 >
                   {/* Icon + label row */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                    {stat.icon}
                     <span style={{
                       fontFamily: "'Cinzel', serif",
                       fontSize: 9,
@@ -246,11 +200,10 @@ export const DailyReportPage: React.FC = () => {
 
                   {/* Value */}
                   <div style={{
-                    fontFamily: "'Inter', sans-serif",
-                    fontSize: stat.key === 'total_income' ? 20 : 28,
+                    fontFamily: "'Cinzel', serif",
+                    fontSize: 28,
                     fontWeight: 600,
                     color: stat.valueColor,
-                    letterSpacing: '-0.01em',
                     lineHeight: 1,
                   }}>
                     {getStatValue(stat, report)}

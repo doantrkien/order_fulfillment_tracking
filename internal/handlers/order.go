@@ -240,3 +240,22 @@ func (h *OrderHandler) UpdateOrderStatus(c fiber.Ctx) error {
 	}
 	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, nil)
 }
+
+// GetOrderStats godoc
+// @Summary Get Order Statistics
+// @Description Get statistics for dashboard (total, created, delivered, cancelled)
+// @Tags Order
+// @Accept json
+// @Produce json
+// @Success 200 {object} response.SuccessResponse{data=dto.OrderStatsResponse}
+// @Failure 500 {object} response.ErrorInternalServerErrorResponse
+// @Security BearerAuth
+// @Router /api/v1/orders/stats [get]
+func (h *OrderHandler) GetOrderStats(c fiber.Ctx) error {
+	stats, err := h.orderService.GetOrderStats()
+	if err != nil {
+		return response.ResponseError(c, errs.ERR_INTERNAL_SERVER, nil)
+	}
+
+	return response.ResponseSuccess(c, 200, constant.SUCCESS.Message, stats)
+}
