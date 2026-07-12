@@ -21,9 +21,6 @@ seed/
 slide.html
 plan.md
 
-ai
-ai/*
-
 !/internal/ai/
 !/internal/ai/knowledge/
 !/internal/ai/knowledge/*
