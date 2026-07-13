@@ -8,18 +8,18 @@ interface NoteModalProps {
 
 const COMMON_ISSUES = [
   { label: '— Select a common issue —', value: '' },
-  { label: '🚫 Customer not at address', value: 'Customer is not present at the delivery address.' },
-  { label: '📞 Unable to contact customer', value: 'Unable to reach the customer by phone.' },
-  { label: '🏠 Incorrect / hard to find address', value: 'The delivery address is incorrect or difficult to locate.' },
-  { label: '🌧️ Bad weather conditions', value: 'Delivery delayed/affected due to severe weather conditions.' },
-  { label: '🚦 Heavy traffic / traffic jam', value: 'Delayed due to heavy traffic, delivery will be later than scheduled.' },
-  { label: '📦 Damaged package in transit', value: 'Package found to be damaged during transport.' },
-  { label: '🔒 No access to secure area/building', value: 'Unable to access the building or secure area due to access control.' },
-  { label: '⏰ Customer requested to reschedule', value: 'Customer requested to reschedule the delivery to a different time.' },
-  { label: '🔄 Customer refused delivery', value: 'Customer refused to accept the package, support contact required.' },
-  { label: '💳 Insufficient funds for COD', value: 'Customer has insufficient cash/payment method for Cash on Delivery.' },
-  { label: '🚗 Vehicle breakdown / issue', value: 'Delivery vehicle encountered mechanical issues/breakdown.' },
-  { label: '📍 Wrong package / order mismatch', value: 'Incorrect package or order mismatch detected, needs verification.' },
+  { label: 'Customer not at address', value: 'Customer is not present at the delivery address.' },
+  { label: 'Unable to contact customer', value: 'Unable to reach the customer by phone.' },
+  { label: 'Incorrect / hard to find address', value: 'The delivery address is incorrect or difficult to locate.' },
+  { label: 'Bad weather conditions', value: 'Delivery delayed/affected due to severe weather conditions.' },
+  { label: 'Heavy traffic / traffic jam', value: 'Delayed due to heavy traffic, delivery will be later than scheduled.' },
+  { label: 'Damaged package in transit', value: 'Package found to be damaged during transport.' },
+  { label: 'No access to secure area/building', value: 'Unable to access the building or secure area due to access control.' },
+  { label: 'Customer requested to reschedule', value: 'Customer requested to reschedule the delivery to a different time.' },
+  { label: 'Customer refused delivery', value: 'Customer refused to accept the package, support contact required.' },
+  { label: 'Insufficient funds for COD', value: 'Customer has insufficient cash/payment method for Cash on Delivery.' },
+  { label: 'Vehicle breakdown / issue', value: 'Delivery vehicle encountered mechanical issues/breakdown.' },
+  { label: 'Wrong package / order mismatch', value: 'Incorrect package or order mismatch detected, needs verification.' },
 ];
 
 export const NoteModal: React.FC<NoteModalProps> = ({ currentNote = '', onClose, onSave }) => {
